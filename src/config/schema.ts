@@ -36,7 +36,10 @@ export const DeviceConfigSchema = v.object({
   /** Phone-side directories to walk. Per-device because the layouts differ. */
   roots: v.optional(v.array(v.string()), []),
   /** Overrides the global concurrency for this device (USB 2 cables need 1). */
-  jobs: v.optional(v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(8))), undefined),
+  jobs: v.optional(
+    v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(8))),
+    undefined,
+  ),
   /** Paths under these prefixes are never scanned. */
   exclude: v.optional(v.array(v.string()), []),
 });
@@ -59,7 +62,12 @@ export const FIELD_SCHEMAS = {
   space_headroom: v.pipe(v.number(), v.minValue(0), v.maxValue(0.9)),
   transport: Transport,
   resume_threshold: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
-  forward_port: v.pipe(v.number(), v.integer(), v.minValue(1024), v.maxValue(65535)),
+  forward_port: v.pipe(
+    v.number(),
+    v.integer(),
+    v.minValue(1024),
+    v.maxValue(65535),
+  ),
   adb_path: v.string(),
   theme: v.string(),
   devices: v.record(v.string(), DeviceConfigSchema),
@@ -68,7 +76,9 @@ export const FIELD_SCHEMAS = {
 export type ConfigKey = keyof typeof FIELD_SCHEMAS;
 
 /** Apply a default to a field schema without losing its inferred output type. */
-const withDefault = <T extends v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>>(
+const withDefault = <
+  T extends v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>,
+>(
   schema: T,
   fallback: v.InferOutput<T>,
 ) => v.optional(schema, fallback);

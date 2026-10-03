@@ -123,10 +123,10 @@ export async function runTransfer(
   // --- dry run: prove the plan, touch nothing --------------------------------
   if (opts.dryRun) {
     for (const file of queue) {
-        const rowId = rowIdOf(opts.journal, file);
-        if (rowId > 0) opts.journal.setState(rowId, "eligible");
-      }
-      opts.journal.finishRun(runId, "done", {
+      const rowId = rowIdOf(opts.journal, file);
+      if (rowId > 0) opts.journal.setState(rowId, "eligible");
+    }
+    opts.journal.finishRun(runId, "done", {
       bytes_total: plan.bytesTotal,
       files_total: queue.length,
     });
@@ -153,7 +153,10 @@ export async function runTransfer(
   await Promise.all(Array.from({ length: workerCount }, worker));
 
   summary.durationMs = (Bun.nanoseconds() - started) / 1_000_000;
-  summary.rateBps = summary.durationMs > 0 ? (summary.bytesMoved / summary.durationMs) * 1000 : 0;
+  summary.rateBps =
+    summary.durationMs > 0
+      ? (summary.bytesMoved / summary.durationMs) * 1000
+      : 0;
 
   opts.journal.finishRun(runId, summary.failed > 0 ? "failed" : "done", {
     bytes_total: plan.bytesTotal,
@@ -168,7 +171,11 @@ export async function runTransfer(
       summary.failed > 0 ? "warn" : "info",
       "run finished",
       runId,
-      { transferred: summary.transferred, kept: summary.kept, failed: summary.failed },
+      {
+        transferred: summary.transferred,
+        kept: summary.kept,
+        failed: summary.failed,
+      },
     );
   }
 
@@ -235,16 +242,29 @@ async function processFile(
   const outcome = await opts.transport.copy(req);
   if (outcome.status === "failed") {
     opts.journal.setState(rowId, "failed", outcome.reason);
-    opts.journal.event("error", `copy failed: ${candidate.srcPath}`, runId, { reason: outcome.reason });
+    opts.journal.event("error", `copy failed: ${candidate.srcPath}`, runId, {
+      reason: outcome.reason,
+    });
     opts.onFileEvent?.({ type: "failed", file, reason: outcome.reason });
-    summary.failures.push({ srcPath: candidate.srcPath, reason: outcome.reason });
+    summary.failures.push({
+      srcPath: candidate.srcPath,
+      reason: outcome.reason,
+    });
     return "failed";
   }
 
   if (outcome.status === "skipped") {
     // --- 3. a skipped file is never a delete candidate ----------------------
-    opts.journal.setState(rowId, "skipped_duplicate", "destination already matched");
-    opts.onFileEvent?.({ type: "skipped", file, reason: "already on the drive" });
+    opts.journal.setState(
+      rowId,
+      "skipped_duplicate",
+      "destination already matched",
+    );
+    opts.onFileEvent?.({
+      type: "skipped",
+      file,
+      reason: "already on the drive",
+    });
     summary.skipped++;
     return "ok";
   }
@@ -258,12 +278,24 @@ async function processFile(
   if (!verdict.ok) {
     // The destination stays on disk but is quarantined by name; the phone copy
     // is untouched. This is the whole point.
-    opts.journal.setState(rowId, "failed", `verification failed: ${verdict.reason}`);
-    opts.journal.event("error", `verification failed: ${candidate.srcPath}`, runId, {
+    opts.journal.setState(
+      rowId,
+      "failed",
+      `verification failed: ${verdict.reason}`,
+    );
+    opts.journal.event(
+      "error",
+      `verification failed: ${candidate.srcPath}`,
+      runId,
+      {
+        reason: verdict.reason,
+      },
+    );
+    opts.onFileEvent?.({ type: "failed", file, reason: verdict.reason });
+    summary.failures.push({
+      srcPath: candidate.srcPath,
       reason: verdict.reason,
     });
-    opts.onFileEvent?.({ type: "failed", file, reason: verdict.reason });
-    summary.failures.push({ srcPath: candidate.srcPath, reason: verdict.reason });
     return "failed";
   }
 
@@ -285,7 +317,10 @@ async function processFile(
 
   // --- 1. deletion is a separate step ---------------------------------------
   if (opts.deleteSource === "after-verify") {
-    const removed = await opts.transport.removeSource(candidate.serial, candidate.srcPath);
+    const removed = await opts.transport.removeSource(
+      candidate.serial,
+      candidate.srcPath,
+    );
     if (removed) {
       opts.journal.setState(rowId, "source_deleted");
       opts.journal.setState(rowId, "done");
@@ -295,7 +330,11 @@ async function processFile(
       // The copy is proven; the delete failed. Leave the state at `verified`
       // so `portage purge` can finish the job later.
       summary.kept++;
-      opts.journal.event("warn", `verified but could not delete on device: ${candidate.srcPath}`, runId);
+      opts.journal.event(
+        "warn",
+        `verified but could not delete on device: ${candidate.srcPath}`,
+        runId,
+      );
     }
   } else {
     // --- 4. kept on purpose --------------------------------------------------
@@ -326,7 +365,8 @@ async function verifyFile(
 
   // Size is the cheap gate before we spend two hashes.
   const local = statSyncSafe(file.destPath);
-  if (!local) return { ok: false, reason: "destination disappeared before verification" };
+  if (!local)
+    return { ok: false, reason: "destination disappeared before verification" };
   if (local.size !== candidate.size) {
     return {
       ok: false,
@@ -335,17 +375,28 @@ async function verifyFile(
   }
 
   const localHash = await sha256File(file.destPath);
-  if (!localHash) return { ok: false, reason: "could not read the destination for hashing" };
+  if (!localHash)
+    return { ok: false, reason: "could not read the destination for hashing" };
 
   if (!device) {
     // No device means we cannot ask the phone. A file of unknown provenance is
     // not a verified file.
-    return { ok: false, reason: "device disappeared before verification — phone hash unavailable" };
+    return {
+      ok: false,
+      reason: "device disappeared before verification — phone hash unavailable",
+    };
   }
 
-  const remoteHash = await opts.adb.hashRemote(device.serial, candidate.srcPath);
+  const remoteHash = await opts.adb.hashRemote(
+    device.serial,
+    candidate.srcPath,
+  );
   if (!remoteHash) {
-    return { ok: false, reason: "phone-side sha256sum unavailable — refusing to claim verification" };
+    return {
+      ok: false,
+      reason:
+        "phone-side sha256sum unavailable — refusing to claim verification",
+    };
   }
 
   if (remoteHash !== localHash) {

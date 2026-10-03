@@ -120,7 +120,11 @@ export class AdbTransport implements Transport {
    * back to a full pull rather than silently accepting a short file.
    */
   private async resumeTail(req: CopyRequest): Promise<CopyOutcome | null> {
-    const proc = await this.adb.execOutTail(req.serial, req.srcPath, req.partialBytes);
+    const proc = await this.adb.execOutTail(
+      req.serial,
+      req.srcPath,
+      req.partialBytes,
+    );
     // `stdout: "pipe"` guarantees a stream; the union type does not know that.
     const stream = proc.stdout as ReadableStream<Uint8Array>;
 
@@ -196,7 +200,9 @@ export class RsyncTransport implements Transport {
   ) {}
 
   async available(): Promise<boolean> {
-    const res = Bun.spawnSync([this.opts.bin, "--version"], { stderr: "ignore" });
+    const res = Bun.spawnSync([this.opts.bin, "--version"], {
+      stderr: "ignore",
+    });
     return res.exitCode === 0;
   }
 
@@ -220,7 +226,10 @@ export class RsyncTransport implements Transport {
     ];
 
     const remoteDir = dirname(req.srcPath);
-    args.push(`${this.opts.user}@127.0.0.1:${remoteDir}/`, `${dirname(req.destPath)}/`);
+    args.push(
+      `${this.opts.user}@127.0.0.1:${remoteDir}/`,
+      `${dirname(req.destPath)}/`,
+    );
 
     await ensureDir(dirname(req.destPath));
 
@@ -253,16 +262,22 @@ export class RsyncTransport implements Transport {
   }
 
   async removeSource(_serial: string, srcPath: string): Promise<boolean> {
-    const res = await Bun.$`ssh -p ${this.opts.port} -o BatchMode=yes ${this.opts.user}@127.0.0.1 rm -f -- ${srcPath}`
-      .quiet()
-      .nothrow();
+    const res =
+      await Bun.$`ssh -p ${this.opts.port} -o BatchMode=yes ${this.opts.user}@127.0.0.1 rm -f -- ${srcPath}`
+        .quiet()
+        .nothrow();
     return res.exitCode === 0;
   }
 }
 
 /** First non-empty line of stderr, trimmed — for a one-line failure reason. */
 function firstLine(s: string): string {
-  return s.split("\n").find((l) => l.trim().length > 0)?.trim() ?? "";
+  return (
+    s
+      .split("\n")
+      .find((l) => l.trim().length > 0)
+      ?.trim() ?? ""
+  );
 }
 
 export { basename, join };

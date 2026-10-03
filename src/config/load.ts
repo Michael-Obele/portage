@@ -40,16 +40,20 @@ export interface ResolvedConfig {
   origins: Record<string, string>;
 }
 
-
-
-async function readToml(path: string, label: string): Promise<Record<string, unknown> | null> {
+async function readToml(
+  path: string,
+  label: string,
+): Promise<Record<string, unknown> | null> {
   const file = Bun.file(path);
   if (!(await file.exists())) return null;
   let text: string;
   try {
     text = await file.text();
   } catch {
-    throw usageError(`cannot read ${label} config at ${path}`, "check file permissions");
+    throw usageError(
+      `cannot read ${label} config at ${path}`,
+      "check file permissions",
+    );
   }
   try {
     return parseToml(text) as Record<string, unknown>;
@@ -92,9 +96,12 @@ function mergeConfigs(
  * that backwards produces an object of unknown keys that the schema silently
  * drops, which is exactly how an env override becomes a no-op nobody notices.
  */
-function envOverrides(env: Record<string, string | undefined>): Record<string, unknown> {
+function envOverrides(
+  env: Record<string, string | undefined>,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  const num = (v: string | undefined) => (v === undefined ? undefined : Number(v));
+  const num = (v: string | undefined) =>
+    v === undefined ? undefined : Number(v);
   const list = (v: string | undefined) =>
     v === undefined ? undefined : v.split(":").filter(Boolean);
 
@@ -131,11 +138,14 @@ export interface LoadOptions {
   env?: Record<string, string | undefined>;
 }
 
-export async function loadConfig(opts: LoadOptions = {}): Promise<ResolvedConfig> {
+export async function loadConfig(
+  opts: LoadOptions = {},
+): Promise<ResolvedConfig> {
   const env = opts.env ?? Bun.env;
   const origins: Record<string, string> = {};
   const home = Bun.env.HOME ?? ".";
-  const userPath = opts.configPath ?? join(home, ".config", "portage", CONFIG_FILENAME);
+  const userPath =
+    opts.configPath ?? join(home, ".config", "portage", CONFIG_FILENAME);
 
   // --- layer 5: defaults -----------------------------------------------------
   let config = DEFAULT_CONFIG;
@@ -194,7 +204,10 @@ export function requireDestRoot(config: PortageConfig): string {
 }
 
 /** Write a config file, merging over whatever is already there. */
-export async function writeConfigFile(path: string, values: Record<string, unknown>): Promise<void> {
+export async function writeConfigFile(
+  path: string,
+  values: Record<string, unknown>,
+): Promise<void> {
   const existing = (await readToml(path, "user")) ?? {};
   const body = renderToml({ ...existing, ...values });
   await mkdir(join(path, ".."), { recursive: true });
@@ -254,7 +267,12 @@ function renderValue(v: unknown): string {
  * written to disk rather than surfacing on the next run.
  */
 export function coerceConfigValue(key: string, raw: string): unknown {
-  const field = (FIELD_SCHEMAS as Record<string, v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>>)[key];
+  const field = (
+    FIELD_SCHEMAS as Record<
+      string,
+      v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>
+    >
+  )[key];
   if (!field) {
     const suggestion = nearestKey(key);
     throw usageError(

@@ -7,7 +7,12 @@
  * effect of copying.
  */
 
-import { resolveBinary, stripCR, type RunResult, type SpawnFn } from "../util/spawn.ts";
+import {
+  resolveBinary,
+  stripCR,
+  type RunResult,
+  type SpawnFn,
+} from "../util/spawn.ts";
 import { sha1Hex } from "../util/hash.ts";
 
 export interface DeviceInfo {
@@ -40,7 +45,10 @@ export class Adb {
   }
 
   /** Build an adapter, resolving adb from config or PATH. Returns null if absent. */
-  static async create(spawn: SpawnFn, configuredPath = ""): Promise<Adb | null> {
+  static async create(
+    spawn: SpawnFn,
+    configuredPath = "",
+  ): Promise<Adb | null> {
     const bin = await resolveBinary("adb", configuredPath);
     return bin ? new Adb(bin, spawn) : null;
   }
@@ -54,7 +62,9 @@ export class Adb {
 
   /** Every attached device, with model/Android version resolved. */
   async devices(): Promise<DeviceInfo[]> {
-    const res = await this.spawn([this.bin, "devices", "-l"], { timeoutMs: 20_000 });
+    const res = await this.spawn([this.bin, "devices", "-l"], {
+      timeoutMs: 20_000,
+    });
     if (res.code !== 0) return [];
 
     const out: DeviceInfo[] = [];
@@ -70,8 +80,12 @@ export class Adb {
       // Only query the device when it is actually usable — `getprop` on an
       // unauthorized device just hangs.
       const usable = state === "device";
-      const android = usable ? await this.getprop(serial, "ro.build.version.release") : "";
-      const rawSerial = usable ? await this.getprop(serial, "ro.serialno") : serial;
+      const android = usable
+        ? await this.getprop(serial, "ro.build.version.release")
+        : "";
+      const rawSerial = usable
+        ? await this.getprop(serial, "ro.serialno")
+        : serial;
 
       out.push({
         id: deviceId(serial, rawSerial),
@@ -108,13 +122,25 @@ export class Adb {
    * stdin is already /dev/null (see `realSpawn`), which is what stops `adb
    * shell` from eating our stdin inside a loop.
    */
-  async shell(serial: string, command: string, timeoutMs = 30_000): Promise<RunResult> {
-    return await this.spawn([this.bin, "-s", serial, "shell", command], { timeoutMs });
+  async shell(
+    serial: string,
+    command: string,
+    timeoutMs = 30_000,
+  ): Promise<RunResult> {
+    return await this.spawn([this.bin, "-s", serial, "shell", command], {
+      timeoutMs,
+    });
   }
 
   /** Same as `shell` but with a PTY — needed to keep a long-lived process alive. */
-  async shellTty(serial: string, command: string, timeoutMs = 30_000): Promise<RunResult> {
-    return await this.spawn([this.bin, "-s", serial, "shell", "-t", command], { timeoutMs });
+  async shellTty(
+    serial: string,
+    command: string,
+    timeoutMs = 30_000,
+  ): Promise<RunResult> {
+    return await this.spawn([this.bin, "-s", serial, "shell", "-t", command], {
+      timeoutMs,
+    });
   }
 
   /**
@@ -124,7 +150,11 @@ export class Adb {
    * and it is the only way to avoid the trap where `ls -lS` reports every
    * directory as 4096 bytes.
    */
-  async walk(serial: string, root: string, timeoutMs = 120_000): Promise<DeviceFile[]> {
+  async walk(
+    serial: string,
+    root: string,
+    timeoutMs = 120_000,
+  ): Promise<DeviceFile[]> {
     const cmd = `find '${root}' -type f -printf '%s\\t%T@\\t%p\\n'`;
     const res = await this.shell(serial, cmd, timeoutMs);
     if (res.code !== 0) return [];
@@ -141,7 +171,11 @@ export class Adb {
       const mtime = Number(line.slice(tab1 + 1, tab2));
       const path = line.slice(tab2 + 1).trim();
       if (!Number.isFinite(size) || !path) continue;
-      files.push({ path, size, mtime: Number.isFinite(mtime) ? Math.floor(mtime) : 0 });
+      files.push({
+        path,
+        size,
+        mtime: Number.isFinite(mtime) ? Math.floor(mtime) : 0,
+      });
     }
     return files;
   }
@@ -156,7 +190,10 @@ export class Adb {
 
   /** Hasher availability — the Pixel ships sha256sum; older devices may not. */
   async hasHasher(serial: string): Promise<boolean> {
-    const res = await this.shell(serial, "toybox 2>/dev/null | tr ' ' '\\n' | grep -x sha256sum");
+    const res = await this.shell(
+      serial,
+      "toybox 2>/dev/null | tr ' ' '\\n' | grep -x sha256sum",
+    );
     return res.code === 0 && res.stdout.includes("sha256sum");
   }
 
@@ -187,15 +224,32 @@ export class Adb {
     skipBytes: number,
   ): Promise<ReturnType<typeof Bun.spawn>> {
     return Bun.spawn(
-      [this.bin, "-s", serial, "exec-out", `tail -c +${skipBytes + 1} '${remotePath}'`],
+      [
+        this.bin,
+        "-s",
+        serial,
+        "exec-out",
+        `tail -c +${skipBytes + 1} '${remotePath}'`,
+      ],
       { stdin: "ignore", stdout: "pipe", stderr: "pipe" },
     );
   }
 
   /** Tunnel a device TCP port to localhost. Used by the rsync fallback. */
-  async forward(serial: string, localPort: number, remotePort: number): Promise<boolean> {
+  async forward(
+    serial: string,
+    localPort: number,
+    remotePort: number,
+  ): Promise<boolean> {
     const res = await this.spawn(
-      [this.bin, "-s", serial, "forward", `tcp:${localPort}`, `tcp:${remotePort}`],
+      [
+        this.bin,
+        "-s",
+        serial,
+        "forward",
+        `tcp:${localPort}`,
+        `tcp:${remotePort}`,
+      ],
       { timeoutMs: 10_000 },
     );
     return res.code === 0;
@@ -203,9 +257,12 @@ export class Adb {
 
   /** Remove forwarding rules this process created. */
   async forwardRemove(serial: string, localPort: number): Promise<void> {
-    await this.spawn([this.bin, "-s", serial, "forward", "--remove", `tcp:${localPort}`], {
-      timeoutMs: 10_000,
-    });
+    await this.spawn(
+      [this.bin, "-s", serial, "forward", "--remove", `tcp:${localPort}`],
+      {
+        timeoutMs: 10_000,
+      },
+    );
   }
 
   /**

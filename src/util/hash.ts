@@ -52,7 +52,10 @@ export async function sha256File(path: string): Promise<string | null> {
  * what makes it safe as the cheap first pass over a 2 TB archive: a few GB of
  * reads instead of 2 TB.
  */
-export async function sampleHash(path: string, windowBytes = 64 * 1024): Promise<string | null> {
+export async function sampleHash(
+  path: string,
+  windowBytes = 64 * 1024,
+): Promise<string | null> {
   const file = Bun.file(path);
   if (!(await file.exists())) return null;
 
@@ -64,7 +67,10 @@ export async function sampleHash(path: string, windowBytes = 64 * 1024): Promise
   }
   if (size === 0) return sha256Hex("");
 
-  const offsets = new Set<number>([0, Math.max(0, Math.floor(size / 2) - Math.floor(windowBytes / 2))]);
+  const offsets = new Set<number>([
+    0,
+    Math.max(0, Math.floor(size / 2) - Math.floor(windowBytes / 2)),
+  ]);
   offsets.add(Math.max(0, size - windowBytes));
 
   const hasher = new Bun.CryptoHasher("sha256");

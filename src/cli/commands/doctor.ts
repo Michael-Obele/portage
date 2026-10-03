@@ -8,7 +8,13 @@
  * is actionable.
  */
 
-import { Adb, isUsb2, maxLinkSpeed, parseLsusbTree, type DeviceInfo } from "../../device/adb.ts";
+import {
+  Adb,
+  isUsb2,
+  maxLinkSpeed,
+  parseLsusbTree,
+  type DeviceInfo,
+} from "../../device/adb.ts";
 import { diskSpace, isDirectory, statSyncSafe } from "../../util/fs.ts";
 import { formatBytes } from "../../util/paths.ts";
 import type { Output } from "../../output/output.ts";
@@ -51,7 +57,11 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
     return 2;
   }
 
-  rows.push({ mark: "ok", label: "adb", value: `${await ctx.adb.version()}  ${ctx.adb.bin}` });
+  rows.push({
+    mark: "ok",
+    label: "adb",
+    value: `${await ctx.adb.version()}  ${ctx.adb.bin}`,
+  });
 
   // --- devices ----------------------------------------------------------------
   const devices = await ctx.adb.devices();
@@ -115,7 +125,10 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
         mark: free > 5e9 ? "ok" : "warn",
         label: "phone free",
         value: formatBytes(free),
-        fix: free <= 5e9 ? "the phone is nearly full — downloads will start failing" : undefined,
+        fix:
+          free <= 5e9
+            ? "the phone is nearly full — downloads will start failing"
+            : undefined,
       });
     }
   }
@@ -149,16 +162,24 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
         fix: "NTFS dirty bit — unmount, run `sudo ntfsfix /dev/<partition>`, or eject cleanly from Windows",
       });
     } else {
-      rows.push({ mark: "ok", label: "destination", value: `${destRoot}  (${fstype})` });
+      rows.push({
+        mark: "ok",
+        label: "destination",
+        value: `${destRoot}  (${fstype})`,
+      });
     }
 
     if (space) {
-      const usedPct = space.total > 0 ? Math.round((1 - space.free / space.total) * 100) : 0;
+      const usedPct =
+        space.total > 0 ? Math.round((1 - space.free / space.total) * 100) : 0;
       rows.push({
         mark: usedPct > 90 ? "warn" : "ok",
         label: "  free",
         value: `${formatBytes(space.free)} of ${formatBytes(space.total)} (${usedPct}% used)`,
-        fix: usedPct > 90 ? "portage dupes  — reclaim space from duplicate groups" : undefined,
+        fix:
+          usedPct > 90
+            ? "portage dupes  — reclaim space from duplicate groups"
+            : undefined,
       });
     }
 
@@ -170,7 +191,8 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
       rows.push({
         mark: "ok",
         label: "journal",
-        value: `${archive.files} files tracked, ${formatBytes(archive.bytes)}` +
+        value:
+          `${archive.files} files tracked, ${formatBytes(archive.bytes)}` +
           (states.failed ? `, ${states.failed} failed` : ""),
       });
       journal.close();
@@ -193,7 +215,11 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
       value: result ?? "not measured — no device to write from",
     });
   } else {
-    rows.push({ mark: "info", label: "throughput", value: "not measured — use `portage doctor --bench`" });
+    rows.push({
+      mark: "info",
+      label: "throughput",
+      value: "not measured — use `portage doctor --bench`",
+    });
   }
 
   // --- render -----------------------------------------------------------------
@@ -240,8 +266,12 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
 }
 
 /** `lsusb -t` gives the negotiated speed per device — the fastest way to spot a USB 2 cable. */
-async function probeLinkSpeed(): Promise<{ speeds: Map<string, number> } | null> {
-  const res = await realSpawn(["lsusb", "-t"], { timeoutMs: 5_000 }).catch(() => null);
+async function probeLinkSpeed(): Promise<{
+  speeds: Map<string, number>;
+} | null> {
+  const res = await realSpawn(["lsusb", "-t"], { timeoutMs: 5_000 }).catch(
+    () => null,
+  );
   if (!res || res.code !== 0) return null;
   return { speeds: parseLsusbTree(res.stdout) };
 }
@@ -252,9 +282,12 @@ async function probeFstype(path: string): Promise<string> {
   }).catch(() => null);
   if (!res || res.code !== 0) return "unknown filesystem";
   const fstype = res.stdout.trim();
-  const driver = await realSpawn(["findmnt", "-no", "OPTIONS", "--target", path], {
-    timeoutMs: 5_000,
-  }).catch(() => null);
+  const driver = await realSpawn(
+    ["findmnt", "-no", "OPTIONS", "--target", path],
+    {
+      timeoutMs: 5_000,
+    },
+  ).catch(() => null);
   const opts = driver?.stdout ?? "";
   const isFuse = opts.includes("fuseblk") || opts.includes("ntfs-3g");
   return isFuse ? `${fstype} via ntfs-3g (FUSE)` : fstype;
@@ -275,7 +308,10 @@ async function isReadOnly(path: string): Promise<boolean> {
  * job's wall time is writeback it has already called finished. So this writes,
  * syncs, and only then stops the clock.
  */
-async function benchmark(adb: Adb, device: DeviceInfo | undefined): Promise<string | null> {
+async function benchmark(
+  adb: Adb,
+  device: DeviceInfo | undefined,
+): Promise<string | null> {
   if (!device) return null;
 
   const source = "/sdcard/Download/.portage-bench.bin";
@@ -284,13 +320,23 @@ async function benchmark(adb: Adb, device: DeviceInfo | undefined): Promise<stri
   // A file the user already downloaded would be better (no writes on the
   // phone), but we cannot assume one exists. /data/local/tmp is writable by
   // the shell user and never touches /sdcard.
-  await adb.shell(device.serial, `dd if=/dev/zero of=/data/local/tmp/portage-bench.bin bs=1M count=256 2>/dev/null`);
+  await adb.shell(
+    device.serial,
+    `dd if=/dev/zero of=/data/local/tmp/portage-bench.bin bs=1M count=256 2>/dev/null`,
+  );
   void source;
 
   const tmp = `/tmp/portage-bench-${process.pid}.bin`;
   const started = Bun.nanoseconds();
 
-  const res = await adb.pull(device.serial, "/data/local/tmp/portage-bench.bin", tmp, false, undefined, 900_000);
+  const res = await adb.pull(
+    device.serial,
+    "/data/local/tmp/portage-bench.bin",
+    tmp,
+    false,
+    undefined,
+    900_000,
+  );
   if (res.code !== 0) {
     await adb.shell(device.serial, "rm -f /data/local/tmp/portage-bench.bin");
     await Bun.$`rm -f ${tmp}`.quiet().nothrow();
@@ -298,7 +344,10 @@ async function benchmark(adb: Adb, device: DeviceInfo | undefined): Promise<stri
   }
 
   // The part adb does not count.
-  const sync = Bun.spawnSync(["sync", "-f", tmp], { stdout: "ignore", stderr: "ignore" });
+  const sync = Bun.spawnSync(["sync", "-f", tmp], {
+    stdout: "ignore",
+    stderr: "ignore",
+  });
   void sync;
 
   const seconds = (Bun.nanoseconds() - started) / 1_000_000_000;

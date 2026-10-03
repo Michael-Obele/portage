@@ -89,7 +89,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
       if (value === undefined && VALUE_FLAGS.has(key)) {
         const next = argv[i + 1];
         if (next === undefined || next.startsWith("-")) {
-          throw usageError(`--${body} needs a value`, `example: --${body} <value>`);
+          throw usageError(
+            `--${body} needs a value`,
+            `example: --${body} <value>`,
+          );
         }
         value = next;
         i++;
@@ -138,19 +141,31 @@ export function parseArgs(argv: string[]): ParsedArgs {
 }
 
 /** Read a flag as a string, or fall back. */
-export function str(flags: ParsedArgs["flags"], key: string, fallback = ""): string {
+export function str(
+  flags: ParsedArgs["flags"],
+  key: string,
+  fallback = "",
+): string {
   const v = flags[key];
   return typeof v === "string" ? v : fallback;
 }
 
 /** Read a flag as a boolean. `--no-x` sets it to false. */
-export function bool(flags: ParsedArgs["flags"], key: string, fallback = false): boolean {
+export function bool(
+  flags: ParsedArgs["flags"],
+  key: string,
+  fallback = false,
+): boolean {
   const v = flags[key];
   return typeof v === "boolean" ? v : fallback;
 }
 
 /** Read a flag as an integer, erroring clearly on a bad value. */
-export function int(flags: ParsedArgs["flags"], key: string, fallback: number): number {
+export function int(
+  flags: ParsedArgs["flags"],
+  key: string,
+  fallback: number,
+): number {
   const v = flags[key];
   if (typeof v !== "string") return fallback;
   const n = Number(v);

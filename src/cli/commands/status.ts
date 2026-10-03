@@ -9,7 +9,11 @@
 
 import { Journal } from "../../index/journal.ts";
 import type { ResolvedConfig } from "../../config/load.ts";
-import { requireDestRoot, coerceConfigValue, writeConfigFile } from "../../config/load.ts";
+import {
+  requireDestRoot,
+  coerceConfigValue,
+  writeConfigFile,
+} from "../../config/load.ts";
 import { CONFIG_KEYS } from "../../config/schema.ts";
 import { formatBytes, formatDuration } from "../../util/paths.ts";
 import type { Output } from "../../output/output.ts";
@@ -66,7 +70,9 @@ export async function status(ctx: {
       for (const row of pending) {
         o.bullet(`${formatBytes(row.size).padStart(10)}  ${row.src_path}`);
       }
-      o.line(`  → ${pending.length} file(s), ${formatBytes(pending.reduce((s, r) => s + r.size, 0))}`);
+      o.line(
+        `  → ${pending.length} file(s), ${formatBytes(pending.reduce((s, r) => s + r.size, 0))}`,
+      );
       o.bullet("run `portage purge` to remove them from the phone");
       o.line();
     }
@@ -118,10 +124,17 @@ export async function config(ctx: {
   switch (action) {
     case "get": {
       const key = ctx.positionals[1];
-      if (!key) throw usageError("config get needs a key", `keys: ${CONFIG_KEYS.join(", ")}`);
+      if (!key)
+        throw usageError(
+          "config get needs a key",
+          `keys: ${CONFIG_KEYS.join(", ")}`,
+        );
       const value = (resolved.config as Record<string, unknown>)[key];
       if (value === undefined) {
-        throw usageError(`unknown config key: ${key}`, `keys: ${CONFIG_KEYS.join(", ")}`);
+        throw usageError(
+          `unknown config key: ${key}`,
+          `keys: ${CONFIG_KEYS.join(", ")}`,
+        );
       }
       output.line(typeof value === "string" ? value : JSON.stringify(value));
       return 0;
@@ -131,11 +144,16 @@ export async function config(ctx: {
       const key = ctx.positionals[1];
       const raw = ctx.positionals[2];
       if (!key || raw === undefined) {
-        throw usageError("config set needs a key and a value", "example: portage config set jobs 3");
+        throw usageError(
+          "config set needs a key and a value",
+          "example: portage config set jobs 3",
+        );
       }
       const value = coerceConfigValue(key, raw);
       await writeConfigFile(resolved.sources.userPath, { [key]: value });
-      output.ok(`${key} = ${JSON.stringify(value)} written to ${resolved.sources.userPath}`);
+      output.ok(
+        `${key} = ${JSON.stringify(value)} written to ${resolved.sources.userPath}`,
+      );
       return 0;
     }
 
@@ -171,7 +189,8 @@ export async function config(ctx: {
                 ? "env"
                 : origin.startsWith("/")
                   ? origin.endsWith(".toml")
-                    ? origin.endsWith("config.toml") && origin === resolved.sources.userPath
+                    ? origin.endsWith("config.toml") &&
+                      origin === resolved.sources.userPath
                       ? "user"
                       : "drive"
                     : "user"
@@ -184,7 +203,9 @@ export async function config(ctx: {
       }
       output.table(rows, ["key", "value", "from"]);
       output.line();
-      output.line("  precedence: flags > env (PORTAGE_*) > drive config > user config > defaults");
+      output.line(
+        "  precedence: flags > env (PORTAGE_*) > drive config > user config > defaults",
+      );
       return 0;
     }
   }
@@ -206,14 +227,21 @@ export async function db(ctx: {
         const archive = journal.countArchive();
         const counts = journal.countByState();
         if (ctx.output.mode === "json") {
-          ctx.output.emitJson({ archive, counts, db: `${destRoot}/.portage/portage.db` });
+          ctx.output.emitJson({
+            archive,
+            counts,
+            db: `${destRoot}/.portage/portage.db`,
+          });
           return 0;
         }
         ctx.output.heading("journal");
         ctx.output.kv("path", `${destRoot}/.portage/portage.db`);
         ctx.output.kv("archive files", String(archive.files));
         ctx.output.kv("archive bytes", formatBytes(archive.bytes));
-        ctx.output.kv("transfer rows", String(Object.values(counts).reduce((a, b) => a + b, 0)));
+        ctx.output.kv(
+          "transfer rows",
+          String(Object.values(counts).reduce((a, b) => a + b, 0)),
+        );
         return 0;
       }
 
@@ -225,7 +253,11 @@ export async function db(ctx: {
 
       case "export": {
         const target = ctx.positionals[1];
-        if (!target) throw usageError("db export needs a path", "example: portage db export ./transfers.jsonl");
+        if (!target)
+          throw usageError(
+            "db export needs a path",
+            "example: portage db export ./transfers.jsonl",
+          );
         const jsonl = journal.exportJSONL();
         await ctx.write(target, `${jsonl}\n`);
         ctx.output.ok(`wrote ${ctx.positionals.length - 1 ? target : target}`);

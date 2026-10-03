@@ -74,13 +74,19 @@ export interface PlanOptions {
  * whole value of `plan` is seeing the *full* picture, including what is being
  * skipped and why.
  */
-export function buildPlan(candidates: Candidate[], opts: PlanOptions): PlanResult {
+export function buildPlan(
+  candidates: Candidate[],
+  opts: PlanOptions,
+): PlanResult {
   const warnings: string[] = [];
   const files: PlannedFile[] = [];
   const nowSeconds = Date.now() / 1000;
 
   for (const candidate of candidates) {
-    if (opts.show && !candidate.srcPath.toLowerCase().includes(opts.show.toLowerCase())) {
+    if (
+      opts.show &&
+      !candidate.srcPath.toLowerCase().includes(opts.show.toLowerCase())
+    ) {
       continue;
     }
     if (
@@ -95,7 +101,10 @@ export function buildPlan(candidates: Candidate[], opts: PlanOptions): PlanResul
 
     // An ineligible file is still *shown* — "why was this skipped?" is the
     // question `plan` exists to answer — but it must never be queued.
-    if (candidate.verdict !== "new" && candidate.verdict !== "duplicate-candidate") {
+    if (
+      candidate.verdict !== "new" &&
+      candidate.verdict !== "duplicate-candidate"
+    ) {
       files.push({
         candidate,
         destPath,
@@ -150,7 +159,8 @@ export function buildPlan(candidates: Candidate[], opts: PlanOptions): PlanResul
   // An ETA built on one sample is a lie told with confidence. Say nothing
   // instead of saying something wrong.
   const rate = opts.rateBps ?? null;
-  const etaSeconds = rate && rate > 0 && bytesTotal > 0 ? bytesTotal / rate : null;
+  const etaSeconds =
+    rate && rate > 0 && bytesTotal > 0 ? bytesTotal / rate : null;
 
   const space = checkDestination(opts.destRoot, bytesTotal, opts.spaceHeadroom);
   if (!space.ok) warnings.push(space.reason ?? "");
@@ -180,7 +190,11 @@ export function buildPlan(candidates: Candidate[], opts: PlanOptions): PlanResul
  *     a re-download of the same name that is a different file. Never overwrite.
  *   - archive has the same size and no path match → a candidate only
  */
-function matchArchive(journal: Journal, destNorm: string, size: number): ArchiveHit | null {
+function matchArchive(
+  journal: Journal,
+  destNorm: string,
+  size: number,
+): ArchiveHit | null {
   const byPath = journal.findArchive(destNorm);
   if (byPath) {
     if (byPath.size === size) {
@@ -227,7 +241,9 @@ export function planSummary(plan: PlanResult): string {
     `ETA ${formatDuration(plan.etaSeconds)}`,
   ];
   if (plan.skipped.length > 0) {
-    parts.push(`${plan.skipped.length} already on the drive (${formatBytes(plan.bytesSkipped)})`);
+    parts.push(
+      `${plan.skipped.length} already on the drive (${formatBytes(plan.bytesSkipped)})`,
+    );
   }
   return parts.join(" · ");
 }

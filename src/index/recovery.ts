@@ -45,13 +45,24 @@ const EMPTY_REPORT: RecoveryReport = {
   notes: [],
 };
 
-export async function reconcile(journal: Journal, partialDir: string): Promise<RecoveryReport> {
-  const report: RecoveryReport = { ...EMPTY_REPORT, orphanPartials: [], notes: [] };
+export async function reconcile(
+  journal: Journal,
+  partialDir: string,
+): Promise<RecoveryReport> {
+  const report: RecoveryReport = {
+    ...EMPTY_REPORT,
+    orphanPartials: [],
+    notes: [],
+  };
 
   // --- 1. rows stuck in a live state ----------------------------------------
   for (const row of journal.listActive()) {
     if (row.state !== "copying") continue;
-    journal.setState(row.id, "failed", "interrupted: process exited mid-transfer");
+    journal.setState(
+      row.id,
+      "failed",
+      "interrupted: process exited mid-transfer",
+    );
     report.interrupted++;
   }
 
@@ -70,7 +81,11 @@ export async function reconcile(journal: Journal, partialDir: string): Promise<R
     if (row.state !== "verified") continue;
     const stat = statSyncSafe(row.dest_path);
     if (!stat) {
-      journal.setState(row.id, "failed", "missing: destination not found on the drive");
+      journal.setState(
+        row.id,
+        "failed",
+        "missing: destination not found on the drive",
+      );
       report.missing++;
     }
   }
@@ -78,7 +93,9 @@ export async function reconcile(journal: Journal, partialDir: string): Promise<R
   // --- 4. partials with no row ----------------------------------------------
   try {
     const entries = await readdir(partialDir);
-    const known = new Set(journal.listActive().map((r) => basename(r.dest_path)));
+    const known = new Set(
+      journal.listActive().map((r) => basename(r.dest_path)),
+    );
 
     for (const entry of entries) {
       const full = join(partialDir, entry);
@@ -126,10 +143,17 @@ export interface DestinationCheck {
   usedFraction: number;
 }
 
-export function checkDestination(destRoot: string, plannedBytes: number, headroom: number): DestinationCheck {
-  const probe = Bun.spawnSync(["findmnt", "-no", "OPTIONS", "--target", destRoot], {
-    stderr: "ignore",
-  });
+export function checkDestination(
+  destRoot: string,
+  plannedBytes: number,
+  headroom: number,
+): DestinationCheck {
+  const probe = Bun.spawnSync(
+    ["findmnt", "-no", "OPTIONS", "--target", destRoot],
+    {
+      stderr: "ignore",
+    },
+  );
   const options = probe.exitCode === 0 ? probe.stdout.toString().trim() : "";
 
   if (probe.exitCode !== 0) {

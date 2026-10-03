@@ -12,7 +12,12 @@
  * one sample is emitted as `null`, never as a confident guess.
  */
 
-import { formatBytes, formatDuration, formatRate, truncateMiddle } from "../util/paths.ts";
+import {
+  formatBytes,
+  formatDuration,
+  formatRate,
+  truncateMiddle,
+} from "../util/paths.ts";
 import { formatDuration as fmtDuration } from "../util/paths.ts";
 
 export type OutputMode = "tty" | "plain" | "json";
@@ -58,13 +63,14 @@ function detectUnicode(): boolean {
 }
 
 export function createOutput(mode: OutputMode, width?: number): Output {
-  const color =
-    mode === "tty" && !Bun.env.NO_COLOR && Bun.env.TERM !== "dumb";
+  const color = mode === "tty" && !Bun.env.NO_COLOR && Bun.env.TERM !== "dumb";
   const unicode = mode === "tty" && detectUnicode();
   const cols = width ?? detectWidth();
 
-  const paint = (code: string, text: string) => (color ? `${code}${text}${RESET}` : text);
-  const glyph = (unicodeSet: string, asciiSet: string) => (unicode ? unicodeSet : asciiSet);
+  const paint = (code: string, text: string) =>
+    color ? `${code}${text}${RESET}` : text;
+  const glyph = (unicodeSet: string, asciiSet: string) =>
+    unicode ? unicodeSet : asciiSet;
 
   const write = (s: string) => process.stdout.write(`${s}\n`);
 
@@ -129,7 +135,8 @@ export function createOutput(mode: OutputMode, width?: number): Output {
           .join("  ")
           .replace(/\s+$/, "");
         write(index === 0 && headers ? paint(BOLD, line) : line);
-        if (index === 0 && headers) write(paint(DIM, "─".repeat(Math.min(cols, visibleLength(line)))));
+        if (index === 0 && headers)
+          write(paint(DIM, "─".repeat(Math.min(cols, visibleLength(line)))));
       });
     },
   };
@@ -145,4 +152,15 @@ function padVisible(s: string, width: number): string {
   return pad > 0 ? `${s}${" ".repeat(pad)}` : s;
 }
 
-export { formatBytes, formatDuration, formatRate, truncateMiddle, fmtDuration, BOLD, DIM, GREEN, YELLOW, RED };
+export {
+  formatBytes,
+  formatDuration,
+  formatRate,
+  truncateMiddle,
+  fmtDuration,
+  BOLD,
+  DIM,
+  GREEN,
+  YELLOW,
+  RED,
+};

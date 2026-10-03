@@ -35,10 +35,7 @@ export interface RunOptions {
   onStart?: (proc: Bun.Subprocess) => void;
 }
 
-export type SpawnFn = (
-  cmd: string[],
-  opts?: RunOptions,
-) => Promise<RunResult>;
+export type SpawnFn = (cmd: string[], opts?: RunOptions) => Promise<RunResult>;
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
@@ -110,7 +107,10 @@ export async function commandExists(cmd: string): Promise<boolean> {
 }
 
 /** Resolve an executable to an absolute path, honouring a config override. */
-export async function resolveBinary(cmd: string, configuredPath = ""): Promise<string | null> {
+export async function resolveBinary(
+  cmd: string,
+  configuredPath = "",
+): Promise<string | null> {
   if (configuredPath) {
     try {
       await Bun.which(configuredPath);

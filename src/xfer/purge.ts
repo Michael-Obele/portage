@@ -82,11 +82,17 @@ export async function planPurge(
         sha256File(row.dest_path),
       ]);
       if (!remote) {
-        refused.push({ srcPath: row.src_path, reason: "phone-side hash unavailable" });
+        refused.push({
+          srcPath: row.src_path,
+          reason: "phone-side hash unavailable",
+        });
         continue;
       }
       if (!local) {
-        refused.push({ srcPath: row.src_path, reason: "drive copy unreadable" });
+        refused.push({
+          srcPath: row.src_path,
+          reason: "drive copy unreadable",
+        });
         continue;
       }
       if (remote !== local) {
@@ -153,12 +159,20 @@ export async function applyPurge(
       continue;
     }
 
-    const removed = await opts.transport.removeSource(candidate.serial, candidate.srcPath);
+    const removed = await opts.transport.removeSource(
+      candidate.serial,
+      candidate.srcPath,
+    );
     if (removed) {
       deleted++;
-      opts.journal.event("info", `purged from device: ${candidate.srcPath}`, undefined, {
-        proof: candidate.proof,
-      });
+      opts.journal.event(
+        "info",
+        `purged from device: ${candidate.srcPath}`,
+        undefined,
+        {
+          proof: candidate.proof,
+        },
+      );
     } else {
       failed++;
     }

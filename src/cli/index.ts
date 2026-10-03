@@ -28,7 +28,10 @@ import { config, db, status } from "./commands/status.ts";
 const VERSION = "0.1.0";
 
 const COMMANDS = [
-  ["doctor", "environment + device + drive report, with a fix for every problem"],
+  [
+    "doctor",
+    "environment + device + drive report, with a fix for every problem",
+  ],
   ["devices", "attached devices and their configured roots"],
   ["scan", "every file on the phone with an eligibility verdict (read-only)"],
   ["plan", "what `pull` would do: files, bytes, skips and why"],
@@ -50,7 +53,11 @@ async function main(): Promise<number> {
 
   if (!args.command || bool(args.flags, "help")) {
     printHelp(args.command);
-    return args.command && COMMANDS.some(([c]) => c === args.command) ? 0 : args.command ? 1 : 0;
+    return args.command && COMMANDS.some(([c]) => c === args.command)
+      ? 0
+      : args.command
+        ? 1
+        : 0;
   }
 
   // --- shared context --------------------------------------------------------
@@ -70,8 +77,10 @@ async function main(): Promise<number> {
   const logger = createLogger(level);
 
   const cliOverrides: Record<string, unknown> = {};
-  if (args.flags.jobs !== undefined) cliOverrides.jobs = int(args.flags, "jobs", 3);
-  if (args.flags.transport !== undefined) cliOverrides.transport = str(args.flags, "transport");
+  if (args.flags.jobs !== undefined)
+    cliOverrides.jobs = int(args.flags, "jobs", 3);
+  if (args.flags.transport !== undefined)
+    cliOverrides.transport = str(args.flags, "transport");
   if (args.flags.quiet !== false && args.flags["quiet-seconds"] !== undefined) {
     cliOverrides.quiet_seconds = int(args.flags, "quiet-seconds", 120);
   }
@@ -89,7 +98,9 @@ async function main(): Promise<number> {
   // handler only sets a flag; the engine checks it between files.
   process.on("SIGINT", () => {
     if (!bool(args.flags, "plain", true)) process.stderr.write("\n");
-    process.stderr.write("\ninterrupted — finishing the current file, then stopping\n");
+    process.stderr.write(
+      "\ninterrupted — finishing the current file, then stopping\n",
+    );
     requestStop();
   });
   process.on("SIGTERM", requestStop);
@@ -97,7 +108,12 @@ async function main(): Promise<number> {
   // --- dispatch --------------------------------------------------------------
   switch (args.command) {
     case "doctor":
-      return await doctor({ resolved, adb, output, bench: bool(args.flags, "bench") });
+      return await doctor({
+        resolved,
+        adb,
+        output,
+        bench: bool(args.flags, "bench"),
+      });
 
     case "devices":
       return await devices({ resolved, adb, output });
@@ -135,7 +151,10 @@ async function main(): Promise<number> {
         keepSource: bool(args.flags, "keep-source"),
         deleteSource: bool(args.flags, "delete-source"),
         verifyHash: bool(args.flags, "verify-hash"),
-        jobs: args.flags.jobs !== undefined ? int(args.flags, "jobs", 3) : undefined,
+        jobs:
+          args.flags.jobs !== undefined
+            ? int(args.flags, "jobs", 3)
+            : undefined,
       });
 
     case "purge":
@@ -151,10 +170,19 @@ async function main(): Promise<number> {
       });
 
     case "status":
-      return await status({ resolved, output, limit: int(args.flags, "limit", 25) });
+      return await status({
+        resolved,
+        output,
+        limit: int(args.flags, "limit", 25),
+      });
 
     case "config":
-      return await config({ resolved, output, positionals: args.positionals, flags: args.flags });
+      return await config({
+        resolved,
+        output,
+        positionals: args.positionals,
+        flags: args.flags,
+      });
 
     case "db":
       return await db({
@@ -175,7 +203,9 @@ async function main(): Promise<number> {
 }
 
 /** `--since 7d` / `--since 36h` / `--since 900` (seconds). */
-function sinceSeconds(flags: Record<string, string | boolean>): number | undefined {
+function sinceSeconds(
+  flags: Record<string, string | boolean>,
+): number | undefined {
   const raw = str(flags, "since");
   if (!raw) return undefined;
   const match = /^(\d+)([smhdw]?)$/.exec(raw.trim());
@@ -225,7 +255,9 @@ async function devices(ctx: {
     ["state", "id", "model", "android", "roots"],
   );
   o.line();
-  o.line("  the id is sha1(ro.serialno) — it is the key in the config, not the serial number");
+  o.line(
+    "  the id is sha1(ro.serialno) — it is the key in the config, not the serial number",
+  );
   return all.some((d) => d.state === "device") ? 0 : 2;
 }
 
@@ -238,7 +270,8 @@ function printHelp(command: string | null): void {
     }
   }
 
-  process.stdout.write(`portage ${VERSION} — move a phone's downloads onto an archive drive, safely
+  process.stdout
+    .write(`portage ${VERSION} — move a phone's downloads onto an archive drive, safely
 
 USAGE
   portage <command> [flags]

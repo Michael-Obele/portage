@@ -54,7 +54,11 @@ export const TERMINAL_STATES: readonly TransferState[] = [
 ];
 
 /** States that mean "bytes are on the drive and they check out". */
-export const PROVEN_STATES: readonly TransferState[] = ["verified", "source_deleted", "done"];
+export const PROVEN_STATES: readonly TransferState[] = [
+  "verified",
+  "source_deleted",
+  "done",
+];
 
 export interface TransferRow {
   id: number;
@@ -214,7 +218,10 @@ export class Journal {
   private readonly eventsPath: string;
   private closed = false;
 
-  constructor(dbPath: string, private readonly logger?: Logger) {
+  constructor(
+    dbPath: string,
+    private readonly logger?: Logger,
+  ) {
     // The `.portage` directory has to exist before SQLite will open a file
     // inside it — and `plan` opens a journal on a drive that may have never
     // been written to, which is exactly when this bites.
@@ -237,7 +244,9 @@ export class Journal {
   }
 
   private migrate(): void {
-    const row = this.db.query<{ user_version: number }, []>("PRAGMA user_version").get();
+    const row = this.db
+      .query<{ user_version: number }, []>("PRAGMA user_version")
+      .get();
     let version = row?.user_version ?? 0;
 
     for (let i = version; i < MIGRATIONS.length; i++) {
@@ -261,7 +270,12 @@ export class Journal {
   // --- devices ---------------------------------------------------------------
 
   /** Record that we saw a device. Idempotent — safe to call on every scan. */
-  touchDevice(id: string, label?: string, model?: string, android?: string): void {
+  touchDevice(
+    id: string,
+    label?: string,
+    model?: string,
+    android?: string,
+  ): void {
     const now = Date.now();
     this.db
       .query(
@@ -277,7 +291,9 @@ export class Journal {
   }
 
   listDevices(): DeviceRow[] {
-    return this.db.query<DeviceRow, []>("SELECT * FROM devices ORDER BY label, id").all();
+    return this.db
+      .query<DeviceRow, []>("SELECT * FROM devices ORDER BY label, id")
+      .all();
   }
 
   // --- runs ------------------------------------------------------------------
@@ -287,7 +303,9 @@ export class Journal {
     // journal has never seen, so the device row is written first.
     if (deviceId) {
       this.db
-        .query("INSERT OR IGNORE INTO devices (id, first_seen, last_seen) VALUES (?, ?, ?)")
+        .query(
+          "INSERT OR IGNORE INTO devices (id, first_seen, last_seen) VALUES (?, ?, ?)",
+        )
         .run(deviceId, Date.now(), Date.now());
     }
     const res = this.db
@@ -299,7 +317,11 @@ export class Journal {
     return Number(res?.id ?? 0);
   }
 
-  finishRun(runId: number, status: RunRow["status"], totals: Partial<RunRow> = {}): void {
+  finishRun(
+    runId: number,
+    status: RunRow["status"],
+    totals: Partial<RunRow> = {},
+  ): void {
     this.db
       .query(
         `UPDATE runs SET finished_at = ?, status = ?,
@@ -353,22 +375,38 @@ export class Journal {
   }): TransferRow {
     // The device row must exist before the transfer can reference it.
     this.db
-      .query("INSERT OR IGNORE INTO devices (id, first_seen, last_seen) VALUES (?, ?, ?)")
+      .query(
+        "INSERT OR IGNORE INTO devices (id, first_seen, last_seen) VALUES (?, ?, ?)",
+      )
       .run(input.deviceId, Date.now(), Date.now());
 
-    const existing = this.findTransfer(input.deviceId, input.srcPath, input.size, input.srcMtime);
+    const existing = this.findTransfer(
+      input.deviceId,
+      input.srcPath,
+      input.size,
+      input.srcMtime,
+    );
     if (existing) {
       this.db
         .query(
           `UPDATE transfers SET dest_path = ?, path_norm = ?, run_id = COALESCE(?, run_id), state = ?
            WHERE id = ?`,
         )
-        .run(input.destPath, input.pathNorm, input.runId, input.state, existing.id);
+        .run(
+          input.destPath,
+          input.pathNorm,
+          input.runId,
+          input.state,
+          existing.id,
+        );
       return this.getTransfer(existing.id)!;
     }
 
     const res = this.db
-      .query<{ id: number }, [number | null, string, string, string, string, number, number, string]>(
+      .query<
+        { id: number },
+        [number | null, string, string, string, string, number, number, string]
+      >(
         `INSERT INTO transfers
            (run_id, device_id, src_path, dest_path, path_norm, size, src_mtime, state, attempts)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
@@ -404,14 +442,19 @@ export class Journal {
   }
 
   getTransfer(id: number): TransferRow | null {
-    return this.db.query<TransferRow, [number]>("SELECT * FROM transfers WHERE id = ?").get(id) ?? null;
+    return (
+      this.db
+        .query<TransferRow, [number]>("SELECT * FROM transfers WHERE id = ?")
+        .get(id) ?? null
+    );
   }
 
   /** Move a transfer to a new state, stamping the relevant timestamps. */
   setState(id: number, state: TransferState, error?: string): void {
     const now = Date.now();
     const started = state === "copying" ? now : null;
-    const finished = TERMINAL_STATES.includes(state) || state === "verified" ? now : null;
+    const finished =
+      TERMINAL_STATES.includes(state) || state === "verified" ? now : null;
     this.db
       .query(
         `UPDATE transfers SET state = ?, last_error = ?, started_at = COALESCE(?, started_at),
@@ -423,7 +466,9 @@ export class Journal {
 
   /** Record the content hash that proved this destination. */
   setHash(id: number, hash: string, scope: "full" | "partial"): void {
-    this.db.query("UPDATE transfers SET hash = ?, hash_scope = ? WHERE id = ?").run(hash, scope, id);
+    this.db
+      .query("UPDATE transfers SET hash = ?, hash_scope = ? WHERE id = ?")
+      .run(hash, scope, id);
   }
 
   /** Every row currently at or beyond `copying` — what a resume run picks up. */
@@ -439,32 +484,38 @@ export class Journal {
         .all(deviceId, ...states);
     }
     return this.db
-      .query<TransferRow, string[]>(
-        `SELECT * FROM transfers WHERE state IN (${placeholders}) ORDER BY src_path`,
-      )
+      .query<
+        TransferRow,
+        string[]
+      >(`SELECT * FROM transfers WHERE state IN (${placeholders}) ORDER BY src_path`)
       .all(...states);
   }
 
   listByState(state: TransferState, limit = 100): TransferRow[] {
     return this.db
-      .query<TransferRow, [string, number]>(
-        `SELECT * FROM transfers WHERE state = ? ORDER BY finished_at DESC LIMIT ?`,
-      )
+      .query<
+        TransferRow,
+        [string, number]
+      >(`SELECT * FROM transfers WHERE state = ? ORDER BY finished_at DESC LIMIT ?`)
       .all(state, limit);
   }
 
   /** `portage status` — recent transfers with their outcome. */
   listRecent(limit = 50): TransferRow[] {
     return this.db
-      .query<TransferRow, [number]>("SELECT * FROM transfers ORDER BY id DESC LIMIT ?")
+      .query<
+        TransferRow,
+        [number]
+      >("SELECT * FROM transfers ORDER BY id DESC LIMIT ?")
       .all(limit);
   }
 
   countByState(): Record<string, number> {
     const rows = this.db
-      .query<{ state: string; n: number }, []>(
-        "SELECT state, COUNT(*) AS n FROM transfers GROUP BY state",
-      )
+      .query<
+        { state: string; n: number },
+        []
+      >("SELECT state, COUNT(*) AS n FROM transfers GROUP BY state")
       .all();
     const out: Record<string, number> = {};
     for (const r of rows) out[r.state] = r.n;
@@ -527,8 +578,12 @@ export class Journal {
 
   findArchive(pathNorm: string): ArchiveRow | null {
     return (
-      this.db.query<ArchiveRow, [string]>("SELECT * FROM archive WHERE path_norm = ?").get(pathNorm) ??
-      null
+      this.db
+        .query<
+          ArchiveRow,
+          [string]
+        >("SELECT * FROM archive WHERE path_norm = ?")
+        .get(pathNorm) ?? null
     );
   }
 
@@ -546,9 +601,10 @@ export class Journal {
 
   countArchive(): { files: number; bytes: number } {
     const row = this.db
-      .query<{ files: number; bytes: number }, []>(
-        "SELECT COUNT(*) AS files, COALESCE(SUM(size), 0) AS bytes FROM archive",
-      )
+      .query<
+        { files: number; bytes: number },
+        []
+      >("SELECT COUNT(*) AS files, COALESCE(SUM(size), 0) AS bytes FROM archive")
       .get();
     return { files: row?.files ?? 0, bytes: row?.bytes ?? 0 };
   }
@@ -561,19 +617,30 @@ export class Journal {
    * Dual-written: a row for querying, a line for reading. When something has
    * gone wrong at 1 a.m. nobody is writing SQL.
    */
-  event(level: "debug" | "info" | "warn" | "error", msg: string, runId?: number, data?: unknown): void {
+  event(
+    level: "debug" | "info" | "warn" | "error",
+    msg: string,
+    runId?: number,
+    data?: unknown,
+  ): void {
     const at = Date.now();
     const payload = data === undefined ? null : JSON.stringify(data);
     this.db
-      .query("INSERT INTO events (at, run_id, level, msg, data) VALUES (?, ?, ?, ?, ?)")
+      .query(
+        "INSERT INTO events (at, run_id, level, msg, data) VALUES (?, ?, ?, ?, ?)",
+      )
       .run(at, runId ?? null, level, msg, payload);
 
     try {
       // Append-only text log. A failed append must never fail the operation
       // that was trying to report itself.
-      Bun.write(this.eventsPath, `${JSON.stringify({ at, run: runId ?? null, level, msg, data })}\n`, {
-        createPath: true,
-      });
+      Bun.write(
+        this.eventsPath,
+        `${JSON.stringify({ at, run: runId ?? null, level, msg, data })}\n`,
+        {
+          createPath: true,
+        },
+      );
     } catch {
       /* the DB row is the durable copy; the text log is best-effort */
     }
@@ -581,9 +648,10 @@ export class Journal {
 
   recentEvents(limit = 50): Array<{ at: number; level: string; msg: string }> {
     return this.db
-      .query<{ at: number; level: string; msg: string }, [number]>(
-        "SELECT at, level, msg FROM events ORDER BY id DESC LIMIT ?",
-      )
+      .query<
+        { at: number; level: string; msg: string },
+        [number]
+      >("SELECT at, level, msg FROM events ORDER BY id DESC LIMIT ?")
       .all(limit);
   }
 

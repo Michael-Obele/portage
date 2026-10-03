@@ -44,11 +44,11 @@ then deletes — as its own step, on its own terms.
 The bottleneck was never the code, it was the transport. Measured on real
 hardware:
 
-| Path | Speed | 8 GB season |
-| --- | --- | --- |
-| MTP mount (what you have now) | 5–15 MB/s | 9–27 min, often fails |
-| **`adb pull`** | **35.5 MB/s** | **~4 min** |
-| `adb pull`, ×3 concurrent | **40.8 MB/s** | **~3.3 min** |
+| Path                          | Speed         | 8 GB season           |
+| ----------------------------- | ------------- | --------------------- |
+| MTP mount (what you have now) | 5–15 MB/s     | 9–27 min, often fails |
+| **`adb pull`**                | **35.5 MB/s** | **~4 min**            |
+| `adb pull`, ×3 concurrent     | **40.8 MB/s** | **~3.3 min**          |
 
 `adb` talks to Android's own filesystem directly, which removes the translation
 layer MTP puts in the way. No app on the phone, no Termux, no SSH server — just
@@ -112,17 +112,17 @@ rather than skipped silently.
 
 Working today:
 
-| Command | |
-| --- | --- |
-| `doctor` | environment, device, link speed and drive report, with a fix for every problem |
-| `devices` | attached devices and the id used in your config |
-| `scan` | every file on the phone with a verdict and the reason for it |
-| `plan` | exactly what `pull` would move, and what it would skip |
-| `pull` | verified transfer, deletion only after proof |
-| `status` | runs, per-file state, and what is verified but still on the phone |
-| `purge` | deferred deletion, provable only |
-| `config` | read and write config, plus the precedence chain that resolved it |
-| `db` | journal info, vacuum, JSONL export |
+| Command   |                                                                                |
+| --------- | ------------------------------------------------------------------------------ |
+| `doctor`  | environment, device, link speed and drive report, with a fix for every problem |
+| `devices` | attached devices and the id used in your config                                |
+| `scan`    | every file on the phone with a verdict and the reason for it                   |
+| `plan`    | exactly what `pull` would move, and what it would skip                         |
+| `pull`    | verified transfer, deletion only after proof                                   |
+| `status`  | runs, per-file state, and what is verified but still on the phone              |
+| `purge`   | deferred deletion, provable only                                               |
+| `config`  | read and write config, plus the precedence chain that resolved it              |
+| `db`      | journal info, vacuum, JSONL export                                             |
 
 Built and in design, not yet implemented — the plan is in the git history:
 

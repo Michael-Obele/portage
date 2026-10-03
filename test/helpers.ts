@@ -22,7 +22,9 @@ export interface TempDrive {
   cleanup(): Promise<void>;
 }
 
-export async function makeTempDrive(prefix = "portage-test-"): Promise<TempDrive> {
+export async function makeTempDrive(
+  prefix = "portage-test-",
+): Promise<TempDrive> {
   const root = await mkdtemp(join(tmpdir(), prefix));
   const stateDir = join(root, ".portage");
   const partialDir = join(stateDir, "partial");
@@ -30,7 +32,10 @@ export async function makeTempDrive(prefix = "portage-test-"): Promise<TempDrive
   await Promise.all([
     Bun.write(join(stateDir, ".keep"), "").then(() => undefined),
     import("node:fs/promises").then((fs) =>
-      Promise.all([fs.mkdir(partialDir, { recursive: true }), fs.mkdir(trashDir, { recursive: true })]),
+      Promise.all([
+        fs.mkdir(partialDir, { recursive: true }),
+        fs.mkdir(trashDir, { recursive: true }),
+      ]),
     ),
   ]);
 
@@ -62,14 +67,20 @@ export function fakeDevice(overrides: Partial<DeviceInfo> = {}): DeviceInfo {
 }
 
 /** A file with deterministic content, for hash comparisons. */
-export async function writeFixture(path: string, sizeBytes: number, fill = 0x41): Promise<string> {
+export async function writeFixture(
+  path: string,
+  sizeBytes: number,
+  fill = 0x41,
+): Promise<string> {
   await Bun.write(path, new Uint8Array(sizeBytes).fill(fill));
   return path;
 }
 
 /** The sha256 of the same content, computed the way a test asserts it. */
 export function sha256OfBytes(sizeBytes: number, fill = 0x41): string {
-  return new Bun.CryptoHasher("sha256").update(new Uint8Array(sizeBytes).fill(fill)).digest("hex");
+  return new Bun.CryptoHasher("sha256")
+    .update(new Uint8Array(sizeBytes).fill(fill))
+    .digest("hex");
 }
 
 /** Seconds since epoch, `n` seconds ago. */

@@ -9,8 +9,19 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 
-import { classify, isAlwaysExcluded, looksInFlight, summarise } from "../src/scan/scan.ts";
-import { normPath, resolveInside, formatBytes, formatDuration, truncateMiddle } from "../src/util/paths.ts";
+import {
+  classify,
+  isAlwaysExcluded,
+  looksInFlight,
+  summarise,
+} from "../src/scan/scan.ts";
+import {
+  normPath,
+  resolveInside,
+  formatBytes,
+  formatDuration,
+  truncateMiddle,
+} from "../src/util/paths.ts";
 import { parseArgs, bool, int, str } from "../src/cli/args.ts";
 import { loadConfig, coerceConfigValue } from "../src/config/load.ts";
 import { DEFAULT_CONFIG } from "../src/config/schema.ts";
@@ -22,9 +33,12 @@ const OLD = secondsAgo(3600); // an hour ago — comfortably quiescent
 
 describe("eligibility", () => {
   test("an old, ordinary file is new", () => {
-    const c = classify({ path: "/sdcard/Movies/Frieren/S01/ep01.mkv", size: 400, mtime: OLD }, {
-      quietSeconds: 120,
-    });
+    const c = classify(
+      { path: "/sdcard/Movies/Frieren/S01/ep01.mkv", size: 400, mtime: OLD },
+      {
+        quietSeconds: 120,
+      },
+    );
     expect(c.verdict).toBe("new");
   });
 
@@ -49,21 +63,29 @@ describe("eligibility", () => {
       "ep03.mkv.crdownload",
       "ep04.mkv.!ut",
     ]) {
-      const c = classify({ path: `/sdcard/Download/${name}`, size: 400, mtime: OLD }, {
-        quietSeconds: 120,
-      });
+      const c = classify(
+        { path: `/sdcard/Download/${name}`, size: 400, mtime: OLD },
+        {
+          quietSeconds: 120,
+        },
+      );
       expect(c.verdict).toBe("in-flight");
     }
   });
 
   test("app-private media is excluded even though it is readable", () => {
-    expect(isAlwaysExcluded("/sdcard/Android/data/com.foo/files/ep.mkv")).toBe(true);
+    expect(isAlwaysExcluded("/sdcard/Android/data/com.foo/files/ep.mkv")).toBe(
+      true,
+    );
     expect(isAlwaysExcluded("/sdcard/Android/obb/com.foo/ep.mkv")).toBe(true);
     expect(isAlwaysExcluded("/sdcard/Movies/ep.mkv")).toBe(false);
   });
 
   test("a zero-byte file is reported as empty, not as a transfer", () => {
-    const c = classify({ path: "/sdcard/Movies/ep.mkv", size: 0, mtime: OLD }, { quietSeconds: 120 });
+    const c = classify(
+      { path: "/sdcard/Movies/ep.mkv", size: 0, mtime: OLD },
+      { quietSeconds: 120 },
+    );
     expect(c.verdict).toBe("empty");
   });
 
@@ -99,7 +121,9 @@ describe("path safety", () => {
 
   test("`..` cannot climb out of the root", () => {
     expect(resolveInside("/media/2TB/Anime", "../../etc/passwd")).toBeNull();
-    expect(resolveInside("/media/2TB/Anime", "Frieren/../../../etc/passwd")).toBeNull();
+    expect(
+      resolveInside("/media/2TB/Anime", "Frieren/../../../etc/passwd"),
+    ).toBeNull();
   });
 
   test("an absolute path that points elsewhere is refused", () => {
@@ -116,7 +140,9 @@ describe("path safety", () => {
   });
 
   test("normPath lowercases and unifies separators", () => {
-    expect(normPath("/Media/2TB/Anime/Frieren/EP01.MKV")).toBe("/media/2tb/anime/frieren/ep01.mkv");
+    expect(normPath("/Media/2TB/Anime/Frieren/EP01.MKV")).toBe(
+      "/media/2tb/anime/frieren/ep01.mkv",
+    );
     expect(normPath("C:\\Anime\\ep.mkv")).toBe("c:/anime/ep.mkv");
   });
 });
@@ -136,7 +162,10 @@ describe("formatting", () => {
   });
 
   test("long names truncate in the middle so the extension survives", () => {
-    const out = truncateMiddle("[SubsPlease] Frieren - 07 (1080p) [A1B2C3D4].mkv", 24);
+    const out = truncateMiddle(
+      "[SubsPlease] Frieren - 07 (1080p) [A1B2C3D4].mkv",
+      24,
+    );
     expect(out.length).toBeLessThanOrEqual(24);
     expect(out).toContain("…");
     expect(out.endsWith("D4].mkv")).toBe(true);
@@ -169,7 +198,9 @@ describe("argument parsing", () => {
 
   test("a value flag with no value is a usage error, not a silent undefined", () => {
     expect(() => parseArgs(["pull", "--jobs"])).toThrow(/--jobs needs a value/);
-    expect(() => parseArgs(["pull", "--jobs", "--dry-run"])).toThrow(/--jobs needs a value/);
+    expect(() => parseArgs(["pull", "--jobs", "--dry-run"])).toThrow(
+      /--jobs needs a value/,
+    );
   });
 
   test("everything after `--` is positional", () => {
@@ -178,7 +209,14 @@ describe("argument parsing", () => {
   });
 
   test("accessors read the right shapes", () => {
-    const a = parseArgs(["pull", "--jobs", "5", "--dry-run", "--show", "frieren"]);
+    const a = parseArgs([
+      "pull",
+      "--jobs",
+      "5",
+      "--dry-run",
+      "--show",
+      "frieren",
+    ]);
     expect(int(a.flags, "jobs", 1)).toBe(5);
     expect(bool(a.flags, "dry-run")).toBe(true);
     expect(bool(a.flags, "keep-source")).toBe(false);
@@ -186,7 +224,9 @@ describe("argument parsing", () => {
   });
 
   test("a non-numeric value for a number flag names the flag", () => {
-    expect(() => int(parseArgs(["pull", "--jobs", "lots"]).flags, "jobs", 1)).toThrow(/--jobs/);
+    expect(() =>
+      int(parseArgs(["pull", "--jobs", "lots"]).flags, "jobs", 1),
+    ).toThrow(/--jobs/);
   });
 });
 
@@ -224,7 +264,10 @@ describe("config", () => {
     const root = await mkdtemp(join(tmpdir(), "portage-drive-"));
     const stateDir = join(root, ".portage");
     await mkdir(stateDir, { recursive: true });
-    await writeFile(join(stateDir, "config.toml"), 'jobs = 2\ndelete_source = "never"\n');
+    await writeFile(
+      join(stateDir, "config.toml"),
+      'jobs = 2\ndelete_source = "never"\n',
+    );
 
     const resolved = await loadConfig({
       configPath: "/nonexistent/portage.toml",
@@ -238,17 +281,27 @@ describe("config", () => {
   });
 
   test("an invalid value is rejected before it can be written", () => {
-    expect(() => coerceConfigValue("jobs", "999")).toThrow(/invalid value for jobs/);
-    expect(() => coerceConfigValue("quiet_seconds", "-5")).toThrow(/invalid value for quiet_seconds/);
-    expect(() => coerceConfigValue("delete_source", "maybe")).toThrow(/invalid value for delete_source/);
-    expect(() => coerceConfigValue("not_a_key", "x")).toThrow(/unknown config key/);
+    expect(() => coerceConfigValue("jobs", "999")).toThrow(
+      /invalid value for jobs/,
+    );
+    expect(() => coerceConfigValue("quiet_seconds", "-5")).toThrow(
+      /invalid value for quiet_seconds/,
+    );
+    expect(() => coerceConfigValue("delete_source", "maybe")).toThrow(
+      /invalid value for delete_source/,
+    );
+    expect(() => coerceConfigValue("not_a_key", "x")).toThrow(
+      /unknown config key/,
+    );
   });
 
   test("valid values are coerced to the right type", () => {
     expect(coerceConfigValue("jobs", "4")).toBe(4);
     expect(coerceConfigValue("quiet_seconds", "300")).toBe(300);
     expect(coerceConfigValue("delete_source", "never")).toBe("never");
-    expect(coerceConfigValue("dest_root", "/media/2TB/Anime")).toBe("/media/2TB/Anime");
+    expect(coerceConfigValue("dest_root", "/media/2TB/Anime")).toBe(
+      "/media/2TB/Anime",
+    );
   });
 
   test("an unknown key suggests the closest real one", () => {

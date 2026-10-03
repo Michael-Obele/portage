@@ -12,11 +12,20 @@ import { join } from "node:path";
 import { Journal } from "../src/index/journal.ts";
 import { reconcile } from "../src/index/recovery.ts";
 import { runTransfer, type EngineOptions } from "../src/xfer/engine.ts";
-import type { CopyOutcome, CopyRequest, Transport } from "../src/xfer/transport.ts";
+import type {
+  CopyOutcome,
+  CopyRequest,
+  Transport,
+} from "../src/xfer/transport.ts";
 import type { PlannedFile, PlanResult } from "../src/plan/plan.ts";
 import { sha256File } from "../src/util/hash.ts";
 import { silentLogger } from "../src/util/log.ts";
-import { fakeDevice, makeTempDrive, sha256OfBytes, type TempDrive } from "./helpers.ts";
+import {
+  fakeDevice,
+  makeTempDrive,
+  sha256OfBytes,
+  type TempDrive,
+} from "./helpers.ts";
 
 let drive: TempDrive;
 let journal: Journal;
@@ -60,17 +69,23 @@ function recordingTransport(
 }
 
 /** Behaviour: write `size` bytes of `fill`, report success. */
-const copiesBytes = (size: number, fill = 0x41) => async (req: CopyRequest) => {
-  await Bun.write(req.destPath, new Uint8Array(size).fill(fill));
-  return { status: "copied", bytes: size } as const;
-};
+const copiesBytes =
+  (size: number, fill = 0x41) =>
+  async (req: CopyRequest) => {
+    await Bun.write(req.destPath, new Uint8Array(size).fill(fill));
+    return { status: "copied", bytes: size } as const;
+  };
 
 /** A fake phone that can be told to return a good or a bad hash. */
 const phone = (hash: string | null) => ({
   hashRemote: async () => hash,
 });
 
-function plannedFile(srcPath: string, size: number, relative?: string): PlannedFile {
+function plannedFile(
+  srcPath: string,
+  size: number,
+  relative?: string,
+): PlannedFile {
   const device = fakeDevice();
   return {
     candidate: {
@@ -85,8 +100,14 @@ function plannedFile(srcPath: string, size: number, relative?: string): PlannedF
       verdict: "new",
       reason: "",
     },
-    destPath: join(drive.root, relative ?? srcPath.replace("/sdcard/Movies/", "")),
-    destNorm: join(drive.root, relative ?? srcPath.replace("/sdcard/Movies/", "")).toLowerCase(),
+    destPath: join(
+      drive.root,
+      relative ?? srcPath.replace("/sdcard/Movies/", ""),
+    ),
+    destNorm: join(
+      drive.root,
+      relative ?? srcPath.replace("/sdcard/Movies/", ""),
+    ).toLowerCase(),
     alreadyTransferred: false,
     bytes: size,
   };
@@ -216,7 +237,9 @@ describe("the verification gate", () => {
 
     expect(summary.verified).toBe(0);
     expect(transport.deleted).toEqual([]);
-    expect(journal.listRecent(1)[0]?.last_error).toContain("sha256sum unavailable");
+    expect(journal.listRecent(1)[0]?.last_error).toContain(
+      "sha256sum unavailable",
+    );
   });
 
   test("a device that vanishes mid-run cannot be verified against", async () => {
@@ -225,11 +248,17 @@ describe("the verification gate", () => {
     const transport = recordingTransport(copiesBytes(size));
 
     // Empty device map: the phone went away between the copy and the hash.
-    const summary = await runTransfer(planOf([file]), new Map(), engineFor(transport, phone("abc")));
+    const summary = await runTransfer(
+      planOf([file]),
+      new Map(),
+      engineFor(transport, phone("abc")),
+    );
 
     expect(summary.failed).toBe(1);
     expect(transport.deleted).toEqual([]);
-    expect(journal.listRecent(1)[0]?.last_error).toContain("device disappeared");
+    expect(journal.listRecent(1)[0]?.last_error).toContain(
+      "device disappeared",
+    );
   });
 
   test("a failed copy is never deleted and is recorded with a reason", async () => {
@@ -263,7 +292,9 @@ describe("deletion is a separate step", () => {
     const summary = await runTransfer(
       planOf([file]),
       new Map([[file.candidate.deviceId, fakeDevice()]]),
-      engineFor(transport, phone(sha256OfBytes(size)), { deleteSource: "never" }),
+      engineFor(transport, phone(sha256OfBytes(size)), {
+        deleteSource: "never",
+      }),
     );
 
     expect(summary.verified).toBe(1);
@@ -280,7 +311,10 @@ describe("deletion is a separate step", () => {
   test("a skipped file is never a delete candidate", async () => {
     const size = 1024;
     const file = plannedFile("/sdcard/Movies/Frieren/ep08.mkv", size);
-    const transport = recordingTransport(() => ({ status: "skipped", bytes: size }));
+    const transport = recordingTransport(() => ({
+      status: "skipped",
+      bytes: size,
+    }));
 
     const summary = await runTransfer(
       planOf([file]),
@@ -306,7 +340,9 @@ describe("the journal is idempotent", () => {
       await runTransfer(
         planOf([file]),
         deviceMap,
-        engineFor(transport, phone(sha256OfBytes(size)), { deleteSource: mode }),
+        engineFor(transport, phone(sha256OfBytes(size)), {
+          deleteSource: mode,
+        }),
       );
     }
 
@@ -327,7 +363,10 @@ describe("the journal is idempotent", () => {
     const deviceMap = new Map([[a.candidate.deviceId, fakeDevice()]]);
 
     for (const file of [a, b]) {
-      const transport = recordingTransport(() => ({ status: "copied", bytes: file.bytes }));
+      const transport = recordingTransport(() => ({
+        status: "copied",
+        bytes: file.bytes,
+      }));
       await runTransfer(
         planOf([file]),
         deviceMap,

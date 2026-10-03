@@ -10,7 +10,11 @@
  * make that impossible.
  */
 
-import { ALWAYS_EXCLUDED_DIRS, IN_FLIGHT_SUFFIXES, type DeviceConfig } from "../config/schema.ts";
+import {
+  ALWAYS_EXCLUDED_DIRS,
+  IN_FLIGHT_SUFFIXES,
+  type DeviceConfig,
+} from "../config/schema.ts";
 import type { Adb, DeviceFile, DeviceInfo } from "../device/adb.ts";
 import { basename, extname } from "../util/paths.ts";
 
@@ -107,11 +111,19 @@ export function classify(file: DeviceFile, opts: ScanOptions): Candidate {
 
   const excluded = [...ALWAYS_EXCLUDED_DIRS, ...(deviceConfig?.exclude ?? [])];
   if (excluded.some((dir) => matchesExclude(file.path, dir))) {
-    return { ...base, verdict: "excluded", reason: "path is on the never-scan list" };
+    return {
+      ...base,
+      verdict: "excluded",
+      reason: "path is on the never-scan list",
+    };
   }
 
   if (looksInFlight(file.path)) {
-    return { ...base, verdict: "in-flight", reason: "filename marks it as an unfinished download" };
+    return {
+      ...base,
+      verdict: "in-flight",
+      reason: "filename marks it as an unfinished download",
+    };
   }
 
   // A file whose mtime is within `quiet_seconds` of now is probably still
@@ -163,7 +175,8 @@ export async function scanDevice(
 
       const candidate = classify(file, { ...opts, deviceConfig });
       candidate.deviceId = device.id;
-      candidate.deviceLabel = deviceConfig?.label || device.model || device.serial;
+      candidate.deviceLabel =
+        deviceConfig?.label || device.model || device.serial;
       candidate.serial = device.serial;
       candidate.root = root;
       // Preserve the phone's relative layout: this is the zero-surprise rule.
@@ -182,7 +195,9 @@ export async function scanDevice(
 
 /** Only the files we are actually willing to move. */
 export function eligible(candidates: Candidate[]): Candidate[] {
-  return candidates.filter((c) => c.verdict === "new" || c.verdict === "duplicate-candidate");
+  return candidates.filter(
+    (c) => c.verdict === "new" || c.verdict === "duplicate-candidate",
+  );
 }
 
 /** Human summary of a scan, for the header line. */

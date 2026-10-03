@@ -22,9 +22,15 @@ import { join } from "node:path";
  * bare `sync` where `sync -f` is unsupported. Returns true when a flush ran.
  */
 export function fsyncPath(path: string): boolean {
-  const scoped = Bun.spawnSync(["sync", "-f", path], { stdout: "ignore", stderr: "ignore" });
+  const scoped = Bun.spawnSync(["sync", "-f", path], {
+    stdout: "ignore",
+    stderr: "ignore",
+  });
   if (scoped.exitCode === 0) return true;
-  const global = Bun.spawnSync(["sync"], { stdout: "ignore", stderr: "ignore" });
+  const global = Bun.spawnSync(["sync"], {
+    stdout: "ignore",
+    stderr: "ignore",
+  });
   return global.exitCode === 0;
 }
 
@@ -66,7 +72,11 @@ export async function statSafe(path: string): Promise<FileStat | null> {
   const file = Bun.file(path);
   if (!(await file.exists())) return null;
   try {
-    return { size: file.size, mtimeMs: Math.round(file.lastModified), isDir: false };
+    return {
+      size: file.size,
+      mtimeMs: Math.round(file.lastModified),
+      isDir: false,
+    };
   } catch {
     return null;
   }
@@ -74,7 +84,9 @@ export async function statSafe(path: string): Promise<FileStat | null> {
 
 /** Synchronous stat for call sites deep in sync code paths. */
 export function statSyncSafe(path: string): FileStat | null {
-  const res = Bun.spawnSync(["stat", "-c", "%s\t%Y\t%F", path], { stderr: "ignore" });
+  const res = Bun.spawnSync(["stat", "-c", "%s\t%Y\t%F", path], {
+    stderr: "ignore",
+  });
   if (res.exitCode !== 0) return null;
   const [size, mtime, kind] = res.stdout.toString().trim().split("\t");
   return {
@@ -87,7 +99,9 @@ export function statSyncSafe(path: string): FileStat | null {
 /** Recursive byte total + file count for a tree. Skips unreadable entries. */
 export function treeSize(root: string): { bytes: number; files: number } {
   const bytes = Bun.spawnSync(["du", "-sb", root], { stderr: "ignore" });
-  const count = Bun.spawnSync(["find", root, "-type", "f"], { stderr: "ignore" });
+  const count = Bun.spawnSync(["find", root, "-type", "f"], {
+    stderr: "ignore",
+  });
   const byteValue = Number(bytes.stdout.toString().trim().split(/\s+/)[0]);
   const fileCount =
     count.exitCode === 0
@@ -122,7 +136,10 @@ export async function ensureStateDirs(
 export async function isDirectory(path: string): Promise<boolean> {
   const stat = await statSafe(path);
   if (stat) return stat.isDir;
-  const res = Bun.spawnSync(["test", "-d", path], { stdout: "ignore", stderr: "ignore" });
+  const res = Bun.spawnSync(["test", "-d", path], {
+    stdout: "ignore",
+    stderr: "ignore",
+  });
   return res.exitCode === 0;
 }
 
