@@ -1,0 +1,13 @@
+/docs/
+
+# Build output
+/dist/
+/node_modules/
+*.tsbuildinfo
+
+# Portage's own state — never commit a journal
+.portage/
+
+# Editors / OS
+.DS_Store
+*.swp

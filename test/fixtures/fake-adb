@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+#
+# A fake `adb` for tests.
+#
+# It is deliberately broken in specific, named ways, because a fake that only
+# ever succeeds proves nothing about a tool whose entire job is not deleting
+# your files. Behaviour is selected with FAKE_ADB_MODE:
+#
+#   ok             everything works
+#   pull-dies      `pull` writes half the file then exits non-zero
+#   pull-lies      `pull` exits 0 but writes a corrupt file  ← the dangerous one
+#   hash-wrong     `sha256sum` returns a hash that will not match
+#   unauthorized   the device is waiting for the RSA prompt
+#   slow-hash      `sha256sum` is slow, so tests can interleave
+#
+# The device-side tree is described by FAKE_ADB_FILES as newline-separated
+# `size<TAB>mtime<TAB>path` records, matching what `find -printf` produces.
+
+set -uo pipefail
+
+MODE="${FAKE_ADB_MODE:-ok}"
+SERIAL="fakeserial"
+
+# Drop `-s <serial>` from the argv so the cases below read naturally.
+if [[ "${1:-}" == "-s" ]]; then
+  shift 2
+fi
+
+now() { date +%s; }
+
+case "${1:-}" in
+  version)
+    echo "Android Debug Bridge version 1.0.41 (fake)"
+    ;;
+
+  devices)
+    if [[ "$MODE" == "unauthorized" ]]; then
+      echo "List of devices attached"
+      echo "$SERIAL       unauthorized usb:1-1 transport_id:1"
+    else
+      echo "List of devices attached"
+      echo "$SERIAL       device usb:1-1 product:pixel model:Pixel_10_Pro_XL device:panther transport_id:1"
+    fi
+    ;;
+
+  shell)
+    shift
+    command="${*:-}"
+
+    case "$command" in
+      *getprop*ro.build.version.release*)
+        echo "17"
+        ;;
+      *getprop*ro.serialno*)
+        echo "$SERIAL"
+        ;;
+      *"toybox"*)
+        echo "sha256sum"
+        ;;
+      *"df -k /sdcard"*)
+        # 1K-blocks  Used  Available  Capacity  Mounted-on
+        echo "Filesystem 1K-blocks Used Available Capacity Mounted-on"
+        echo "/dev/block/datasdf 118000000 100000000 18000000 85% /sdcard"
+        ;;
+      *sha256sum*)
+        # The hash of whatever FAKE_ADB_HASH says, or a deterministic default.
+        echo "${FAKE_ADB_HASH:-0000000000000000000000000000000000000000000000000000000000000000}  ${command#*sha256sum }"
+        ;;
+      *find*)
+        # `find '<root>' -type f -printf '%s\t%T@\t%p\n'`
+        printf '%b' "${FAKE_ADB_FILES:-}"
+        ;;
+      *"rm -f"*)
+        # Record the deletion so tests can assert what *would* have been removed.
+        echo "$command" >> "${FAKE_ADB_REMOVED_LOG:-/dev/null}"
+        ;;
+      test\ -f*)
+        exit "${FAKE_ADB_EXISTS_CODE:-1}"
+        ;;
+      *)
+        ;;
+    esac
+    ;;
+
+  exec-out)
+    # `exec-out tail -c +N <path>` — emit the requested slice of the fake file.
+    skip="${3:-1}"
+    echo "fake-tail-output"
+    ;;
+
+  pull)
+    shift
+    # `adb pull -a <remote> <destdir>` — the `-a` preserves mtime.
+    if [[ "${1:-}" == "-a" ]]; then shift; fi
+    remote="${1:-}"
+    dest="${2:-}"
+    name="$(basename "$remote")"
+    target="${dest%/}/$name"
+    size="$(awk -v p="$remote" 'BEGIN{FS="\t"} $3==p {print $1}' <<< "${FAKE_ADB_FILES:-}")"
+    size="${size:-1024}"
+
+    case "$MODE" in
+      pull-dies)
+        head -c $((size / 2)) /dev/zero > "$target"
+        echo "adb: error: failed to copy '$remote' (interrupted)" >&2
+        exit 1
+        ;;
+      pull-lies)
+        # Exits 0. Writes the right number of bytes. The wrong bytes.
+        head -c "$size" /dev/zero > "$target"
+        printf 'CORRUPTION' | dd of="$target" bs=1 seek=10 conv=notrunc status=none
+        echo "1 file pulled, 0 skipped."
+        exit 0
+        ;;
+      *)
+        head -c "$size" /dev/zero > "$target"
+        echo "1 file pulled, 0 skipped."
+        exit 0
+        ;;
+    esac
+    ;;
+
+  forward)
+    exit 0
+    ;;
+
+  *)
+    echo "fake-adb: unhandled command: $*" >&2
+    exit 127
+    ;;
+esac
