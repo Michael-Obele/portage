@@ -1,11 +1,31 @@
+<div align="center">
+
 # portage
 
-Get a phone's downloads onto an archive drive — fast, verified, and safe to interrupt.
+**Get a phone's downloads onto an archive drive — fast, verified, and safe to interrupt.**
 
-The MTP mount that Android gives you takes 9 to 27 minutes for an 8 GB season
-and fails halfway through. Portage does it in about 3, resumes if the cable
-comes out, checks every byte before it touches anything on the phone, and tells
-you which episodes you already have before it copies a single one.
+[![Bun](https://img.shields.io/badge/Bun-%E2%89%A5%201.2-black)](https://bun.sh)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6)](https://www.typescriptlang.org/)
+[![Tests](https://img.shields.io/badge/tests-48%20passing-2ea44f)](#build-and-develop)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey)](#what-it-does-not-do)
+
+<sub>
+<a href="#the-contract">The contract</a> ·
+<a href="#quickstart">Quickstart</a> ·
+<a href="#why-it-is-fast">Why it's fast</a> ·
+<a href="#commands">Commands</a> ·
+<a href="#install">Install</a> ·
+<a href="#build-and-develop">Build</a>
+</sub>
+
+</div>
+
+The MTP mount Android gives you takes **9 to 27 minutes** for an 8 GB season and
+fails halfway through. Portage does it in about **3**, resumes if the cable comes
+out, checks every byte before it touches anything on the phone, and tells you
+which episodes you already have before it copies a single one.
+
+## Quickstart
 
 ```bash
 portage doctor     # is everything plugged in and ready?
@@ -14,7 +34,7 @@ portage pull       # move it — verified, then deleted from the phone
 portage status     # what moved, what failed, what's still on the phone
 ```
 
-## The one thing that matters
+## The contract
 
 **Nothing is deleted from your phone until the copy on the drive has been
 proven byte-for-byte identical.**
@@ -39,7 +59,32 @@ non-zero exit, nothing left to detect afterwards.
 Portage never passes that flag. It copies, hashes both sides, compares, and only
 then deletes — as its own step, on its own terms.
 
-## Why it's fast
+## The life of a file
+
+Every file walks this machine, and it only ever moves forwards. `verified` is the
+gate: nothing crosses it without a hash from the phone matching the bytes on
+disk.
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> queued
+    queued --> copying: the scheduler picks it
+    copying --> written: bytes landed, then fsync
+    copying --> failed: transport error
+    written --> verified: phone hash == disk hash
+    written --> failed: hash mismatch
+    verified --> source_deleted: delete_source = after-verify
+    verified --> done: keep-source
+    source_deleted --> done
+    failed --> queued: retry
+    done --> [*]
+```
+
+A `failed` file keeps its partial in `.portage/partial/`, never in your archive
+tree — so nothing half-written ever looks like a real episode.
+
+## Why it is fast
 
 The bottleneck was never the code, it was the transport. Measured on real
 hardware:
@@ -108,7 +153,7 @@ drive — the stored hash, or a fresh comparison when you pass `--verify-hash` t
 recompute both sides now. Files it cannot prove are listed with the reason
 rather than skipped silently.
 
-## Status
+## Commands
 
 Working today:
 
@@ -124,6 +169,52 @@ Working today:
 | `config`  | read and write config, plus the precedence chain that resolved it              |
 | `db`      | journal info, vacuum, JSONL export                                             |
 
+### Global flags
+
+| Flag                  | What it does                                          |
+| --------------------- | ----------------------------------------------------- |
+| `--json`              | machine-readable output; every command supports it    |
+| `--plain`             | no colour, no cursor control — the default when piped |
+| `--verbose`           | debug logging on stderr                               |
+| `--quiet`             | errors only                                           |
+| `--config <path>`     | use a different config file                           |
+| `--dest-root <path>`  | override the destination for this run                 |
+| `--version`, `--help` | the usual                                             |
+
+### For `pull`, `plan` and `scan`
+
+| Flag              | What it does                                                     |
+| ----------------- | ---------------------------------------------------------------- |
+| `--device <id>`   | restrict to one device — its id, serial, or a model substring    |
+| `--show <text>`   | only files whose path contains `<text>`                          |
+| `--since 7d`      | only files modified inside the window (`36h`, `7d`, `900s`)      |
+| `--jobs N`        | concurrent transfers (default `3`; drops to `1` on a USB 2 link) |
+| `--dry-run`       | show what would happen and change nothing                        |
+| `--keep-source`   | copy and verify, never delete the phone copy                     |
+| `--delete-source` | copy, then delete **after** verification                         |
+
+### For `purge`
+
+| Flag            | What it does                                                 |
+| --------------- | ------------------------------------------------------------ |
+| `--dry-run`     | list what would go; delete nothing                           |
+| `--verify-hash` | recompute both hashes now instead of trusting the stored one |
+
+### Exit codes
+
+Scripts branch on these, so they are part of the interface:
+
+| Code | Meaning              |
+| ---- | -------------------- |
+| `0`  | success              |
+| `1`  | usage or config      |
+| `2`  | precondition failed  |
+| `3`  | transfer error       |
+| `4`  | verification failure |
+| `5`  | interrupted          |
+
+## Roadmap
+
 Built and in design, not yet implemented — the plan is in the git history:
 
 - **Duplicate detection.** Byte-identical and same-episode-different-release
@@ -138,15 +229,14 @@ Built and in design, not yet implemented — the plan is in the git history:
 
 ## Install
 
-Requires [Bun](https://bun.sh) and `adb` from the Android platform-tools.
+Requires [Bun](https://bun.sh) ≥ 1.2 and `adb` from the Android platform-tools.
+Nothing gets installed on the phone.
 
 ```bash
 git clone https://github.com/Michael-Obele/portage
 cd portage
 bun install
-bun test
 bun run build
-
 install -Dm755 dist/portage ~/.local/bin/portage
 ```
 
@@ -207,13 +297,25 @@ afternoon:
   story.
 - **Linux and macOS only**, because it is built on `adb` and `find`.
 
-## Development
+## Build and develop
+
+Everything runs on Bun. There is no `npm` step and no tooling beyond `bun` itself.
+
+| Command                 | What it does                                   |
+| ----------------------- | ---------------------------------------------- |
+| `bun install`           | install dependencies                           |
+| `bun test`              | 48 tests — no phone, no drive, no `adb` needed |
+| `bun run typecheck`     | `tsc --noEmit`                                 |
+| `bun run build`         | compile a single binary to `dist/portage`      |
+| `bun run dev`           | run the CLI with `--watch`                     |
+| `bun run doctor`        | shorthand for `portage doctor`                 |
+| `./scripts/rehearse.sh` | the whole pipeline against a fake device       |
 
 ```bash
-bun test                # 48 tests, no phone or drive needed
-bun run typecheck
+bun install
+bun test
 bun run build
-./scripts/rehearse.sh   # full pipeline against a fake device
+install -Dm755 dist/portage ~/.local/bin/portage
 ```
 
 The tests are built around deliberately broken fixtures — a transport that dies
