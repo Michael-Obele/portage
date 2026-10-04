@@ -102,6 +102,40 @@ describe("volume enrichment", () => {
     expect(volumes[0]!.readOnly).toBe(true);
   });
 
+  test("a findmnt failure reports unknown readOnly and keeps the lsblk driver", async () => {
+    // findmnt dies (e.g. the path is not on a mounted filesystem). We must not
+    // guess "writable" — a read-only NTFS mount would be offered as writable.
+    const blind: SpawnFn = async (cmd) =>
+      cmd[0] === "lsblk"
+        ? { code: 0, stdout: LSBLK, stderr: "", durationMs: 1 }
+        : { code: 1, stdout: "", stderr: "not mounted", durationMs: 1 };
+    const volumes = await listVolumes(blind);
+    expect(volumes[0]!.readOnly).toBeNull();
+    expect(volumes[0]!.driver).toBe("ntfs");
+  });
+
+  test("a blank findmnt options field reports unknown readOnly", async () => {
+    const blank: SpawnFn = async (cmd) =>
+      cmd[0] === "lsblk"
+        ? { code: 0, stdout: LSBLK, stderr: "", durationMs: 1 }
+        : { code: 0, stdout: "ntfs3\n", stderr: "", durationMs: 1 };
+    const volumes = await listVolumes(blank);
+    expect(volumes[0]!.readOnly).toBeNull();
+    expect(volumes[0]!.driver).toBe("ntfs3");
+  });
+
+  test("disk space is reported as non-negative numbers", async () => {
+    // `diskSpace` shells out to the real `df` for a path that does not exist in
+    // tests, so assert shape, not exact values.
+    const volumes = await listVolumes(fakeSpawn);
+    for (const v of volumes) {
+      expect(typeof v.totalBytes).toBe("number");
+      expect(typeof v.freeBytes).toBe("number");
+      expect(v.totalBytes).toBeGreaterThanOrEqual(0);
+      expect(v.freeBytes).toBeGreaterThanOrEqual(0);
+    }
+  });
+
   test("a missing lsblk yields no volumes rather than throwing", async () => {
     const dead: SpawnFn = async () => ({ code: 127, stdout: "", stderr: "not found", durationMs: 1 });
     expect(await listVolumes(dead)).toEqual([]);

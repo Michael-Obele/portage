@@ -104,7 +104,13 @@ export interface Volume {
   removable: boolean;
   /** `usb` / `nvme` / … from lsblk. */
   transport: string | null;
-  readOnly: boolean;
+  /**
+   * `true` when the live mount is read-only, `false` when it is writable, and
+   * `null` when we could NOT verify it (`findmnt` failed, or reported no
+   * options). Unknown is treated as a warning, never as "writable" — a
+   * read-only NTFS mount is the classic failure this field exists to catch.
+   */
+  readOnly: boolean | null;
   /** A `.portage/` already exists under this mount. */
   isPortageDrive: boolean;
 }
@@ -144,22 +150,26 @@ export async function isPortageDrive(mountPoint: string): Promise<boolean> {
 /**
  * Read the live mount's driver and options, so a kernel-`ntfs3` mount is told
  * apart from a `fuseblk`/ntfs-3g one, and a read-only mount is visible rather
- * than silent. `lsblk` reports both as `ntfs`, so only `findmnt` knows.
+ * than silent. `lsblk` reports both as `ntfs`, so only `findmnt` knows. When
+ * `findmnt` cannot answer, `readOnly` is `null` (unknown — never assumed
+ * writable) and the caller falls back to the `lsblk` driver name.
  */
 async function mountOptions(
   spawn: SpawnFn,
   mountPoint: string,
-): Promise<{ driver: string | null; readOnly: boolean }> {
+): Promise<{ driver: string | null; readOnly: boolean | null }> {
   const res = await spawn(
     ["findmnt", "-no", "FSTYPE,OPTIONS", "--target", mountPoint],
     { timeoutMs: 5_000 },
   );
-  if (res.code !== 0) return { driver: null, readOnly: false };
+  // Could not verify: fail closed and say so, rather than guessing "writable".
+  if (res.code !== 0) return { driver: null, readOnly: null };
   // Output is `ntfs3 rw,relatime,uid=1000` — driver first, then the option list.
   const [fsType = "", optionList = ""] = res.stdout.trim().split(/\s+/, 2);
   return {
     driver: fsType ? driverName(fsType) : null,
-    readOnly: optionList.split(",").includes("ro"),
+    // No option list means findmnt told us nothing about the mount mode.
+    readOnly: optionList ? optionList.split(",").includes("ro") : null,
   };
 }
 
