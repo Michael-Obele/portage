@@ -84,3 +84,110 @@ export function isRealVolume(block: RawBlock): boolean {
   if (block.mountpoint.startsWith("/snap/")) return false;
   return true;
 }
+
+import { join } from "node:path";
+import { diskSpace, isDirectory } from "../util/fs.ts";
+import type { SpawnFn } from "../util/spawn.ts";
+
+/** A mounted volume a person could choose as a destination. */
+export interface Volume {
+  /** `/dev/sda1` */
+  device: string;
+  /** Filesystem label, when it has one. */
+  label: string | null;
+  mountPoint: string;
+  fsType: string;
+  /** Human driver name: `ntfs3` (kernel) or `ntfs-3g` (FUSE). */
+  driver: string;
+  totalBytes: number;
+  freeBytes: number;
+  removable: boolean;
+  /** `usb` / `nvme` / … from lsblk. */
+  transport: string | null;
+  readOnly: boolean;
+  /** A `.portage/` already exists under this mount. */
+  isPortageDrive: boolean;
+}
+
+export const LSBLK_ARGS = [
+  "lsblk", "--json", "--output",
+  "NAME,LABEL,FSTYPE,SIZE,MOUNTPOINT,RM,TRAN,TYPE",
+];
+
+/** `fuseblk` is how ntfs-3g presents itself to the kernel; `ntfs3` is in-kernel. */
+export function driverName(fsType: string): string {
+  return fsType === "fuseblk" ? "ntfs-3g" : fsType;
+}
+
+/**
+ * Probe for the state directory at the mount root, then one level in — which is
+ * the usual shape, because the destination is typically `<drive>/Videos/$Anime`.
+ * Never throws: a mount we cannot read is simply not a Portage drive.
+ */
+export async function isPortageDrive(mountPoint: string): Promise<boolean> {
+  try {
+    if (await isDirectory(join(mountPoint, ".portage"))) return true;
+    const glob = new Bun.Glob("*/.portage");
+    for await (const hit of glob.scan({
+      cwd: mountPoint,
+      dot: true,
+      onlyFiles: false,
+    })) {
+      if (hit) return true;
+    }
+  } catch {
+    /* unreadable mount */
+  }
+  return false;
+}
+
+/**
+ * Read the live mount's driver and options, so a kernel-`ntfs3` mount is told
+ * apart from a `fuseblk`/ntfs-3g one, and a read-only mount is visible rather
+ * than silent. `lsblk` reports both as `ntfs`, so only `findmnt` knows.
+ */
+async function mountOptions(
+  spawn: SpawnFn,
+  mountPoint: string,
+): Promise<{ driver: string | null; readOnly: boolean }> {
+  const res = await spawn(
+    ["findmnt", "-no", "FSTYPE,OPTIONS", "--target", mountPoint],
+    { timeoutMs: 5_000 },
+  );
+  if (res.code !== 0) return { driver: null, readOnly: false };
+  // Output is `ntfs3 rw,relatime,uid=1000` — driver first, then the option list.
+  const [fsType = "", optionList = ""] = res.stdout.trim().split(/\s+/, 2);
+  return {
+    driver: fsType ? driverName(fsType) : null,
+    readOnly: optionList.split(",").includes("ro"),
+  };
+}
+
+/** Every mounted volume worth offering, enriched for display and for safety. */
+export async function listVolumes(spawn: SpawnFn): Promise<Volume[]> {
+  const res = await spawn(LSBLK_ARGS, { timeoutMs: 10_000 });
+  if (res.code !== 0) return [];
+
+  const volumes: Volume[] = [];
+  for (const block of parseLsblk(res.stdout)) {
+    if (!isRealVolume(block)) continue;
+    const mountPoint = block.mountpoint as string;
+    const fsType = block.fstype as string;
+    const space = diskSpace(mountPoint);
+    const live = await mountOptions(spawn, mountPoint);
+    volumes.push({
+      device: `/dev/${block.name}`,
+      label: block.label,
+      mountPoint,
+      fsType,
+      driver: live.driver ?? driverName(fsType),
+      totalBytes: space?.total ?? 0,
+      freeBytes: space?.free ?? 0,
+      removable: block.rm,
+      transport: block.tran,
+      readOnly: live.readOnly,
+      isPortageDrive: await isPortageDrive(mountPoint),
+    });
+  }
+  return volumes;
+}

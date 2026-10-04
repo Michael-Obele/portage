@@ -58,3 +58,59 @@ describe("lsblk parsing", () => {
     expect(parseLsblk(doc)[0]!.mountpoint).toBe("/media/node/X");
   });
 });
+
+import { mkdir, mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  driverName,
+  isPortageDrive,
+  listVolumes,
+} from "../src/device/volumes.ts";
+import type { SpawnFn } from "../src/util/spawn.ts";
+
+const fakeSpawn: SpawnFn = async (cmd) => {
+  if (cmd[0] === "lsblk") return { code: 0, stdout: LSBLK, stderr: "", durationMs: 1 };
+  if (cmd[0] === "findmnt")
+    return { code: 0, stdout: "ntfs3 rw,relatime\n", stderr: "", durationMs: 1 };
+  return { code: 1, stdout: "", stderr: "", durationMs: 1 };
+};
+
+describe("volume enrichment", () => {
+  test("fuseblk is reported as the ntfs-3g driver", () => {
+    expect(driverName("fuseblk")).toBe("ntfs-3g");
+    expect(driverName("ntfs3")).toBe("ntfs3");
+    expect(driverName("ext4")).toBe("ext4");
+  });
+
+  test("listVolumes keeps only real volumes and reads the mount options", async () => {
+    const volumes = await listVolumes(fakeSpawn);
+    expect(volumes.map((v) => v.mountPoint)).toEqual(["/media/node/2TB", "/"]);
+    expect(volumes[0]!.driver).toBe("ntfs3");
+    expect(volumes[0]!.readOnly).toBe(false);
+    expect(volumes[0]!.removable).toBe(false);
+    expect(volumes[0]!.transport).toBe("usb");
+    expect(volumes[0]!.device).toBe("/dev/sda1");
+  });
+
+  test("a read-only mount is reported as read-only", async () => {
+    const ro: SpawnFn = async (cmd) =>
+      cmd[0] === "lsblk"
+        ? { code: 0, stdout: LSBLK, stderr: "", durationMs: 1 }
+        : { code: 0, stdout: "ntfs3 ro,nosuid\n", stderr: "", durationMs: 1 };
+    const volumes = await listVolumes(ro);
+    expect(volumes[0]!.readOnly).toBe(true);
+  });
+
+  test("a missing lsblk yields no volumes rather than throwing", async () => {
+    const dead: SpawnFn = async () => ({ code: 127, stdout: "", stderr: "not found", durationMs: 1 });
+    expect(await listVolumes(dead)).toEqual([]);
+  });
+
+  test("finds .portage at the mount root or one level in", async () => {
+    const root = await mkdtemp(join(tmpdir(), "portage-vol-"));
+    await mkdir(join(root, "Anime", ".portage"), { recursive: true });
+    expect(await isPortageDrive(root)).toBe(true);
+    expect(await isPortageDrive(join(root, "nope"))).toBe(false);
+  });
+});
