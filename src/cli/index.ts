@@ -24,6 +24,8 @@ import { doctor } from "./commands/doctor.ts";
 import { plan, scan } from "./commands/scan.ts";
 import { pull, purge, requestStop } from "./commands/pull.ts";
 import { config, db, status } from "./commands/status.ts";
+import { dupes } from "./commands/dupes.ts";
+import { refusalReason } from "../tui/degrade.ts";
 
 const VERSION = "0.1.0";
 
@@ -35,8 +37,16 @@ const COMMANDS = [
   ["devices", "attached devices and their configured roots"],
   ["scan", "every file on the phone with an eligibility verdict (read-only)"],
   ["plan", "what `pull` would do: files, bytes, skips and why"],
-  ["pull", "the real thing — verified transfer, deletion only after proof"],
+  [
+    "pull",
+    "the real thing — verified transfer, deletion only after proof (live dashboard on a terminal)",
+  ],
+  ["tui", "the dashboard on its own — the same screen `pull` opens"],
   ["status", "journal view: runs, per-file state, what is still on the phone"],
+  [
+    "dupes",
+    "duplicates on the drive — two tiers, read-only until you name what moves",
+  ],
   ["purge", "delete phone copies that are proven to be on the drive"],
   ["config", "get | set | keys — and the precedence chain that resolved them"],
   ["db", "info | vacuum | export — journal maintenance"],
@@ -96,14 +106,24 @@ async function main(): Promise<number> {
   // --- signal handling -------------------------------------------------------
   // A `Ctrl-C` must leave the journal resumable and the terminal usable, so the
   // handler only sets a flag; the engine checks it between files.
-  process.on("SIGINT", () => {
-    if (!bool(args.flags, "plain", true)) process.stderr.write("\n");
-    process.stderr.write(
-      "\ninterrupted — finishing the current file, then stopping\n",
-    );
-    requestStop();
-  });
-  process.on("SIGTERM", requestStop);
+  //
+  // NOT registered when the TUI is about to mount. That handler writes to
+  // stderr, and stderr writes land INSIDE the alternate screen and corrupt the
+  // frame. The TUI installs its own guards, which restore the terminal and exit
+  // 5 without printing a thing.
+  const wantsTui =
+    (args.command === "tui" || args.command === "pull") &&
+    refusalReason(Bun.argv) === null;
+  if (!wantsTui) {
+    process.on("SIGINT", () => {
+      if (!bool(args.flags, "plain", true)) process.stderr.write("\n");
+      process.stderr.write(
+        "\ninterrupted — finishing the current file, then stopping\n",
+      );
+      requestStop();
+    });
+    process.on("SIGTERM", requestStop);
+  }
 
   // --- dispatch --------------------------------------------------------------
   switch (args.command) {
@@ -138,7 +158,20 @@ async function main(): Promise<number> {
         sinceSeconds: sinceSeconds(args.flags),
       });
 
+    case "tui": {
+      // Imported lazily so the plain CLI never loads OpenTUI's native library.
+      const { tui } = await import("../tui/main.svelte.ts");
+      return await tui(Bun.argv);
+    }
+
     case "pull":
+      // The dashboard IS the pull screen. When the terminal cannot take it
+      // (a pipe, --json, --plain, TERM=dumb) this falls through to the plain
+      // renderer, which is the whole degradation ladder.
+      if (wantsTui) {
+        const { tui } = await import("../tui/main.svelte.ts");
+        return await tui(Bun.argv);
+      }
       return await pull({
         resolved,
         adb,
@@ -174,6 +207,15 @@ async function main(): Promise<number> {
         resolved,
         output,
         limit: int(args.flags, "limit", 25),
+      });
+
+    case "dupes":
+      return await dupes({
+        resolved,
+        output,
+        logger,
+        positionals: args.positionals,
+        flags: args.flags,
       });
 
     case "config":
@@ -301,7 +343,23 @@ purge
   --dry-run          list what would go; delete nothing
   --verify-hash      recompute both hashes now instead of using the stored one
 
-Not built yet: dupes, dedupe, trash, verify, retry, --organize.
+The dashboard
+  \`portage pull\` opens the live dashboard whenever stdout is a terminal, and
+  falls back to plain lines when it is not (\`--json\`, a pipe, \`--plain\`,
+  TERM=dumb). Every action it offers is also reachable from the plain CLI.
+  \`portage tui\` opens the same screen directly.
+
+  ?  keys      /  live filter     l  event log
+  space pause  j k / arrows move   g G top / bottom
+  r retry      d dupes            u  undo
+
+dupes
+  --tier 1|2         only byte-identical, or only same-episode
+  --no-auto          do not suggest a keeper (still moves nothing)
+  --apply <path>     move exactly this path to .portage/trash/<date>/
+  --dry-run          say what --apply would move, and move nothing
+
+Not built yet: trash, verify, retry, --organize.
 
 config keys
   ${CONFIG_KEYS.join(", ")}

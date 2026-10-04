@@ -2,7 +2,7 @@
 
 # portage
 
-**Get a phone's downloads onto an archive drive — fast, verified, and safe to interrupt.**
+**Get your phone's downloads onto an archive drive. Every copy is checked before anything is deleted, and you can stop at any time.**
 
 [![Bun](https://img.shields.io/badge/Bun-%E2%89%A5%201.2-black)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6)](https://www.typescriptlang.org/)
@@ -20,17 +20,18 @@
 
 </div>
 
-The MTP mount Android gives you takes **9 to 27 minutes** for an 8 GB season and
-fails halfway through. Portage does it in about **3**, resumes if the cable comes
-out, checks every byte before it touches anything on the phone, and tells you
-which episodes you already have before it copies a single one.
+The MTP mount that Android gives you takes **9 to 27 minutes** to move an 8 GB
+season, and it often fails halfway through. Portage takes about **3 minutes**. If
+the cable comes out, it resumes. It checks every byte before it changes anything
+on the phone, and it tells you which episodes you already have before it copies
+one.
 
 ## Quickstart
 
 ```bash
 portage doctor     # is everything plugged in and ready?
 portage plan       # what would move, and what can be skipped
-portage pull       # move it — verified, then deleted from the phone
+portage pull       # move it, and delete the phone copy only after a check
 portage status     # what moved, what failed, what's still on the phone
 ```
 
@@ -39,31 +40,29 @@ portage status     # what moved, what failed, what's still on the phone
 **Nothing is deleted from your phone until the copy on the drive has been
 proven byte-for-byte identical.**
 
-That is not a bullet point, it is enforced in code: the tool refuses to call a
-file `verified` without a matching `sha256` from the phone itself compared
-against the file on disk, and deletion is a separate step that only ever runs on
-a file that was just transferred and just verified.
+This is enforced in code: the tool refuses to call a file `verified` unless a
+`sha256` from the phone matches the file on disk. Deletion is a separate step,
+and it only runs on a file that was just transferred and just verified.
 
-This is the failure mode the tool exists to prevent, and it is easy to reach by
-accident:
+This failure is easy to cause by accident, and it is the reason the tool exists:
 
 ```bash
 rsync -a --remove-source-files   # exits 0, deletes the source,
                                  # leaves a corrupt file behind
 ```
 
-A destination that is corrupt but has the right size and the right mtime looks
-up to date. rsync skips it, then deletes the only good copy. No warning, no
-non-zero exit, nothing left to detect afterwards.
+A corrupt file on the drive can still have the right size and the right mtime, so
+it looks up to date. rsync skips it, then deletes the only good copy. There is no
+warning and no non-zero exit code, so nothing tells you that it happened.
 
-Portage never passes that flag. It copies, hashes both sides, compares, and only
-then deletes — as its own step, on its own terms.
+Portage never passes that flag. It copies the file, hashes both sides, compares
+them, and only then deletes the phone copy, as a separate step.
 
-## The life of a file
+## What happens to a file
 
-Every file walks this machine, and it only ever moves forwards. `verified` is the
-gate: nothing crosses it without a hash from the phone matching the bytes on
-disk.
+Every file goes through the same steps, and it never moves backwards. `verified`
+is the gate: a file does not pass it unless a hash from the phone matches the
+bytes on disk.
 
 ```mermaid
 stateDiagram-v2
@@ -81,34 +80,34 @@ stateDiagram-v2
     done --> [*]
 ```
 
-A `failed` file keeps its partial in `.portage/partial/`, never in your archive
-tree — so nothing half-written ever looks like a real episode.
+A `failed` file keeps its partial data in `.portage/partial/`, not in your archive
+tree, so a half-written file never looks like a real episode.
 
 ## Why it is fast
 
-The bottleneck was never the code, it was the transport. Measured on real
+The slow part is the transport, not the code. These numbers are from real
 hardware:
 
-| Path                          | Speed         | 8 GB season           |
-| ----------------------------- | ------------- | --------------------- |
-| MTP mount (what you have now) | 5–15 MB/s     | 9–27 min, often fails |
-| **`adb pull`**                | **35.5 MB/s** | **~4 min**            |
-| `adb pull`, ×3 concurrent     | **40.8 MB/s** | **~3.3 min**          |
+| Path                          | Speed         | 8 GB season              |
+| ----------------------------- | ------------- | ------------------------ |
+| MTP mount (what you have now) | 5 to 15 MB/s  | 9 to 27 min, often fails |
+| **`adb pull`**                | **35.5 MB/s** | **~4 min**               |
+| `adb pull`, ×3 concurrent     | **40.8 MB/s** | **~3.3 min**             |
 
-`adb` talks to Android's own filesystem directly, which removes the translation
-layer MTP puts in the way. No app on the phone, no Termux, no SSH server — just
-the `adb` you already have for debugging.
+`adb` talks to Android's filesystem directly, so it skips the translation layer
+that MTP adds. There is no app to install on the phone, no Termux, and no SSH
+server. It uses the `adb` you already have for debugging.
 
-It also reports 35 MB/s before the bytes are actually on the platters. About a
-quarter of a transfer's wall time is writeback it has already called finished,
-so Portage flushes before it claims a file is done, and reports the honest rate
-rather than adb's flattering one.
+adb also reports 35 MB/s before the bytes are actually written to the disk. About
+a quarter of a transfer's time is writeback that adb has already counted as done,
+so Portage flushes each file before it calls it finished, and reports the real
+rate instead of adb's number.
 
 ## It knows what you already have
 
-The most expensive mistake in this workflow is copying 6.8 GB you already have.
-On the first real run, a season on the phone was **17 of 23 episodes already on
-the drive** — the right job was 6 files, not 23.
+The most expensive mistake here is copying files you already have. On my first
+real run, **17 of the 23 episodes** in a season were already on the drive. That
+was 6.8 GB I did not need to copy, so the real job was 6 files, not 23.
 
 `portage plan` shows you that before anything moves:
 
@@ -132,11 +131,10 @@ failed  412 MB  /sdcard/Movies/Frieren/S01/ep13.mkv   adb pull exited 1
 $ portage pull        # picks up where it stopped
 ```
 
-Partial files live in `.portage/partial/` on the drive's own filesystem, never
-in your archive tree — so nothing half-written ever looks like a real episode. A
-journal at `<drive>/.portage/portage.db` records every device, file, hash and
-run, and it travels with the drive, so "what did I move, and when?" is answered
-by any machine you plug the drive into.
+Partial files live in `.portage/partial/` on the drive itself, so they never mix
+with your archive. A journal at `<drive>/.portage/portage.db` records every
+device, file, hash, and run. The journal travels with the drive, so any machine
+you plug it into can answer "what did I move, and when?"
 
 ## Keep it on the phone for now
 
@@ -148,10 +146,10 @@ portage status               # verified on the drive, still on the phone
 portage purge                # delete them from the phone, whenever you want
 ```
 
-`purge` will not remove a phone file unless its content is provably on the
-drive — the stored hash, or a fresh comparison when you pass `--verify-hash` to
-recompute both sides now. Files it cannot prove are listed with the reason
-rather than skipped silently.
+`purge` will not remove a phone file unless it can prove the same content is on
+the drive. It checks the stored hash, or does a fresh comparison when you pass
+`--verify-hash` to recompute both sides. Files it cannot prove are listed with the
+reason, not skipped silently.
 
 ## Commands
 
@@ -165,27 +163,27 @@ Working today:
 | `plan`    | exactly what `pull` would move, and what it would skip                         |
 | `pull`    | verified transfer, deletion only after proof                                   |
 | `status`  | runs, per-file state, and what is verified but still on the phone              |
-| `purge`   | deferred deletion, provable only                                               |
+| `purge`   | deletes the phone copy later, only after proof                                 |
 | `config`  | read and write config, plus the precedence chain that resolved it              |
 | `db`      | journal info, vacuum, JSONL export                                             |
 
 ### Global flags
 
-| Flag                  | What it does                                          |
-| --------------------- | ----------------------------------------------------- |
-| `--json`              | machine-readable output; every command supports it    |
-| `--plain`             | no colour, no cursor control — the default when piped |
-| `--verbose`           | debug logging on stderr                               |
-| `--quiet`             | errors only                                           |
-| `--config <path>`     | use a different config file                           |
-| `--dest-root <path>`  | override the destination for this run                 |
-| `--version`, `--help` | the usual                                             |
+| Flag                  | What it does                                         |
+| --------------------- | ---------------------------------------------------- |
+| `--json`              | machine-readable output; every command supports it   |
+| `--plain`             | no colour, no cursor control; the default when piped |
+| `--verbose`           | debug logging on stderr                              |
+| `--quiet`             | errors only                                          |
+| `--config <path>`     | use a different config file                          |
+| `--dest-root <path>`  | override the destination for this run                |
+| `--version`, `--help` | the usual                                            |
 
 ### For `pull`, `plan` and `scan`
 
 | Flag              | What it does                                                     |
 | ----------------- | ---------------------------------------------------------------- |
-| `--device <id>`   | restrict to one device — its id, serial, or a model substring    |
+| `--device <id>`   | restrict to one device: its id, serial, or part of a model name  |
 | `--show <text>`   | only files whose path contains `<text>`                          |
 | `--since 7d`      | only files modified inside the window (`36h`, `7d`, `900s`)      |
 | `--jobs N`        | concurrent transfers (default `3`; drops to `1` on a USB 2 link) |
@@ -215,7 +213,7 @@ Scripts branch on these, so they are part of the interface:
 
 ## Roadmap
 
-Built and in design, not yet implemented — the plan is in the git history:
+These are designed but not built yet. The plan is in the git history:
 
 - **Duplicate detection.** Byte-identical and same-episode-different-release
   reports across all archive roots, with per-item deletion into a recoverable
@@ -261,10 +259,10 @@ label = "Pixel 10 Pro XL"
 roots = ["/sdcard/Movies", "/sdcard/Download/Anime"]
 ```
 
-The device key is `sha1(ro.serialno)`, not the serial number — `portage devices`
-prints it. Configuration resolves in this order: flags beat `PORTAGE_*` env
-variables, which beat the drive's config, which beats your user config, which
-beats the defaults. `portage config` shows you where every value came from.
+The device key is `sha1(ro.serialno)`, not the serial number. `portage devices`
+prints it. Configuration resolves in this order: flags first, then `PORTAGE_*`
+environment variables, then the drive's config, then your user config, then the
+defaults. `portage config` shows where each value came from.
 
 ## Every command works without a terminal
 
@@ -279,20 +277,20 @@ attached.
 
 ## What it does not do
 
-Being straight about the edges, because a tool that hides them costs you an
-afternoon:
+Here are the limits, stated plainly. A tool that hides them costs you an
+afternoon.
 
 - **It is not a backup.** One USB drive has no redundancy. This moves files off
   a phone and tells you where they went; it does not protect you from the drive
   dying.
-- **No background daemon.** You run it. "Plug in a phone and it just starts"
-  cannot be made safe without a notification story nobody has built yet.
-- **No metadata lookups, no auto-renaming.** Your folder layout is preserved
-  exactly, always.
-- **Absolute anime numbering is not mapped.** `- 25` is often S02E01. Mapping
-  that needs per-show episode counts from a metadata source, and a wrong guess
-  would merge two different episodes — so it stays in the backlog, not the
-  code.
+- **No background daemon.** You have to run it yourself. "Plug in a phone and it
+  starts on its own" is not safe to build without a notification system, and
+  nobody has built one.
+- **No metadata lookups and no automatic renaming.** Your folder layout is kept
+  exactly as it is.
+- **Absolute anime numbering is not mapped.** `- 25` is often S02E01. Mapping it
+  needs per-show episode counts from a metadata source, and a wrong guess would
+  merge two different episodes, so it stays in the backlog instead of the code.
 - **Local drive only.** A network destination needs a different durability
   story.
 - **Linux and macOS only**, because it is built on `adb` and `find`.
@@ -301,15 +299,15 @@ afternoon:
 
 Everything runs on Bun. There is no `npm` step and no tooling beyond `bun` itself.
 
-| Command                 | What it does                                   |
-| ----------------------- | ---------------------------------------------- |
-| `bun install`           | install dependencies                           |
-| `bun test`              | 48 tests — no phone, no drive, no `adb` needed |
-| `bun run typecheck`     | `tsc --noEmit`                                 |
-| `bun run build`         | compile a single binary to `dist/portage`      |
-| `bun run dev`           | run the CLI with `--watch`                     |
-| `bun run doctor`        | shorthand for `portage doctor`                 |
-| `./scripts/rehearse.sh` | the whole pipeline against a fake device       |
+| Command                 | What it does                                      |
+| ----------------------- | ------------------------------------------------- |
+| `bun install`           | install dependencies                              |
+| `bun test`              | 48 tests; no phone, no drive, and no `adb` needed |
+| `bun run typecheck`     | `tsc --noEmit`                                    |
+| `bun run build`         | compile a single binary to `dist/portage`         |
+| `bun run dev`           | run the CLI with `--watch`                        |
+| `bun run doctor`        | shorthand for `portage doctor`                    |
+| `./scripts/rehearse.sh` | the whole pipeline against a fake device          |
 
 ```bash
 bun install
@@ -318,7 +316,26 @@ bun run build
 install -Dm755 dist/portage ~/.local/bin/portage
 ```
 
-The tests are built around deliberately broken fixtures — a transport that dies
-mid-file, one that exits 0 having written corrupt bytes, a device whose hash
-disagrees with the disk. A fake that only ever succeeds would prove nothing about
-a tool whose job is not deleting your files.
+The tests use deliberately broken fixtures: a transport that dies mid-file, one
+that exits 0 after writing corrupt bytes, and a device whose hash disagrees with
+the disk. A fake that only ever succeeds would prove nothing about a tool whose
+main job is not deleting your files.
+
+### Run it from this folder (no install)
+
+`bun run build` writes a self-contained binary to `dist/portage`. It bundles the
+Bun runtime, so it runs on its own and you can leave it where it is. No copy to
+`~/.local/bin` and no `PATH` change:
+
+```bash
+./dist/portage doctor
+./dist/portage plan
+./dist/portage pull
+```
+
+Keep the leading `./`: the repo folder is not on your `PATH`. From another
+folder, use the full path instead, like
+`~/Documents/GitHub/portage/dist/portage status`.
+
+While you are still changing the code, you can skip the build and run the source
+directly with `bun run src/cli/index.ts doctor`.

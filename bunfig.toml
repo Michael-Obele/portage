@@ -1,0 +1,14 @@
+# Preload so `bun run src/tui/main.svelte.ts` and `bun test` compile .svelte.ts.
+#
+# It must point at scripts/preload.ts, NOT at scripts/svelte-loader.ts. Bun
+# evaluates a preload module but does not register its default export as a
+# runtime plugin (verified on Bun 1.4.0), so preloading the loader directly
+# silently does nothing and every `$state` throws. preload.ts calls
+# `Bun.plugin()` itself.
+#
+# This does NOT apply to `bun build --compile` from the CLI, which ignores
+# `preload` entirely. That is the trap documented in
+# docs/tui-impl/02-build-pipeline.md: the CLI build silently ships a binary that
+# dies with `$state is not defined`. scripts/build.ts uses the Bun.build JS API
+# and passes the plugin explicitly instead.
+preload = ["./scripts/preload.ts"]

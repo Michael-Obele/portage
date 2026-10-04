@@ -14,21 +14,23 @@
   "scripts": {
     "start": "bun run src/cli/index.ts",
     "dev": "bun --watch src/cli/index.ts",
-    "test": "bun test",
+    "test": "bun test --preload ./scripts/preload.ts",
     "typecheck": "tsc --noEmit",
-    "build": "bun build --compile --minify --sourcemap --outfile dist/portage src/cli/index.ts",
+    "build": "bun run scripts/build.ts",
+    "tui": "bun run src/tui/main.svelte.ts",
     "doctor": "bun run src/cli/index.ts doctor"
   },
   "dependencies": {
+    "@opentui/core": "0.5.14",
     "parse-torrent-title": "3.0.1",
     "smol-toml": "1.9.0",
+    "svelte": "5.38.7",
     "valibot": "^1.5.0"
   },
   "devDependencies": {
+    "@opentui/core": "0.5.14",
     "@types/bun": "latest",
-    "@types/react": "latest",
-    "ink": "8.0.0",
-    "react": "19.3.0",
+    "svelte": "5.38.7",
     "typescript": "5.9.3"
   }
 }

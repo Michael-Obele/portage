@@ -9,7 +9,12 @@
     "allowJs": true,
 
     // Bun — `bun-types` is the legacy entry, `bun` is what @types/bun ships today
-    "types": ["bun"],
+    // `svelte` contributes the ambient RUNE declarations ($state, $derived,
+    // $effect, $effect.root). Without it tsc reads `.svelte.ts` as plain
+    // TypeScript, `$state(...)` is an unresolved identifier, and every field
+    // inferred from it degrades to `any` — which is how a typecheck passes on a
+    // file the compiler never actually understood.
+    "types": ["bun", "svelte"],
 
     // Strictness — every switch on a state must be exhaustive
     "strict": true,

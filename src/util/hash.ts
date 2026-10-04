@@ -47,10 +47,17 @@ export async function sha256File(path: string): Promise<string | null> {
 /**
  * Sample hash: first, middle and last 64 KiB of a file.
  *
- * Two identical files produce identical samples by definition, so sampling can
- * only ever reject non-duplicates — it cannot create a false positive. That is
- * what makes it safe as the cheap first pass over a 2 TB archive: a few GB of
- * reads instead of 2 TB.
+ * ⚠ It can REJECT a non-duplicate. It can NOT confirm one.
+ *
+ * The obvious reading — "identical files produce identical samples, so sampling
+ * cannot create a false positive" — is wrong, and measurably so. Two 1 MiB files
+ * differing in exactly ONE byte at offset 128 KiB, outside all three windows,
+ * produce an EQUAL sample hash here and an UNEQUAL sha256. A caller that treats
+ * sample equality as identity will eventually delete a good copy.
+ *
+ * So this is safe as a cheap first pass over a 2 TB archive — a few GB of reads
+ * instead of 2 TB — precisely because it is only ever used to narrow the field
+ * before a FULL hash confirms. Callers that skip the full hash are the bug.
  */
 export async function sampleHash(
   path: string,
