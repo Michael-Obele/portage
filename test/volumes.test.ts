@@ -1,5 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { isRealVolume, parseLsblk } from "../src/device/volumes.ts";
+import { mkdir, mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  driverName,
+  isPortageDrive,
+  isRealVolume,
+  listVolumes,
+  parseLsblk,
+} from "../src/device/volumes.ts";
+import type { SpawnFn } from "../src/util/spawn.ts";
 
 /** Shape matches `lsblk --json --output NAME,LABEL,FSTYPE,SIZE,MOUNTPOINT,RM,TRAN,TYPE`. */
 export const LSBLK = JSON.stringify({
@@ -58,16 +68,6 @@ describe("lsblk parsing", () => {
     expect(parseLsblk(doc)[0]!.mountpoint).toBe("/media/node/X");
   });
 });
-
-import { mkdir, mkdtemp } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import {
-  driverName,
-  isPortageDrive,
-  listVolumes,
-} from "../src/device/volumes.ts";
-import type { SpawnFn } from "../src/util/spawn.ts";
 
 const fakeSpawn: SpawnFn = async (cmd) => {
   if (cmd[0] === "lsblk") return { code: 0, stdout: LSBLK, stderr: "", durationMs: 1 };

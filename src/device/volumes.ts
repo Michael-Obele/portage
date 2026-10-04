@@ -6,6 +6,10 @@
  * only place a drive is written to is `src/config/setup.ts`.
  */
 
+import { join } from "node:path";
+import { diskSpace, isDirectory } from "../util/fs.ts";
+import type { SpawnFn } from "../util/spawn.ts";
+
 /** One row of `lsblk` output, before any judgement about whether it is useful. */
 export interface RawBlock {
   name: string;
@@ -84,10 +88,6 @@ export function isRealVolume(block: RawBlock): boolean {
   if (block.mountpoint.startsWith("/snap/")) return false;
   return true;
 }
-
-import { join } from "node:path";
-import { diskSpace, isDirectory } from "../util/fs.ts";
-import type { SpawnFn } from "../util/spawn.ts";
 
 /** A mounted volume a person could choose as a destination. */
 export interface Volume {
