@@ -61,11 +61,55 @@ Back to [README](./README.md) · Spec: [docs/](./docs/README.md) · Milestones: 
 
 ## ⏭️ Do these next (short list)
 
-1. **Commit the TUI + dedupe work** (it is all uncommitted; Conventional Commits, no AI attribution).
-2. **Run the TUI by hand in a real terminal** → closes gates **C4** (`Ctrl-C` exits 5, terminal usable) and **E5** (resize redraws): `bun run build && ./dist/portage tui`, then `./dist/portage dupes`.
-3. **Diff the live screen against `--json`** for one run → closes gate **B1** (JSON parity).
-4. **`portage retry`** — the one missing everyday command (the TUI has `r`, the CLI does not).
-5. **`portage trash`** (`list` / `--restore` / `--empty`) — right now the dedupe apply message says "restore with `portage trash`" and that command does not exist.
+1. ~~Commit the TUI + dedupe work~~ — **done** (`0a0815a`, 31 files, author + committer Michael's own, no AI attribution).
+2. **Build the Setup & Scope work** — see §"In flight" below. This is what makes `tui` usable at all.
+3. **Run the TUI by hand in a real terminal** → closes gates **C4** (`Ctrl-C` exits 5) and **E5** (resize) — do it after Plan 1 Task 7, so it no longer exits `2`.
+4. **Diff the live screen against `--json`** for one run → closes gate **B1** (JSON parity).
+5. **`portage retry`** and **`portage trash`** — see Plan 3.
+
+---
+
+## 🚧 In flight — Setup & Scope (designed 2026-10-04)
+
+**Why:** `./dist/portage tui` exits **2** on a fresh machine. Portage knows how to *use* a
+destination and a device but has no way to *find or choose* either — every path is
+hand-typed, and when one is missing the TUI dies with a raw exit code instead of helping.
+
+| Missing | Today |
+| --- | --- |
+| See connected drives | nothing enumerates volumes — no `lsblk`/`blkid` anywhere in `src/` |
+| Pick a destination | `portage config set dest_root …`, typed blind |
+| Pick a device | know the `sha1(serial)`, or guess a model substring |
+| Scope a dedupe run | roots = `config.roots` + `dest_root`, hand-written |
+| Drive config | `<dest_root>/.portage/config.toml` is read but nothing writes it |
+| First run | `tui` mounts, then exits `2` |
+
+**Design:** [`docs/plans/2026-10-04-setup-and-scope-design.md`](./docs/plans/2026-10-04-setup-and-scope-design.md)
+**Split:** three plans, one per subsystem — each ships working software on its own.
+
+| Plan | Subsystem | Plan doc | State |
+| --- | --- | --- | --- |
+| **1** | Discovery + Setup (`portage drives`, `portage setup`, TUI Setup screen, no more exit 2) | [`…-01-discovery-and-setup-plan.md`](./docs/plans/2026-10-04-01-discovery-and-setup-plan.md) | **not started** |
+| **2** | Dedupe scope (`dupes --in`, `scopeGroups`, picker reuse) | *to write* | not started |
+| **3** | `retry` · `trash` · `verify` · pull-time `--organize` | *to write* | not started |
+
+### Plan 1 — tasks
+
+- [ ] 1. Parse `lsblk --json` and drop the junk → `src/device/volumes.ts`
+- [ ] 2. Enrich volumes: driver, free space, `isPortageDrive`
+- [ ] 3. `portage drives`
+- [ ] 4. `src/config/setup.ts` — the planner + writer
+- [ ] 5. `portage setup`
+- [ ] 6. `src/tui/screens/setup.ts` — the picker
+- [ ] 7. Dashboard renders a "not set up" state instead of exiting `2`
+
+**Decisions locked:** staged dedupe matching (name+size now, hash on demand) · `--organize` is
+pull-time only, never renaming what is already on the drive · the drive config lives at
+`<dest_root>/.portage/config.toml`, because that is where `config/load.ts:166` looks.
+
+**Note:** `docs/` is gitignored (`.gitignore:1`) and `origin` is a public repo, so the design
+and plan docs are deliberately **not tracked**. `TODO.md` (this file, at the repo root) is the
+tracked status surface.
 
 ---
 
