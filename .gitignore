@@ -8,6 +8,9 @@
 # Portage's own state — never commit a journal
 .portage/
 
+# Subagent-driven-development scratch (review packages, progress ledgers)
+.superpowers/
+
 # Editors / OS
 .DS_Store
 *.swp
