@@ -95,8 +95,8 @@ hand-typed, and when one is missing the TUI dies with a raw exit code instead of
 
 ### Plan 1 — tasks
 
-- [ ] 1. Parse `lsblk --json` and drop the junk → `src/device/volumes.ts`
-- [ ] 2. Enrich volumes: driver, free space, `isPortageDrive`
+- [x] 1. Parse `lsblk --json` and drop the junk → `src/device/volumes.ts` (`47b7935`)
+- [x] 2. Enrich volumes: driver, free space, `isPortageDrive` (`bd56c35` + `9e0bcba` + `3cb24c9`)
 - [ ] 3. `portage drives`
 - [ ] 4. `src/config/setup.ts` — the planner + writer
 - [ ] 5. `portage setup`
