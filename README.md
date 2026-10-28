@@ -211,6 +211,34 @@ Scripts branch on these, so they are part of the interface:
 | `4`  | verification failure |
 | `5`  | interrupted          |
 
+## `apull.sh`: just pull, no ceremony
+
+Not every transfer needs a workflow. `scripts/apull.sh` is an `adb pull`
+wrapper that sits next to portage. It never deletes anything from the phone and
+verifies nothing — the quick pull, not the safe move. Two conveniences keep it
+from being fiddly: `--tree` / `--list` show you where things are on the phone
+(so `--from` is never a guess), and a re-run is incremental, skipping files
+already on the drive under the same name and size. Flag-based (`--from` /
+`--to`), with `--devices`, `--pick`, `--overwrite`, `--dry-run`, and the same
+exit-code scheme as above. It can also stream phone-to-phone
+(`--to-phone` + `--from-device` / `--to-device`) through host RAM with no
+laptop-disk copy.
+
+```bash
+./scripts/apull.sh --tree /sdcard/Download
+./scripts/apull.sh --from /sdcard/Movies/Frieren --to /media/you/2TB/Videos
+```
+
+Install/update it globally (a single script copy onto your `PATH`; re-run
+after `git pull` to update, then confirm with `apull --version`):
+
+```bash
+mkdir -p ~/.local/bin
+install -m 755 scripts/apull.sh ~/.local/bin/apull
+```
+
+Full guide: [docs/apull.md](docs/apull.md).
+
 ## Roadmap
 
 These are designed but not built yet. The plan is in the git history:
