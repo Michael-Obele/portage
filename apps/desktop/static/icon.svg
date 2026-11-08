@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Portage</title>
+  <!-- The mark: a load leaves one place along a carry bar and arrives proven.
+       The destination mass is the check, so "carried" and "verified" are one
+       shape. Two elements only, which is what survives at 32 px. -->
+  <rect width="1024" height="1024" rx="224" fill="#17161A"/>
+
+  <!-- the phone, the smaller place the load leaves -->
+  <rect x="140" y="402" width="150" height="220" rx="36" fill="#F5F3EF"/>
+
+  <!-- the carry bar, in the verified state colour -->
+  <rect x="290" y="484" width="250" height="56" rx="28" fill="#2E9E5B"/>
+
+  <!-- the destination, which is also the proof -->
+  <path d="M520 512 L612 604 L800 416" fill="none" stroke="#2E9E5B" stroke-width="88"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
