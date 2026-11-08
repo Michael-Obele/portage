@@ -43,7 +43,7 @@
 		kept: { word: 'kept', icon: Pause, tone: 'neutral' },
 		failed: { word: 'failed', icon: X, tone: 'failed' },
 		skipped: { word: 'skipped', icon: MinusCircle, tone: 'skipped' },
-		duplicate: { word: 'duplicate', icon: Copy, tone: 'skipped' },
+		duplicate: { word: 'duplicate', icon: Copy, tone: 'skipped' }
 	};
 
 	const TONES: Record<Chip['tone'], string> = {
@@ -51,17 +51,16 @@
 		copying: 'border-[color-mix(in_oklch,var(--state-copying),transparent_55%)] text-state-copying',
 		verified:
 			'border-[color-mix(in_oklch,var(--state-verified),transparent_55%)] text-state-verified',
-		failed:
-			'border-[color-mix(in_oklch,var(--state-failed),transparent_55%)] text-state-failed',
+		failed: 'border-[color-mix(in_oklch,var(--state-failed),transparent_55%)] text-state-failed',
 		skipped:
-			'border-[color-mix(in_oklch,var(--state-skipped),transparent_55%)] text-muted-foreground',
+			'border-[color-mix(in_oklch,var(--state-skipped),transparent_55%)] text-muted-foreground'
 	};
 
 	let {
 		state,
 		class: className,
 		/** Draw the chip on its own fill. The kit page uses it; tables do not. */
-		solid = false,
+		solid = false
 	}: {
 		state: StateChipState;
 		class?: string;
@@ -76,7 +75,7 @@
 					verified: 'border-transparent bg-state-verified text-state-verified-foreground',
 					failed: 'border-transparent bg-state-failed text-state-failed-foreground',
 					skipped: 'border-transparent bg-state-skipped text-state-skipped-foreground',
-					neutral: 'border-border bg-muted text-muted-foreground',
+					neutral: 'border-border bg-muted text-muted-foreground'
 				}[chip.tone]
 			: TONES[chip.tone]
 	);

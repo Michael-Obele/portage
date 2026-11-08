@@ -11,7 +11,7 @@
 		title,
 		summary,
 		actions,
-		class: className,
+		class: className
 	}: {
 		title: string;
 		summary?: string;

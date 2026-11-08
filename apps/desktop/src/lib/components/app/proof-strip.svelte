@@ -18,7 +18,7 @@
 		proof,
 		/** Files in this run, from the frame. Never a number this component made up. */
 		total,
-		class: className,
+		class: className
 	}: {
 		proof: ProofCounts;
 		total: number;
@@ -29,13 +29,11 @@
 		{ key: 'written', word: 'written', value: proof.written },
 		{ key: 'verified', word: 'verified', value: proof.verified },
 		{ key: 'deleted', word: 'deleted', value: proof.deleted },
-		{ key: 'kept', word: 'kept on phone', value: proof.kept },
+		{ key: 'kept', word: 'kept on phone', value: proof.kept }
 	]);
 
 	const denominator = $derived(Math.max(1, total, proof.written, proof.verified));
-	const reached = $derived(
-		Math.max(proof.written, proof.verified, proof.deleted, proof.kept)
-	);
+	const reached = $derived(Math.max(proof.written, proof.verified, proof.deleted, proof.kept));
 
 	function fraction(value: number): number {
 		return Math.max(0, Math.min(1, value / denominator));
@@ -55,14 +53,16 @@
 		<div
 			data-proof-fill
 			class="h-full rounded-full bg-foreground"
-			style="width: {fraction(reached) * 100}%; transition: width var(--motion-base) var(--ease-out-expo);"
+			style="width: {fraction(reached) *
+				100}%; transition: width var(--motion-base) var(--ease-out-expo);"
 		></div>
 	</div>
 	<div class="relative h-2 w-full" aria-hidden="true">
 		{#each counters as counter (counter.key)}
 			<span
 				class="absolute top-0 h-2 w-px bg-border"
-				style="left: {fraction(counter.value) * 100}%; transition: left var(--motion-base) var(--ease-out-expo);"
+				style="left: {fraction(counter.value) *
+					100}%; transition: left var(--motion-base) var(--ease-out-expo);"
 			></span>
 		{/each}
 	</div>
@@ -71,7 +71,7 @@
 		{#each counters as counter (counter.key)}
 			<div class="flex min-w-0 flex-col">
 				<dt class="truncate text-caption text-muted-foreground">{counter.word}</dt>
-				<dd class="font-mono text-lead tabular-nums text-foreground">{counter.value}</dd>
+				<dd class="font-mono text-lead text-foreground tabular-nums">{counter.value}</dd>
 			</div>
 		{/each}
 	</dl>

@@ -24,8 +24,8 @@
 	 */
 	import type { Snippet } from 'svelte';
 	import { cn } from '../../utils.ts';
+	import { ScrollArea } from '../ui/scroll-area/index.js';
 	import SkeletonRows from './skeleton-rows.svelte';
-
 	let {
 		columns,
 		rows,
@@ -41,7 +41,7 @@
 		row,
 		onactivated,
 		selectedKey = null,
-		class: className,
+		class: className
 	}: {
 		columns: TableColumn[];
 		rows: T[];
@@ -105,8 +105,11 @@
 	}
 </script>
 
-<div class={cn('relative min-h-0', className)}>
-	<div class="h-full overflow-auto rounded-[var(--radius-surface)] border border-border">
+<div class={cn('relative flex min-h-0 flex-col', className)}>
+	<!-- shadcn's ScrollArea, not `overflow-auto`. A native scrollbar on a desktop
+	     shell is a grey slab that reads as a browser, and this table is the one
+	     surface a person stares at for minutes at a time. -->
+	<ScrollArea orientation="both" class="min-h-0 flex-1" scrollbarYClasses="w-2">
 		<!-- `border-separate` is what makes a sticky header paint its own border
 		     instead of dropping it while it scrolls. `role="grid"` is the ARIA
 		     pattern for a table whose rows take focus and move with the arrow
@@ -115,7 +118,7 @@
 			role="grid"
 			aria-rowcount={rows.length + 1}
 			aria-colcount={columns.length}
-			class="w-full border-separate border-spacing-0 text-body [&_td]:border-b [&_td]:border-border [&_td]:px-3 [&_tbody>tr]:h-[var(--row-h)] [&_tbody>tr:last-child>td]:border-b-0"
+			class="w-full border-separate border-spacing-0 text-body [&_tbody>tr]:h-[var(--row-h)] [&_tbody>tr:last-child>td]:border-b-0 [&_td]:border-b [&_td]:border-border [&_td]:px-3"
 			onkeydown={onKeyDown}
 		>
 			<caption class="sr-only">{caption}</caption>
@@ -161,7 +164,7 @@
 							tabindex="0"
 							class={cn(
 								'bg-background outline-none',
-								'focus-visible:-outline-offset-2 focus-visible:bg-muted',
+								'focus-visible:bg-muted focus-visible:-outline-offset-2',
 								'data-[selected=true]:bg-muted',
 								onactivated && 'cursor-pointer'
 							)}
@@ -175,5 +178,5 @@
 				{/if}
 			</tbody>
 		</table>
-	</div>
+	</ScrollArea>
 </div>

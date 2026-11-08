@@ -19,13 +19,16 @@
 		app.ready === null
 			? []
 			: [
-					{ key: 'engine', value: `${app.ready.engineVersion} · protocol v${app.ready.protocolVersion}` },
+					{
+						key: 'engine',
+						value: `${app.ready.engineVersion} · protocol v${app.ready.protocolVersion}`
+					},
 					{ key: 'platform', value: app.ready.platform },
 					{ key: 'adb', value: app.ready.adbFound ? 'found' : 'not found' },
 					{
 						key: 'destination',
-						value: app.ready.destinationConfigured ? 'configured' : 'not configured',
-					},
+						value: app.ready.destinationConfigured ? 'configured' : 'not configured'
+					}
 				]
 	);
 
@@ -97,4 +100,3 @@
 		/>
 	{/if}
 </div>
-

@@ -13,7 +13,7 @@
 		rows = 3,
 		/** Screen-reader text. A skeleton with no label is a blank screen. */
 		label = 'Loading',
-		class: className,
+		class: className
 	}: {
 		rows?: number;
 		label?: string;

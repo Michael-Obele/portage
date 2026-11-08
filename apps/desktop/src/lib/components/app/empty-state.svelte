@@ -16,7 +16,7 @@
 		action,
 		onselect,
 		busy = false,
-		class: className,
+		class: className
 	}: {
 		title: string;
 		body: string;

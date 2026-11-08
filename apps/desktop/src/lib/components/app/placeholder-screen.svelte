@@ -11,7 +11,7 @@
 	let {
 		title,
 		summary,
-		body,
+		body
 	}: {
 		title: string;
 		summary: string;

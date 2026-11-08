@@ -33,7 +33,7 @@
 		DialogContent,
 		DialogDescription,
 		DialogHeader,
-		DialogTitle,
+		DialogTitle
 	} from '../lib/components/ui/dialog/index.js';
 	import { app, type ThemeChoice } from '../lib/state/app.svelte.ts';
 	import { run } from '../lib/state/run.svelte.ts';
@@ -50,13 +50,13 @@
 		{ href: '/duplicates', label: 'Duplicates', letter: 'd', icon: Copy },
 		{ href: '/purge', label: 'Purge', letter: 'u', icon: Trash2 },
 		{ href: '/doctor', label: 'Doctor', letter: 'o', icon: Stethoscope },
-		{ href: '/settings', label: 'Settings', letter: 's', icon: Settings },
+		{ href: '/settings', label: 'Settings', letter: 's', icon: Settings }
 	] as const;
 
 	const THEMES: ReadonlyArray<{ value: ThemeChoice; label: string; icon: typeof Sun }> = [
 		{ value: 'light', label: 'Light theme', icon: Sun },
 		{ value: 'dark', label: 'Dark theme', icon: Moon },
-		{ value: 'system', label: 'Follow the system theme', icon: Monitor },
+		{ value: 'system', label: 'Follow the system theme', icon: Monitor }
 	];
 
 	let helpOpen = $state(false);
@@ -165,10 +165,7 @@
 <div class="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
 	<!-- The drag strip. Controls inside it opt out through the `[data-drag-region]`
 	     rule in layout.css, so no control is ever swallowed by the window drag. -->
-	<header
-		data-drag-region
-		class="flex h-9 shrink-0 items-center gap-3 border-b border-border px-3"
-	>
+	<header data-drag-region class="flex h-9 shrink-0 items-center gap-3 border-b border-border px-3">
 		<span class="font-mono text-label font-medium tracking-tight text-foreground">portage</span>
 		<span class="text-label text-muted-foreground" aria-hidden="true">·</span>
 		<span class="text-label text-muted-foreground">{currentScreen}</span>
@@ -213,7 +210,14 @@
 
 	<div class="flex min-h-0 flex-1">
 		<nav aria-label="Screens" class="flex w-48 shrink-0 flex-col border-r border-border bg-sidebar">
-			<ul class="flex flex-col gap-0.5 p-2">
+			<!-- Full-bleed rows, not rounded pills with a left accent bar.
+				     The bar was the tell: in dark mode `--primary` is near-white, so it
+				     drew a bright stripe inside a rounded box, which is the shape every
+				     generated dashboard ships. These rows use the same selection language
+				     as the tables below: filled surface plus full-strength text, and a
+				     change of weight. No hue, because this app's hues mean transfer
+				     state and nothing else. -->
+			<ul class="flex flex-col py-1.5">
 				{#each NAV as item (item.href)}
 					{@const active = isActive(item.href)}
 					{@const badged = item.href === '/duplicates' && app.dupesGroups > 0}
@@ -222,17 +226,17 @@
 							href={item.href}
 							aria-current={active ? 'page' : undefined}
 							class={cn(
-								'flex h-8 items-center gap-2 rounded-[var(--radius-control)] border-l-2 px-2 text-body',
+								'flex h-8 items-center gap-2.5 px-3 text-body transition-colors duration-100',
 								active
-									? 'border-primary bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-									: 'border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+									? 'bg-sidebar-accent font-medium text-foreground'
+									: 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground'
 							)}
 						>
 							<item.icon class="size-4 shrink-0" aria-hidden="true" />
 							<span class="truncate">{item.label}</span>
 							{#if badged}
 								<span
-									class="ms-auto font-mono text-caption tabular-nums text-muted-foreground"
+									class="ms-auto font-mono text-caption text-muted-foreground tabular-nums"
 									data-numeric
 								>
 									{app.dupesGroups}
@@ -285,7 +289,9 @@
 				</ErrorBand>
 				{#if app.stderrTail.length > 0}
 					<pre
-						class="mx-6 mt-2 overflow-x-auto rounded-[var(--radius-control)] border border-border bg-muted p-2 font-mono text-caption text-muted-foreground">{app.stderrTail.join('\n')}</pre>
+						class="mx-6 mt-2 overflow-x-auto rounded-[var(--radius-control)] border border-border bg-muted p-2 font-mono text-caption text-muted-foreground">{app.stderrTail.join(
+							'\n'
+						)}</pre>
 				{/if}
 			{/if}
 
@@ -303,7 +309,7 @@
 <Dialog bind:open={helpOpen}>
 	<DialogContent class="rounded-[var(--radius-surface)] sm:max-w-md">
 		<DialogHeader class="gap-2">
-			<DialogTitle class="text-title font-medium normal-case tracking-normal">
+			<DialogTitle class="text-title font-medium tracking-normal normal-case">
 				Keyboard map
 			</DialogTitle>
 			<DialogDescription class="text-body text-muted-foreground">
@@ -329,9 +335,8 @@
 			</div>
 		</dl>
 		<p class="text-body text-muted-foreground">
-			Screens add their own keys beside the action they perform, and the row of hints at the
-			bottom of a screen lists the ones that apply there.
+			Screens add their own keys beside the action they perform, and the row of hints at the bottom
+			of a screen lists the ones that apply there.
 		</p>
 	</DialogContent>
 </Dialog>
-

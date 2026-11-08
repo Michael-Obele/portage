@@ -15,7 +15,7 @@
 		/** The engine's own code, when there is one. Shown small, never alone. */
 		code,
 		actions,
-		class: className,
+		class: className
 	}: {
 		what: string;
 		means: string;

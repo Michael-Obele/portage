@@ -11,7 +11,7 @@
 	let {
 		keys,
 		label,
-		class: className,
+		class: className
 	}: {
 		/** One or more keys. Multi-key combos pass more than one. */
 		keys: string | string[];

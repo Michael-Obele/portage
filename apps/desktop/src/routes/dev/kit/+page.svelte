@@ -19,7 +19,7 @@
 		Card,
 		CardContent,
 		CardHeader,
-		CardTitle,
+		CardTitle
 	} from '../../../lib/components/ui/card/index.js';
 	import { Checkbox } from '../../../lib/components/ui/checkbox/index.js';
 	import {
@@ -28,7 +28,7 @@
 		DialogDescription,
 		DialogHeader,
 		DialogTitle,
-		DialogTrigger,
+		DialogTrigger
 	} from '../../../lib/components/ui/dialog/index.js';
 	import { Input } from '../../../lib/components/ui/input/index.js';
 	import { Label } from '../../../lib/components/ui/label/index.js';
@@ -39,7 +39,7 @@
 		SelectContent,
 		SelectItem,
 		SelectTrigger,
-		SelectValue,
+		SelectValue
 	} from '../../../lib/components/ui/select/index.js';
 	import { Separator } from '../../../lib/components/ui/separator/index.js';
 	import { Skeleton } from '../../../lib/components/ui/skeleton/index.js';
@@ -47,13 +47,13 @@
 		Tabs,
 		TabsContent,
 		TabsList,
-		TabsTrigger,
+		TabsTrigger
 	} from '../../../lib/components/ui/tabs/index.js';
 	import {
 		Tooltip,
 		TooltipContent,
 		TooltipProvider,
-		TooltipTrigger,
+		TooltipTrigger
 	} from '../../../lib/components/ui/tooltip/index.js';
 
 	import {
@@ -67,7 +67,7 @@
 		SkeletonRows,
 		StateChip,
 		type StateChipState,
-		type TableColumn,
+		type TableColumn
 	} from '../../../lib/components/app/index.ts';
 	import { CONTROL } from '../../../lib/components/app/tokens.ts';
 	import { formatBytes } from '../../../lib/util/format.ts';
@@ -81,7 +81,7 @@
 		{ name: 'lead', cls: 'text-lead', size: '15 px' },
 		{ name: 'title', cls: 'text-title', size: '18 px' },
 		{ name: 'display', cls: 'text-display', size: '22 px' },
-		{ name: 'display-lg', cls: 'text-display-lg', size: '28 px' },
+		{ name: 'display-lg', cls: 'text-display-lg', size: '28 px' }
 	];
 
 	const ROLES = [
@@ -111,14 +111,14 @@
 		'sidebar-primary',
 		'sidebar-accent',
 		'sidebar-border',
-		'sidebar-ring',
+		'sidebar-ring'
 	];
 
 	const STATE_ROLES = [
 		{ name: 'state-copying', fg: 'state-copying-foreground' },
 		{ name: 'state-verified', fg: 'state-verified-foreground' },
 		{ name: 'state-failed', fg: 'state-failed-foreground' },
-		{ name: 'state-skipped', fg: 'state-skipped-foreground' },
+		{ name: 'state-skipped', fg: 'state-skipped-foreground' }
 	];
 
 	const CHIP_STATES: StateChipState[] = [
@@ -130,14 +130,14 @@
 		'kept',
 		'failed',
 		'skipped',
-		'duplicate',
+		'duplicate'
 	];
 
 	const MOTION = [
 		{ name: '--motion-fast', value: '120ms', use: 'a row chip changing' },
 		{ name: '--motion-base', value: '180ms', use: 'the proof strip filling, a toast' },
 		{ name: '--motion-slow', value: '240ms', use: 'the confirm sheet appearing' },
-		{ name: '--ease-out-expo', value: 'cubic-bezier(0.2,0,0,1)', use: 'every one of them' },
+		{ name: '--ease-out-expo', value: 'cubic-bezier(0.2,0,0,1)', use: 'every one of them' }
 	];
 
 	const DENSITY = [
@@ -145,7 +145,7 @@
 		{ name: '--row-h-compact', value: '28px', use: 'a compact row' },
 		{ name: '--measure', value: '68ch', use: 'prose width' },
 		{ name: '--radius-control', value: '6px', use: 'controls and inputs' },
-		{ name: '--radius-surface', value: '10px', use: 'cards and sheets' },
+		{ name: '--radius-surface', value: '10px', use: 'cards and sheets' }
 	];
 
 	/** The three variants the app actually uses, plus the states to inspect. */
@@ -155,22 +155,22 @@
 			label: 'default',
 			hover: 'bg-primary/80',
 			active: 'bg-primary/80 translate-y-px',
-			focus: 'ring-2 ring-ring',
+			focus: 'ring-2 ring-ring'
 		},
 		{
 			variant: 'outline' as const,
 			label: 'outline',
 			hover: 'bg-muted text-foreground',
 			active: 'bg-muted text-foreground translate-y-px',
-			focus: 'ring-2 ring-ring',
+			focus: 'ring-2 ring-ring'
 		},
 		{
 			variant: 'destructive' as const,
 			label: 'destructive',
 			hover: 'bg-destructive/20',
 			active: 'bg-destructive/20 translate-y-px',
-			focus: 'ring-2 ring-destructive',
-		},
+			focus: 'ring-2 ring-destructive'
+		}
 	];
 
 	// --- table fixtures ------------------------------------------------------
@@ -189,75 +189,75 @@
 			name: '[SubsPlease] Frieren - 01 (1080p) [F1A2B3C4].mkv',
 			state: 'verified',
 			size: 412_000_000,
-			reason: '',
+			reason: ''
 		},
 		{
 			key: 'b',
 			name: '[SubsPlease] Frieren - 02 (1080p) [A1B2C3D4].mkv',
 			state: 'copying',
 			size: 398_000_000,
-			reason: '',
+			reason: ''
 		},
 		{
 			key: 'c',
 			name: '[SubsPlease] Frieren - 03 (1080p) [B2C3D4E5].mkv',
 			state: 'verifying',
 			size: 421_000_000,
-			reason: '',
+			reason: ''
 		},
 		{
 			key: 'd',
 			name: '[SubsPlease] Frieren - 04 (1080p) [C3D4E5F6].mkv',
 			state: 'failed',
 			size: 405_000_000,
-			reason: 'device offline mid-file',
+			reason: 'device offline mid-file'
 		},
 		{
 			key: 'e',
 			name: '[SubsPlease] Frieren - 05 (1080p) [D4E5F6A7].mkv',
 			state: 'queued',
 			size: 433_000_000,
-			reason: '',
+			reason: ''
 		},
 		{
 			key: 'f',
 			name: '[SubsPlease] Frieren - 06 (1080p) [E5F6A7B8].mkv',
 			state: 'skipped',
 			size: 410_000_000,
-			reason: 'already on the drive',
+			reason: 'already on the drive'
 		},
 		{
 			key: 'g',
 			name: 'A.Very.Long.Release.Name.That.Keeps.Going.And.Going.1080p.WEB-DL.x264-GROUP.mkv',
 			state: 'duplicate',
 			size: 1_240_000_000,
-			reason: 'byte-identical to the drive copy',
-		},
+			reason: 'byte-identical to the drive copy'
+		}
 	];
 
 	const COLUMNS: TableColumn[] = [
 		{ key: 'state', label: 'State' },
 		{ key: 'name', label: 'Name' },
 		{ key: 'size', label: 'Size', numeric: true },
-		{ key: 'reason', label: 'Why' },
+		{ key: 'reason', label: 'Why' }
 	];
 
 	const PROOFS: Array<{ label: string; proof: ProofCounts; total: number }> = [
 		{
 			label: 'nothing has started',
 			proof: { written: 0, verified: 0, deleted: 0, kept: 0 },
-			total: 12,
+			total: 12
 		},
 		{
 			label: 'mid-run, nothing deleted yet',
 			proof: { written: 5, verified: 4, deleted: 0, kept: 0 },
-			total: 12,
+			total: 12
 		},
 		{
 			label: 'finished in delete-after-verify',
 			proof: { written: 12, verified: 12, deleted: 11, kept: 1 },
-			total: 12,
-		},
+			total: 12
+		}
 	];
 
 	/** The two branches of the confirm gate, for the two destructive screens. */
@@ -267,7 +267,7 @@
 	const TRASH = '/media/node/2TB/.portage/trash/2026-11-08';
 	const MOVED = [
 		`/media/node/2TB/Videos/$Anime/Frieren/S01/[SubsPlease] Frieren - 01 (1080p) [F1A2B3C4] (1).mkv`,
-		`/media/node/2TB/Videos/$Anime/Frieren/S01/[SubsPlease] Frieren - 04 (1080p) [C3D4E5F6] (1).mkv`,
+		`/media/node/2TB/Videos/$Anime/Frieren/S01/[SubsPlease] Frieren - 04 (1080p) [C3D4E5F6] (1).mkv`
 	];
 
 	function handleConfirm(): void {
@@ -315,7 +315,12 @@
 		</p>
 		<div class="grid gap-4 lg:grid-cols-2">
 			{#each [{ label: 'Light', dark: false }, { label: 'Dark', dark: true }] as theme (theme.label)}
-				<div class={cn('rounded-[var(--radius-surface)] border border-border p-3', theme.dark && 'dark bg-background text-foreground')}>
+				<div
+					class={cn(
+						'rounded-[var(--radius-surface)] border border-border p-3',
+						theme.dark && 'dark bg-background text-foreground'
+					)}
+				>
 					<p class="mb-2 text-label text-muted-foreground">{theme.label}</p>
 					<div class="grid grid-cols-3 gap-2">
 						{#each ROLES as role (role)}
@@ -412,13 +417,7 @@
 								<Button variant={spec.variant} class={CONTROL} size="sm" disabled>Pull</Button>
 							</td>
 							<td>
-								<Button
-									variant={spec.variant}
-									class={CONTROL}
-									size="sm"
-									disabled
-									aria-busy="true"
-								>
+								<Button variant={spec.variant} class={CONTROL} size="sm" disabled aria-busy="true">
 									Working
 								</Button>
 							</td>
@@ -551,7 +550,7 @@
 				</DialogTrigger>
 				<DialogContent class="rounded-[var(--radius-surface)]">
 					<DialogHeader>
-						<DialogTitle class="text-title font-medium normal-case tracking-normal">
+						<DialogTitle class="text-title font-medium tracking-normal normal-case">
 							A dialog
 						</DialogTitle>
 						<DialogDescription class="text-body text-muted-foreground">
@@ -607,7 +606,7 @@
 				variant="outline"
 				onclick={() =>
 					toast.error('The engine stopped.', {
-						action: { label: 'Restart engine', onClick: () => toast.success('Restarting') },
+						action: { label: 'Restart engine', onClick: () => toast.success('Restarting') }
 					})}
 			>
 				Error toast with one action
@@ -634,8 +633,8 @@
 	<section class="flex flex-col gap-4">
 		<h2 class="text-lead font-medium">Proof strip</h2>
 		<p class="measure text-body text-muted-foreground">
-			Four counters that only go up, on one line that fills left to right. Each counter has a
-			tick at its own position. Reduced motion keeps the change and drops the animation.
+			Four counters that only go up, on one line that fills left to right. Each counter has a tick
+			at its own position. Reduced motion keeps the change and drops the animation.
 		</p>
 		<div class="grid gap-6 lg:grid-cols-3">
 			{#each PROOFS as entry (entry.label)}
@@ -699,8 +698,8 @@
 	<section class="flex flex-col gap-3">
 		<h2 class="text-lead font-medium">Table</h2>
 		<p class="measure text-body text-muted-foreground">
-			Sticky header, right-aligned tabular numerals, rows you can reach with Tab and move
-			between with the arrow keys, and an empty state that differs from a filtered one.
+			Sticky header, right-aligned tabular numerals, rows you can reach with Tab and move between
+			with the arrow keys, and an empty state that differs from a filtered one.
 		</p>
 		<div class="flex flex-col gap-4">
 			<DataTable
@@ -715,7 +714,7 @@
 					<td role="gridcell" class="max-w-md truncate font-medium text-foreground">
 						{item.name}
 					</td>
-					<td role="gridcell" class="text-right font-mono tabular-nums text-foreground">
+					<td role="gridcell" class="text-right font-mono text-foreground tabular-nums">
 						{formatBytes(item.size)}
 					</td>
 					<td role="gridcell" class="text-muted-foreground">{item.reason}</td>
@@ -790,7 +789,7 @@
 	paths={[
 		'/sdcard/Download/Anime/Frieren/S01/[SubsPlease] Frieren - 01 (1080p) [F1A2B3C4].mkv',
 		'/sdcard/Download/Anime/Frieren/S01/[SubsPlease] Frieren - 02 (1080p) [A1B2C3D4].mkv',
-		'/sdcard/Download/Anime/Frieren/S01/[SubsPlease] Frieren - 03 (1080p) [B2C3D4E5].mkv',
+		'/sdcard/Download/Anime/Frieren/S01/[SubsPlease] Frieren - 03 (1080p) [B2C3D4E5].mkv'
 	]}
 	count={3}
 	bytes={1_231_000_000}

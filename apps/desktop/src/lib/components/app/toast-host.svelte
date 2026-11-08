@@ -17,7 +17,7 @@
 		notices,
 		ondismiss,
 		theme = 'system',
-		density = 'comfortable',
+		density = 'comfortable'
 	}: {
 		notices: Notice[];
 		ondismiss: (id: number) => void;
@@ -36,12 +36,12 @@
 
 			const options: ExternalToast = {
 				id: String(notice.id),
-				onDismiss: () => ondismiss(notice.id),
+				onDismiss: () => ondismiss(notice.id)
 			};
 			if (notice.action) {
 				options.action = {
 					label: notice.action.label,
-					onClick: () => notice.action?.run(),
+					onClick: () => notice.action?.run()
 				};
 			}
 
@@ -59,6 +59,6 @@
 	closeButton
 	richColors={false}
 	toastOptions={{
-		class: density === 'compact' ? 'text-label' : 'text-body',
+		class: density === 'compact' ? 'text-label' : 'text-body'
 	}}
 />

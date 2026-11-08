@@ -18,7 +18,7 @@
 		DialogDescription,
 		DialogFooter,
 		DialogHeader,
-		DialogTitle,
+		DialogTitle
 	} from '../ui/dialog/index.js';
 	import { formatBytes, plural, truncateFront } from '../../util/format.ts';
 	import { CONTROL } from './tokens.ts';
@@ -35,7 +35,7 @@
 		confirmWord,
 		busy = false,
 		onconfirm,
-		oncancel,
+		oncancel
 	}: {
 		open?: boolean;
 		title: string;
@@ -79,7 +79,7 @@
 		class="rounded-[var(--radius-surface)] shadow-lg sm:max-w-xl"
 	>
 		<DialogHeader class="gap-2">
-			<DialogTitle class="text-title font-medium normal-case tracking-normal">{title}</DialogTitle>
+			<DialogTitle class="text-title font-medium tracking-normal normal-case">{title}</DialogTitle>
 			<DialogDescription class="measure text-body text-muted-foreground">
 				{sentence}
 			</DialogDescription>
