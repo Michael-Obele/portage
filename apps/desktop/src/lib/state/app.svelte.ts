@@ -152,14 +152,29 @@ class AppState {
 		this.theme = readStoredTheme();
 		this.applyTheme();
 
-		this.#subscriptions = await this.#port.connect({
-			onFrame: (frame) => this.#dispatch(frame),
-			onStderr: (line) => this.#noteStderr(line),
-			onExit: (code) => this.#onExit(code),
-			onProtocolMismatch: (found) => {
-				this.protocolMismatch = found;
-			},
-		});
+		try {
+			this.#subscriptions = await this.#port.connect({
+				onFrame: (frame) => this.#dispatch(frame),
+				onStderr: (line) => this.#noteStderr(line),
+				onExit: (code) => this.#onExit(code),
+				onProtocolMismatch: (found) => {
+					this.protocolMismatch = found;
+				},
+			});
+		} catch (error) {
+			// A failed connect is a state, not a crash: without this the window
+			// sat on "starting" forever and the reason never reached the screen.
+			this.connection = this.mock ? "mock" : "stopped";
+			this.reachable = false;
+			this.pushNotice(
+				"error",
+				error instanceof EngineFailure ? error.message : "The engine could not be reached.",
+				error instanceof EngineFailure && error.fix
+					? { label: "Restart engine", run: () => void this.restartEngine() }
+					: undefined,
+			);
+			return;
+		}
 
 		await this.hydrate();
 	}

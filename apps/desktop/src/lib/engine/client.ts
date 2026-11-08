@@ -149,6 +149,19 @@ class TauriEngine implements EnginePort {
 		this.handlers = handlers;
 		if (this.subscriptions) return this.subscriptions;
 
+		// Outside the Tauri shell there is no IPC bridge, and `listen()` fails
+		// deep inside the API with `cannot read 'transformCallback'`. That is an
+		// unreadable error for a state the app can name exactly, and it used to
+		// leave the window on "starting" forever. Say what is true instead.
+		if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
+			throw new EngineFailure(
+				"offline",
+				"This window is not running inside the desktop shell, so there is no engine to talk to.",
+				0,
+				"Open the app with `bun x tauri dev`, or add ?mock=<scenario> to the URL to view a fixture.",
+			);
+		}
+
 		const unlisten: UnlistenFn[] = await Promise.all([
 			listen<string>(EVENT_FRAME, (event) =>
 				this.onFrameLine(String(event.payload), handlers),
