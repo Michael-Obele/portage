@@ -50,6 +50,10 @@ const COMMANDS = [
   ["purge", "delete phone copies that are proven to be on the drive"],
   ["config", "get | set | keys — and the precedence chain that resolved them"],
   ["db", "info | vacuum | export — journal maintenance"],
+  [
+    "serve",
+    "the desktop app's engine: one JSON command per line on stdin, one JSON frame per line on stdout",
+  ],
 ] as const;
 
 async function main(): Promise<number> {
@@ -162,6 +166,13 @@ async function main(): Promise<number> {
       // Imported lazily so the plain CLI never loads OpenTUI's native library.
       const { tui } = await import("../tui/main.svelte.ts");
       return await tui(Bun.argv);
+    }
+
+    case "serve": {
+      // The desktop app's sidecar. Imported lazily: the plain CLI never needs
+      // the protocol, and stdout here is the wire, not a report.
+      const { serve } = await import("../serve/index.ts");
+      return await serve({ engineVersion: VERSION, logger });
     }
 
     case "pull":
@@ -358,6 +369,11 @@ dupes
   --no-auto          do not suggest a keeper (still moves nothing)
   --apply <path>     move exactly this path to .portage/trash/<date>/
   --dry-run          say what --apply would move, and move nothing
+
+serve
+  started by the desktop app, not by hand: one JSON command per line on stdin,
+  one JSON frame per line on stdout, no flags. It reads until a shutdown command
+  or the end of stdin.
 
 Not built yet: trash, verify, retry, --organize.
 
