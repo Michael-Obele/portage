@@ -18,12 +18,20 @@
 	--secondary: oklch(0.96 0.002 17.2);
 	--secondary-foreground: oklch(0.214 0.009 43.1);
 	--muted: oklch(0.96 0.002 17.2);
-	--muted-foreground: oklch(0.547 0.021 43.1);
+	/* AAA on an 11 px caption means 7:1, not the 4.4:1 the shadcn default gives.
+	   Measured, not guessed: `scripts/contrast.ts` fails the build below 7. */
+	--muted-foreground: oklch(0.432 0.021 43.1);
 	--accent: oklch(0.96 0.002 17.2);
 	--accent-foreground: oklch(0.214 0.009 43.1);
-	--destructive: oklch(0.577 0.245 27.325);
+	--destructive: oklch(0.432 0.245 27.325);
+	/* The destructive button is a SOLID fill, so its label needs a real pair.
+	   A 10% tint cannot reach 7:1 with destructive text on top of it. */
+	--destructive-foreground: oklch(0.99 0 0);
+	/* Decorative separators: table rules, list dividers. Exempt from 1.4.11. */
 	--border: oklch(0.922 0.005 34.3);
-	--input: oklch(0.922 0.005 34.3);
+	/* Interactive boundaries: a control whose border is its only affordance.
+	   3:1 against the page, which is what makes an input findable. */
+	--input: oklch(0.62 0.005 34.3);
 	--ring: oklch(0.55 0.014 41.2);
 	--chart-1: oklch(0.868 0.007 39.5);
 	--chart-2: oklch(0.547 0.021 43.1);
@@ -43,13 +51,13 @@
 	/* --- app roles: state -------------------------------------------------- */
 	/* Four states, each a fill + a readable foreground. Status is never
 	   hue-only: `state-chip.svelte` always draws a glyph and a word beside it. */
-	--state-copying: oklch(0.52 0.15 245);
+	--state-copying: oklch(0.442 0.15 245);
 	--state-copying-foreground: oklch(0.99 0 0);
-	--state-verified: oklch(0.52 0.13 155);
+	--state-verified: oklch(0.434 0.13 155);
 	--state-verified-foreground: oklch(0.99 0 0);
-	--state-failed: oklch(0.5 0.21 27.3);
+	--state-failed: oklch(0.464 0.21 27.3);
 	--state-failed-foreground: oklch(0.99 0 0);
-	--state-skipped: oklch(0.547 0.021 43.1);
+	--state-skipped: oklch(0.44 0.021 43.1);
 	--state-skipped-foreground: oklch(0.99 0 0);
 
 	/* --- app roles: motion -------------------------------------------------- */
@@ -86,12 +94,13 @@
 	--secondary: oklch(0.288 0.007 36.5);
 	--secondary-foreground: oklch(0.986 0.002 67.8);
 	--muted: oklch(0.288 0.007 36.5);
-	--muted-foreground: oklch(0.735 0.012 41.2);
+	--muted-foreground: oklch(0.78 0.012 41.2);
 	--accent: oklch(0.288 0.007 36.5);
 	--accent-foreground: oklch(0.986 0.002 67.8);
-	--destructive: oklch(0.704 0.191 22.216);
+	--destructive: oklch(0.8 0.191 22.216);
+	--destructive-foreground: oklch(0.19 0.02 27);
 	--border: oklch(1 0 0 / 14%);
-	--input: oklch(1 0 0 / 18%);
+	--input: oklch(0.5 0 0);
 	--ring: oklch(0.68 0.012 41.2);
 	--chart-1: oklch(0.868 0.007 39.5);
 	--chart-2: oklch(0.547 0.021 43.1);
@@ -111,7 +120,7 @@
 	--state-copying-foreground: oklch(0.19 0.02 245);
 	--state-verified: oklch(0.76 0.1 155);
 	--state-verified-foreground: oklch(0.19 0.02 155);
-	--state-failed: oklch(0.704 0.191 22.216);
+	--state-failed: oklch(0.76 0.191 22.216);
 	--state-failed-foreground: oklch(0.19 0.02 27);
 	--state-skipped: oklch(0.735 0.012 41.2);
 	--state-skipped-foreground: oklch(0.19 0.004 49.3);
@@ -178,6 +187,7 @@
 	--color-input: var(--input);
 	--color-border: var(--border);
 	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-accent: var(--accent);
 	--color-muted-foreground: var(--muted-foreground);

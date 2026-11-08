@@ -7,9 +7,18 @@
  * different, which is the tell this whole token layer exists to avoid.
  */
 
-/** A control: one of the two radii, sentence case, 13 px. */
+/**
+ * A control: one of the two radii, sentence case, 13 px.
+ *
+ * NO `text-<size>` belongs in here. This string is appended AFTER a variant's
+ * own classes, and the class merger reads two `text-*` utilities as a colour
+ * conflict: `text-body` silently deleted `text-primary-foreground`, so every
+ * primary button rendered its label in the inherited body colour. In dark mode
+ * that is near-white on near-white. Size now lives in the Button base, which
+ * merges before the variant and therefore cannot win.
+ */
 export const CONTROL =
-	"rounded-[var(--radius-control)] normal-case tracking-normal font-medium text-body";
+	"rounded-[var(--radius-control)] normal-case tracking-normal font-medium";
 
 /** A raised surface: the ladder's second step, drawn with a border. */
 export const SURFACE =
