@@ -1,0 +1,289 @@
+@import 'tailwindcss';
+@import "tw-animate-css";
+@import "shadcn-svelte/tailwind.css";
+@import "@fontsource-variable/inter";
+@import "@fontsource/ibm-plex-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+	--background: oklch(1 0 0);
+	--foreground: oklch(0.147 0.004 49.3);
+	--card: oklch(1 0 0);
+	--card-foreground: oklch(0.147 0.004 49.3);
+	--popover: oklch(1 0 0);
+	--popover-foreground: oklch(0.147 0.004 49.3);
+	--primary: oklch(0.214 0.009 43.1);
+	--primary-foreground: oklch(0.986 0.002 67.8);
+	--secondary: oklch(0.96 0.002 17.2);
+	--secondary-foreground: oklch(0.214 0.009 43.1);
+	--muted: oklch(0.96 0.002 17.2);
+	--muted-foreground: oklch(0.547 0.021 43.1);
+	--accent: oklch(0.96 0.002 17.2);
+	--accent-foreground: oklch(0.214 0.009 43.1);
+	--destructive: oklch(0.577 0.245 27.325);
+	--border: oklch(0.922 0.005 34.3);
+	--input: oklch(0.922 0.005 34.3);
+	--ring: oklch(0.55 0.014 41.2);
+	--chart-1: oklch(0.868 0.007 39.5);
+	--chart-2: oklch(0.547 0.021 43.1);
+	--chart-3: oklch(0.438 0.017 39.3);
+	--chart-4: oklch(0.367 0.016 35.7);
+	--chart-5: oklch(0.268 0.011 36.5);
+	--radius: 0.625rem;
+	--sidebar: oklch(0.986 0.002 67.8);
+	--sidebar-foreground: oklch(0.147 0.004 49.3);
+	--sidebar-primary: oklch(0.214 0.009 43.1);
+	--sidebar-primary-foreground: oklch(0.986 0.002 67.8);
+	--sidebar-accent: oklch(0.96 0.002 17.2);
+	--sidebar-accent-foreground: oklch(0.214 0.009 43.1);
+	--sidebar-border: oklch(0.922 0.005 34.3);
+	--sidebar-ring: oklch(0.6 0.014 41.2);
+
+	/* --- app roles: state -------------------------------------------------- */
+	/* Four states, each a fill + a readable foreground. Status is never
+	   hue-only: `state-chip.svelte` always draws a glyph and a word beside it. */
+	--state-copying: oklch(0.52 0.15 245);
+	--state-copying-foreground: oklch(0.99 0 0);
+	--state-verified: oklch(0.52 0.13 155);
+	--state-verified-foreground: oklch(0.99 0 0);
+	--state-failed: oklch(0.5 0.21 27.3);
+	--state-failed-foreground: oklch(0.99 0 0);
+	--state-skipped: oklch(0.547 0.021 43.1);
+	--state-skipped-foreground: oklch(0.99 0 0);
+
+	/* --- app roles: motion -------------------------------------------------- */
+	/* Three durations and one curve. Nothing in the app is slower than 240 ms. */
+	--motion-fast: 120ms;
+	--motion-base: 180ms;
+	--motion-slow: 240ms;
+	--ease-out-expo: cubic-bezier(0.2, 0, 0, 1);
+
+	/* --- app roles: density and measure ------------------------------------- */
+	--row-h: 32px;
+	--row-h-compact: 28px;
+	/* Prose stops at 68 characters; tables may use the full width. */
+	--measure: 68ch;
+
+	/* --- app roles: radii --------------------------------------------------- */
+	/* Two radii by element kind. Pills are for state chips only. */
+	--radius-control: 6px;
+	--radius-surface: 10px;
+}
+
+.dark {
+	/* Surfaces move ONE step up; the accent desaturates; borders stay visible
+	   rather than vanishing into the page. A derived map of the same roles, not
+	   an inversion of the light map. */
+	--background: oklch(0.185 0.004 49.3);
+	--foreground: oklch(0.986 0.002 67.8);
+	--card: oklch(0.236 0.008 43.1);
+	--card-foreground: oklch(0.986 0.002 67.8);
+	--popover: oklch(0.236 0.008 43.1);
+	--popover-foreground: oklch(0.986 0.002 67.8);
+	--primary: oklch(0.922 0.003 34.3);
+	--primary-foreground: oklch(0.214 0.009 43.1);
+	--secondary: oklch(0.288 0.007 36.5);
+	--secondary-foreground: oklch(0.986 0.002 67.8);
+	--muted: oklch(0.288 0.007 36.5);
+	--muted-foreground: oklch(0.735 0.012 41.2);
+	--accent: oklch(0.288 0.007 36.5);
+	--accent-foreground: oklch(0.986 0.002 67.8);
+	--destructive: oklch(0.704 0.191 22.216);
+	--border: oklch(1 0 0 / 14%);
+	--input: oklch(1 0 0 / 18%);
+	--ring: oklch(0.68 0.012 41.2);
+	--chart-1: oklch(0.868 0.007 39.5);
+	--chart-2: oklch(0.547 0.021 43.1);
+	--chart-3: oklch(0.438 0.017 39.3);
+	--chart-4: oklch(0.367 0.016 35.7);
+	--chart-5: oklch(0.268 0.011 36.5);
+	--sidebar: oklch(0.236 0.008 43.1);
+	--sidebar-foreground: oklch(0.986 0.002 67.8);
+	--sidebar-primary: oklch(0.922 0.003 34.3);
+	--sidebar-primary-foreground: oklch(0.214 0.009 43.1);
+	--sidebar-accent: oklch(0.288 0.007 36.5);
+	--sidebar-accent-foreground: oklch(0.986 0.002 67.8);
+	--sidebar-border: oklch(1 0 0 / 14%);
+	--sidebar-ring: oklch(0.68 0.012 41.2);
+
+	--state-copying: oklch(0.74 0.11 245);
+	--state-copying-foreground: oklch(0.19 0.02 245);
+	--state-verified: oklch(0.76 0.1 155);
+	--state-verified-foreground: oklch(0.19 0.02 155);
+	--state-failed: oklch(0.704 0.191 22.216);
+	--state-failed-foreground: oklch(0.19 0.02 27);
+	--state-skipped: oklch(0.735 0.012 41.2);
+	--state-skipped-foreground: oklch(0.19 0.004 49.3);
+}
+
+@theme inline {
+	/* One UI family, two weights; one mono family for paths, hashes and bytes. */
+	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+	/* shadcn's dialog title asks for `font-heading`; it is the same family, not
+	   a third one, so the utility resolves instead of silently doing nothing. */
+	--font-heading: var(--font-sans);
+
+	/* The scale from design.md, ratio ~1.2. Body is 13 px at 1.45. */
+	--text-caption: 11px;
+	--text-caption--line-height: 1.45;
+	--text-label: 12px;
+	--text-label--line-height: 1.45;
+	--text-body: 13px;
+	--text-body--line-height: 1.45;
+	--text-lead: 15px;
+	--text-lead--line-height: 1.45;
+	--text-title: 18px;
+	--text-title--line-height: 1.3;
+	--text-display: 22px;
+	--text-display--line-height: 1.2;
+	--text-display--letter-spacing: -0.01em;
+	--text-display-lg: 28px;
+	--text-display-lg--line-height: 1.2;
+	--text-display-lg--letter-spacing: -0.015em;
+
+	/* Two radii by element kind, and the app's own curve. */
+	--radius-control: var(--radius-control);
+	--radius-surface: var(--radius-surface);
+	--ease-out-expo: var(--ease-out-expo);
+
+	/* Density: 32 px comfortable, 28 px compact. */
+	--spacing-row: var(--row-h);
+	--spacing-row-compact: var(--row-h-compact);
+
+	--color-state-copying: var(--state-copying);
+	--color-state-copying-foreground: var(--state-copying-foreground);
+	--color-state-verified: var(--state-verified);
+	--color-state-verified-foreground: var(--state-verified-foreground);
+	--color-state-failed: var(--state-failed);
+	--color-state-failed-foreground: var(--state-failed-foreground);
+	--color-state-skipped: var(--state-skipped);
+	--color-state-skipped-foreground: var(--state-skipped-foreground);
+
+	--color-sidebar-ring: var(--sidebar-ring);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar: var(--sidebar);
+	--color-chart-5: var(--chart-5);
+	--color-chart-4: var(--chart-4);
+	--color-chart-3: var(--chart-3);
+	--color-chart-2: var(--chart-2);
+	--color-chart-1: var(--chart-1);
+	--color-ring: var(--ring);
+	--color-input: var(--input);
+	--color-border: var(--border);
+	--color-destructive: var(--destructive);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-accent: var(--accent);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-muted: var(--muted);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-secondary: var(--secondary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary: var(--primary);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-popover: var(--popover);
+	--color-card-foreground: var(--card-foreground);
+	--color-card: var(--card);
+	--color-foreground: var(--foreground);
+	--color-background: var(--background);
+	--radius-sm: calc(var(--radius) * 0.6);
+	--radius-md: calc(var(--radius) * 0.8);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) * 1.4);
+	--radius-2xl: calc(var(--radius) * 1.8);
+	--radius-3xl: calc(var(--radius) * 2.2);
+	--radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+	html {
+		@apply font-sans;
+	}
+
+	/* The floor from design.md: a 2 px ring, 2 px offset, never removed. */
+	:focus-visible {
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
+		border-radius: 2px;
+	}
+
+	/* A byte count that reflows while it counts is the cheapest possible tell
+	   that nobody looked. Numbers are tabular wherever they can change. */
+	table,
+	[data-numeric] {
+		font-variant-numeric: tabular-nums;
+		font-feature-settings: 'tnum';
+	}
+
+	html,
+	body {
+		height: 100%;
+	}
+
+	body {
+		font-size: 13px;
+		line-height: 1.45;
+		-webkit-font-smoothing: antialiased;
+		/* One surface, no bounce: this is a window, not a document. */
+		overscroll-behavior: none;
+	}
+
+	/* The titlebar strip drags the window; nothing inside it may. */
+	[data-drag-region] {
+		-webkit-app-region: drag;
+		user-select: none;
+	}
+	[data-drag-region] button,
+	[data-drag-region] a,
+	[data-drag-region] input,
+	[data-drag-region] select,
+	[data-drag-region] [role='button'] {
+		-webkit-app-region: no-drag;
+	}
+}
+
+@layer utilities {
+	/* Heights the design names, so no component hardcodes a px value. */
+	.row-h {
+		height: var(--row-h);
+	}
+	.row-h-compact {
+		height: var(--row-h-compact);
+	}
+	.measure {
+		max-width: var(--measure);
+	}
+}
+
+/* Nothing depends on motion to be understood, so the reduced path is the same
+   path: durations go to zero, transforms are removed, and the state change
+   still happens. */
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--motion-fast: 0ms;
+		--motion-base: 0ms;
+		--motion-slow: 0ms;
+	}
+
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0ms !important;
+		transform: none !important;
+		scroll-behavior: auto !important;
+	}
+}

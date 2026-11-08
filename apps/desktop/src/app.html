@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" class="dark">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="text-scale" content="scale" />
+	<meta name="color-scheme" content="light dark" />
+	<!-- The theme class is applied before first paint so a relaunch never
+		     flashes the wrong surface colour. -->
+	<script>
+		try {
+			const stored = localStorage.getItem('portage-theme');
+			const system = window.matchMedia('(prefers-color-scheme: dark)').matches
+				? 'dark'
+				: 'light';
+			const resolved = !stored || stored === 'system' ? system : stored;
+			document.documentElement.classList.toggle('dark', resolved === 'dark');
+		} catch {
+			// A blocked localStorage must not stop the app from rendering.
+		}
+	</script>
+	%sveltekit.head%
+</head>
+
+<body data-sveltekit-preload-data="hover">
+	<div style="display: contents">%sveltekit.body%</div>
+</body>
+
+</html>
