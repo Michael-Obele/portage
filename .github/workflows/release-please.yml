@@ -62,6 +62,10 @@ jobs:
           print(found.group(1).strip() if found else f'Release {version}.')
           PY
 
+          # An annotated tag needs a committer, and a fresh runner has none.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git tag -a "${tag}" -m "${tag}"
           git push origin "${tag}"
           gh release create "${tag}" --title "${tag}" --notes-file /tmp/notes.md
