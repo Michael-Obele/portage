@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/Michael-Obele/portage/compare/v0.1.4...v0.2.0) (2026-11-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **serve:** this commit only exists to prove a breaking change bumps a minor rather than a patch, and that no change can reach a major.
+
+### Tests
+
+* **serve:** exercise the minor bump path ([bc65be7](https://github.com/Michael-Obele/portage/commit/bc65be723c3a8c81ca7396ffef07dfaacfe51b6d))
+
 ## [0.1.4](https://github.com/Michael-Obele/portage/compare/v0.1.3...v0.1.4) (2026-11-09)
 
 
