@@ -12,23 +12,57 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      # While the version is 0.x this config does what was asked for:
+      # While the version is 0.x this does what was asked for:
       #   bump-minor-pre-major + bump-patch-for-minor-pre-major
-      # Every commit produces a PATCH, and only a breaking change (the `!`
-      # footer, or BREAKING CHANGE:) produces a MINOR. Neither can reach 1.0.0,
-      # so no release here is ever a major. See release-please-config.json.
+      # Every commit bumps a PATCH and only a breaking change (a `!` in the type,
+      # or a BREAKING CHANGE footer) bumps a MINOR. Neither reaches 1.0.0, so no
+      # release here is ever a major. See release-please-config.json.
       - uses: googleapis/release-please-action@v4
         id: release
         with:
-          # The built-in token is enough to open and update the release PR.
-          # Caveat: workflows started by GITHUB_TOKEN do not start other
-          # workflows, so the release PR shows no CI checks. If that matters,
-          # add a fine-grained PAT as RELEASE_PLEASE_TOKEN and pass it here.
           token: ${{ github.token }}
 
-      - name: Summarise
-        if: ${{ steps.release.outputs.release_created }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # release-please maintains the version, the changelog and the release PR.
+      # Its own tagging step matches a merged release PR by parsing the PR title,
+      # which manifest mode never writes a version into, so it aborts with
+      # "untagged merged release PRs outstanding" and no tag is ever created.
+      #
+      # Rather than depend on that internal, this closes the loop from the one
+      # thing that is always true after a release PR merges: package.json holds
+      # the new version. If there is no tag for it, tag it and publish the notes.
+      - name: Tag the merged version when it has no tag
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "### Released ${{ steps.release.outputs.tag_name }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Version: \`${{ steps.release.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          set -euo pipefail
+          version="$(python3 -c "import json;print(json.load(open('package.json'))['version'])")"
+          tag="v${version}"
+          echo "package.json says $tag"
+
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "${tag} already exists; nothing to tag."
+            exit 0
+          fi
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            echo "${tag} already has a release; nothing to do."
+            exit 0
+          fi
+
+          # The notes are the changelog section release-please just wrote.
+          python3 - "$version" > /tmp/notes.md <<'PY'
+          import re, sys
+          version, = sys.argv[1:]
+          text = open('CHANGELOG.md').read()
+          pattern = rf'(## \[{re.escape(version)}\].*?)(?=\n## \[|\Z)'
+          found = re.search(pattern, text, re.S)
+          print(found.group(1).strip() if found else f'Release {version}.')
+          PY
+
+          git tag -a "${tag}" -m "${tag}"
+          git push origin "${tag}"
+          gh release create "${tag}" --title "${tag}" --notes-file /tmp/notes.md
+          echo "Published ${tag}. The desktop bundle attaches to it next."
