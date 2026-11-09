@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/Michael-Obele/portage/compare/v0.1.1...v0.1.2) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ci:** enforce the versioning rule the repo runs on ([621e9cb](https://github.com/Michael-Obele/portage/commit/621e9cb8f8e43c09176c04df534fb348b804ec83))
+* **ci:** re-run release-please after tagging v0.1.1 ([cd3c310](https://github.com/Michael-Obele/portage/commit/cd3c310976c1331ff3cbc5dd83d433770cbe920a))
+
 ## [0.1.1](https://github.com/Michael-Obele/portage/compare/v0.1.0...v0.1.1) (2026-11-09)
 
 
