@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.10](https://github.com/Michael-Obele/portage/compare/v0.1.9...v0.1.10) (2026-11-09)
+
+
+### Features
+
+* **engine:** unify plan answer shape across engine, client, and serve ([bfd2302](https://github.com/Michael-Obele/portage/commit/bfd230215949da66bc43042e6546fd8d2b9be099))
+
+
+### Bug Fixes
+
+* **desktop:** align plan page with engine wire contract ([24931ef](https://github.com/Michael-Obele/portage/commit/24931ef43e4e8f86d6b1d6bca7c28422e6229672))
+
 ## [0.1.9](https://github.com/Michael-Obele/portage/compare/v0.1.8...v0.1.9) (2026-11-09)
 
 
