@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/Michael-Obele/portage/compare/v0.1.6...v0.1.7) (2026-11-09)
+
+
+### CI
+
+* do not create a bundle run for a release-only pull request ([724b6fb](https://github.com/Michael-Obele/portage/commit/724b6fb7e9d401fe2af5e7a8961b4be13617b65c))
+
 ## [0.1.6](https://github.com/Michael-Obele/portage/compare/v0.1.5...v0.1.6) (2026-11-09)
 
 
