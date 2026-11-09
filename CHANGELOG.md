@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.3](https://github.com/Michael-Obele/portage/compare/v0.1.2...v0.1.3) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ci:** put the component in the release PR title ([560ef1e](https://github.com/Michael-Obele/portage/commit/560ef1ecb212f49dc33f42961dbf6749afb92364))
+* **ci:** stop release-please expecting a package component ([05979b8](https://github.com/Michael-Obele/portage/commit/05979b8a48338c60a9da04b75c205e2fd7ce984a))
+* **ci:** verify the automatic tag after the component fix ([a5d68e9](https://github.com/Michael-Obele/portage/commit/a5d68e9d15a993500d184d07946538b45ea4f823))
+
 ## [0.1.2](https://github.com/Michael-Obele/portage/compare/v0.1.1...v0.1.2) (2026-11-09)
 
 
