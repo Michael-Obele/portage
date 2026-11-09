@@ -1,6 +1,6 @@
 {
   "name": "portage",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "private": true,
   "description": "Move a phone's downloads onto an archive drive safely — verified, resumable, and with the phone copy deleted only after proof.",
   "type": "module",

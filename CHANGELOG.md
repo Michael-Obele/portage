@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.8](https://github.com/Michael-Obele/portage/compare/v0.1.7...v0.1.8) (2026-11-09)
+
+
+### Features
+
+* **desktop:** add adb and UI size settings ([397965e](https://github.com/Michael-Obele/portage/commit/397965eca703bc93b399897d1db0ae1bb3131705))
+* **desktop:** implement the home screen ([52341ed](https://github.com/Michael-Obele/portage/commit/52341ed8015646319c42615a2a894ac74eaf6c2a))
+* **engine:** find adb in the usual SDK folders ([0006838](https://github.com/Michael-Obele/portage/commit/000683817df48b7cd4aaf8f090dba6ffde2cfdac))
+
 ## [0.1.7](https://github.com/Michael-Obele/portage/compare/v0.1.6...v0.1.7) (2026-11-09)
 
 
