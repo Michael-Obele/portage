@@ -7,7 +7,6 @@
 	"release-type": "node",
 	"packages": {
 		".": {
-			"package-name": "portage",
 			"changelog-path": "CHANGELOG.md",
 			"extra-files": [
 				{
