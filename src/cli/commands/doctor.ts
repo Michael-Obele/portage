@@ -49,8 +49,8 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
     rows.push({
       mark: "fail",
       label: "adb",
-      value: "not found on PATH",
-      fix: "install Android platform-tools, or set adb_path in config",
+      value: "not found on PATH or in an Android SDK folder",
+      fix: "install Android platform-tools, then set adb_path in config (or symlink adb into /usr/local/bin)",
     });
     render(rows);
     output.fail("adb is required — nothing else can work without it");
@@ -60,8 +60,22 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
   rows.push({
     mark: "ok",
     label: "adb",
-    value: `${await ctx.adb.version()}  ${ctx.adb.bin}`,
+    value: `${await ctx.adb.version()}  ${ctx.adb.bin}${
+      ctx.adb.source === "search" ? "  (found by search, not on PATH)" : ""
+    }`,
   });
+
+  // A configured path that does not resolve is worth saying out loud: the
+  // engine kept going with another adb, which is not what the config asked for.
+  const configuredAdb = ctx.resolved.config.adb_path;
+  if (configuredAdb && ctx.adb.source !== "config") {
+    rows.push({
+      mark: "warn",
+      label: "adb_path",
+      value: `${configuredAdb} is not an executable — ignored`,
+      fix: `point adb_path at ${ctx.adb.bin}, or clear it and let the search run`,
+    });
+  }
 
   // --- devices ----------------------------------------------------------------
   const devices = await ctx.adb.devices();

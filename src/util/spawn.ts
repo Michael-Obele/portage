@@ -106,18 +106,21 @@ export async function commandExists(cmd: string): Promise<boolean> {
   return (await Bun.which(cmd)) !== null;
 }
 
-/** Resolve an executable to an absolute path, honouring a config override. */
+/**
+ * Resolve an executable to an absolute path, honouring a config override.
+ *
+ * Returns the ABSOLUTE path Bun found, not the string that was asked for, so a
+ * caller that prints it shows the real binary. `env` exists for tests: they
+ * sandbox `PATH` rather than depend on what happens to be installed.
+ */
 export async function resolveBinary(
   cmd: string,
   configuredPath = "",
+  env: Record<string, string | undefined> = Bun.env,
 ): Promise<string | null> {
+  const options = env.PATH ? { PATH: env.PATH } : undefined;
   if (configuredPath) {
-    try {
-      await Bun.which(configuredPath);
-      return configuredPath;
-    } catch {
-      return null;
-    }
+    return (await Bun.which(configuredPath, options)) ?? null;
   }
-  return await Bun.which(cmd);
+  return (await Bun.which(cmd, options)) ?? null;
 }

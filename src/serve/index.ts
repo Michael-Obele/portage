@@ -119,6 +119,8 @@ export async function serve(opts: ServeOptions = {}): Promise<number> {
     engineVersion: opts.engineVersion ?? "unknown",
     platform: `${process.platform} ${process.arch}`,
     adbFound: adb !== null,
+    adbPath: adb?.bin ?? null,
+    adbSource: adb?.source ?? "none",
     destinationConfigured,
   });
 

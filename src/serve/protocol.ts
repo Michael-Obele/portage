@@ -206,6 +206,10 @@ export const ReadyFrameSchema = v.strictObject({
   engineVersion: v.string(),
   platform: v.string(),
   adbFound: v.boolean(),
+  /** Absolute path of the binary that will be used, or null. */
+  adbPath: v.nullable(v.string()),
+  /** Why that binary: the config value, `PATH`, the SDK search, or nothing. */
+  adbSource: v.picklist(["config", "path", "search", "none"]),
   destinationConfigured: v.boolean(),
 });
 

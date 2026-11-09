@@ -7,6 +7,8 @@
  * effect of copying.
  */
 
+import { join } from "node:path";
+
 import {
   resolveBinary,
   stripCR,
@@ -14,6 +16,109 @@ import {
   type SpawnFn,
 } from "../util/spawn.ts";
 import { sha1Hex } from "../util/hash.ts";
+
+/**
+ * Why a particular adb binary is being used.
+ *
+ * `doctor` prints this, because "found" and "found because we searched twelve
+ * folders for you" are different facts about a machine.
+ */
+export type AdbSource = "config" | "path" | "search";
+
+export interface AdbResolution {
+  /** Absolute path of the binary, or null when nothing was found. */
+  bin: string | null;
+  source: AdbSource | "none";
+  /** Every path that was tried, in order. `doctor` prints these on failure. */
+  tried: string[];
+}
+
+/** SDK roots, the shape `<root>/platform-tools/adb`. */
+function sdkRoots(env: Record<string, string | undefined>): string[] {
+  const home = env.HOME ?? env.USERPROFILE ?? "";
+  const local = env.LOCALAPPDATA ?? "";
+  const roots = [
+    env.ANDROID_HOME ?? "",
+    env.ANDROID_SDK_ROOT ?? "",
+    local ? join(local, "Android", "Sdk") : "",
+    home ? join(home, "Android", "Sdk") : "",
+    home ? join(home, "Android", "sdk") : "",
+    home ? join(home, "android-sdk") : "",
+    home ? join(home, "Library", "Android", "sdk") : "",
+    "/usr/lib/android-sdk",
+    "/usr/local/share/android-sdk",
+    "/opt/android-sdk",
+    "/opt/android-sdk-linux",
+    "/snap/android-sdk/current",
+  ];
+  return roots.filter((root) => root.length > 0);
+}
+
+/** Directories that hold `adb` itself, for a platform-tools zip unzipped in place. */
+function toolDirs(env: Record<string, string | undefined>): string[] {
+  const home = env.HOME ?? env.USERPROFILE ?? "";
+  const dirs = [
+    home ? join(home, "android", "platform-tools") : "",
+    home ? join(home, "Android", "platform-tools") : "",
+    home ? join(home, "platform-tools") : "",
+    home ? join(home, "Downloads", "platform-tools") : "",
+    home ? join(home, ".local", "bin") : "",
+  ];
+  return dirs.filter((dir) => dir.length > 0);
+}
+
+/**
+ * Every absolute path the resolver tries after `PATH`, in order.
+ *
+ * `PATH` alone is not enough for this app. A desktop launch inherits the
+ * session PATH (`/usr/local/bin:/usr/bin:/bin` plus a few snap dirs) and never
+ * reads a shell's rc file, so an SDK under `$HOME` is invisible to it even
+ * though the same person's terminal finds adb without complaint. Nothing here
+ * is assumed to exist: `Bun.which` decides, and this list is what a failure
+ * reports.
+ */
+export function adbSearchPaths(
+  env: Record<string, string | undefined> = Bun.env,
+): string[] {
+  const exe = process.platform === "win32" ? "adb.exe" : "adb";
+  const paths = [
+    ...sdkRoots(env).map((root) => join(root, "platform-tools", exe)),
+    ...toolDirs(env).map((dir) => join(dir, exe)),
+  ];
+  return [...new Set(paths)];
+}
+
+/**
+ * Find adb: the configured path, then `PATH`, then the usual SDK folders.
+ *
+ * A configured path that does not resolve is NOT fatal. It is reported (the
+ * source becomes `path` or `search`), because refusing to run when a working
+ * adb sits one directory over helps nobody. `doctor` is where a stale
+ * `adb_path` gets called out.
+ */
+export async function resolveAdbBinary(
+  configuredPath = "",
+  env: Record<string, string | undefined> = Bun.env,
+): Promise<AdbResolution> {
+  const tried: string[] = [];
+
+  if (configuredPath) {
+    tried.push(configuredPath);
+    const configured = await resolveBinary(configuredPath, configuredPath, env);
+    if (configured) return { bin: configured, source: "config", tried };
+  }
+
+  const onPath = await resolveBinary("adb", "", env);
+  if (onPath) return { bin: onPath, source: "path", tried };
+
+  for (const candidate of adbSearchPaths(env)) {
+    tried.push(candidate);
+    const found = await resolveBinary(candidate, candidate, env);
+    if (found) return { bin: candidate, source: "search", tried };
+  }
+
+  return { bin: null, source: "none", tried };
+}
 
 export interface DeviceInfo {
   /** Stable id: `sha1(ro.serialno)`. Never the serial itself, so the journal can be shared. */
@@ -36,21 +141,29 @@ export interface DeviceFile {
 
 export class Adb {
   readonly bin: string;
+  /** Where `bin` came from: the config value, `PATH`, or the SDK search. */
+  readonly source: AdbSource;
 
   constructor(
     bin: string,
     private readonly spawn: SpawnFn,
+    source: AdbSource = "path",
   ) {
     this.bin = bin;
+    this.source = source;
   }
 
-  /** Build an adapter, resolving adb from config or PATH. Returns null if absent. */
+  /**
+   * Build an adapter from the configured path, `PATH`, or the usual SDK
+   * folders. Returns null only when none of them hold an adb.
+   */
   static async create(
     spawn: SpawnFn,
     configuredPath = "",
   ): Promise<Adb | null> {
-    const bin = await resolveBinary("adb", configuredPath);
-    return bin ? new Adb(bin, spawn) : null;
+    const { bin, source } = await resolveAdbBinary(configuredPath);
+    if (!bin) return null;
+    return new Adb(bin, spawn, source === "none" ? "path" : source);
   }
 
   /** `adb version` — for `doctor`. */

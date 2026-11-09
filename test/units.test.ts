@@ -7,7 +7,10 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { join } from "node:path";
+import { chmodSync } from "node:fs";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 
 import {
   classify,
@@ -26,7 +29,12 @@ import { parseArgs, bool, int, str } from "../src/cli/args.ts";
 import { loadConfig, coerceConfigValue } from "../src/config/load.ts";
 import { DEFAULT_CONFIG } from "../src/config/schema.ts";
 
-import { parseLsusbTree, maxLinkSpeed, isUsb2 } from "../src/device/adb.ts";
+import {
+  parseLsusbTree,
+  maxLinkSpeed,
+  isUsb2,
+  resolveAdbBinary,
+} from "../src/device/adb.ts";
 import { secondsAgo } from "./helpers.ts";
 
 const OLD = secondsAgo(3600); // an hour ago — comfortably quiescent
@@ -343,5 +351,74 @@ describe("link speed", () => {
   test("an unparsed tree reports 0 rather than guessing a number", () => {
     expect(maxLinkSpeed(parseLsusbTree("garbage"))).toBe(0);
     expect(isUsb2(0)).toBe(false);
+  });
+});
+
+// --- finding adb without a login shell --------------------------------------
+//
+// A desktop launch inherits the session PATH and never reads `.bashrc`, so the
+// only reason adb works here at all is the SDK search. These tests keep that
+// true: the sandboxed PATH resolves nothing, and the folder does the work.
+
+describe("resolveAdbBinary", () => {
+  /** A throwaway HOME holding an executable at a relative path. */
+  async function sandbox(relative: string) {
+    const home = await mkdtemp(join(tmpdir(), "portage-adb-"));
+    const bin = join(home, relative);
+    await mkdir(dirname(bin), { recursive: true });
+    await Bun.write(bin, "#!/bin/sh\nexit 0\n");
+    chmodSync(bin, 0o755);
+    return { home, bin };
+  }
+
+  test("finds adb in an SDK folder when PATH holds nothing", async () => {
+    const { home, bin } = await sandbox(join("Android", "Sdk", "platform-tools", "adb"));
+
+    const found = await resolveAdbBinary("", { HOME: home, PATH: "/nonexistent-bin" });
+
+    expect(found.source).toBe("search");
+    expect(found.bin).toBe(bin);
+    // The search reports what it looked at, so a failure can name the folders.
+    expect(found.tried).toContain(bin);
+
+    await rm(home, { recursive: true, force: true });
+  });
+
+  test("a configured path wins over the search", async () => {
+    const { home, bin } = await sandbox(join("android", "platform-tools", "adb"));
+
+    const found = await resolveAdbBinary(bin, { HOME: home, PATH: "/nonexistent-bin" });
+
+    expect(found.source).toBe("config");
+    expect(found.bin).toBe(bin);
+
+    await rm(home, { recursive: true, force: true });
+  });
+
+  test("a stale configured path falls through instead of refusing", async () => {
+    const { home, bin } = await sandbox(join("Android", "Sdk", "platform-tools", "adb"));
+
+    const found = await resolveAdbBinary("/nope/adb", {
+      HOME: home,
+      PATH: "/nonexistent-bin",
+    });
+
+    expect(found.source).toBe("search");
+    expect(found.bin).toBe(bin);
+    expect(found.tried).toContain("/nope/adb");
+
+    await rm(home, { recursive: true, force: true });
+  });
+
+  test("reports none, with everything it tried, when adb is absent", async () => {
+    const home = await mkdtemp(join(tmpdir(), "portage-adb-empty-"));
+
+    const found = await resolveAdbBinary("", { HOME: home, PATH: "/nonexistent-bin" });
+
+    expect(found.bin).toBeNull();
+    expect(found.source).toBe("none");
+    expect(found.tried.length).toBeGreaterThan(0);
+
+    await rm(home, { recursive: true, force: true });
   });
 });
