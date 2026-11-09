@@ -1,0 +1,101 @@
+name: release-desktop
+
+# Builds the installable desktop app. Two paths:
+#   1. any pull request touching the app or the engine -> a downloadable artifact,
+#      so a build can be tested before anything is merged;
+#   2. a published release -> the .deb and .AppImage attached to that release.
+
+on:
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "bun.lock"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: release-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: bundle (deb, appimage)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.4"
+
+      # Tauri's Linux dependencies. webkit2gtk-4.1 is what Tauri v2 links
+      # against; the 4.0 package will not satisfy it.
+      - name: System libraries for Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            build-essential \
+            curl \
+            wget \
+            file
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - name: Install engine dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install desktop dependencies
+        working-directory: apps/desktop
+        run: bun install --frozen-lockfile
+
+      # Builds dist/portage, then copies it to src-tauri/binaries with the
+      # target triple Tauri appends at bundle time.
+      - name: Stage the engine sidecar
+        working-directory: apps/desktop
+        run: bun run sidecar
+
+      - name: Bundle the app
+        working-directory: apps/desktop
+        run: bun x tauri build --bundles deb,appimage
+
+      - name: Record what was built
+        run: |
+          {
+            echo "### Desktop bundle"
+            echo ""
+            find apps/desktop/src-tauri/target/release/bundle -type f \
+              \( -name '*.deb' -o -name '*.AppImage' \) \
+              -exec du -h {} \; | sort
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: portage-desktop-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/deb/*.deb
+            apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
+
+      - name: Attach to the release
+        if: ${{ github.event_name == 'release' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            apps/desktop/src-tauri/target/release/bundle/deb/*.deb
+            apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage

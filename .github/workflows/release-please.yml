@@ -1,0 +1,34 @@
+name: release-please
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # While the version is 0.x this config does what was asked for:
+      #   bump-minor-pre-major + bump-patch-for-minor-pre-major
+      # Every commit produces a PATCH, and only a breaking change (the `!`
+      # footer, or BREAKING CHANGE:) produces a MINOR. Neither can reach 1.0.0,
+      # so no release here is ever a major. See release-please-config.json.
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          # The built-in token is enough to open and update the release PR.
+          # Caveat: workflows started by GITHUB_TOKEN do not start other
+          # workflows, so the release PR shows no CI checks. If that matters,
+          # add a fine-grained PAT as RELEASE_PLEASE_TOKEN and pass it here.
+          token: ${{ github.token }}
+
+      - name: Summarise
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          echo "### Released ${{ steps.release.outputs.tag_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Version: \`${{ steps.release.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"

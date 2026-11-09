@@ -27,7 +27,10 @@ import { config, db, status } from "./commands/status.ts";
 import { dupes } from "./commands/dupes.ts";
 import { refusalReason } from "../tui/degrade.ts";
 
-const VERSION = "0.1.0";
+// One source of truth for the version: the root package.json, which
+// release-please bumps and which also feeds the desktop installer. A second
+// hand-written string here is how `--version` starts lying after a release.
+import { version as VERSION } from "../../package.json";
 
 const COMMANDS = [
   [

@@ -1,0 +1,76 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  engine:
+    name: engine (tests, types, frozen files)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Needed for the frozen-file check below to have a base to diff against.
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.4"
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Type check
+        run: bun run typecheck
+
+      - name: Test
+        run: bun run test
+
+      - name: Build the engine binary
+        run: bun run build
+
+      - name: The frozen engine files are untouched
+        run: |
+          if [ -n "$(git status --porcelain src/xfer src/index src/plan src/scan)" ]; then
+            echo "::error::The acceptance gate says these files never change. Revert the staged changes."
+            git status --porcelain src/xfer src/index src/plan src/scan
+            exit 1
+          fi
+          echo "Frozen files untouched."
+
+  desktop:
+    name: desktop (types, tests, AAA contrast)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.4"
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Type check
+        run: bun run check
+
+      - name: Test
+        run: bun run test
+
+      - name: AAA contrast
+        run: bun run a11y
+
+      - name: Build the SPA
+        run: bun run build
