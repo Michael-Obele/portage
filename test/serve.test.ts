@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as v from "valibot";
 
-import { DEFAULT_CONFIG } from "../src/config/schema.ts";
+import { DEFAULT_CONFIG, type DeviceConfig } from "../src/config/schema.ts";
 import type { ResolvedConfig } from "../src/config/load.ts";
 import { Adb, type DeviceInfo } from "../src/device/adb.ts";
 import type { DupeReport } from "../src/dedupe/types.ts";
@@ -108,11 +108,29 @@ function cmd(id: string, type: string, args: Record<string, unknown> = {}): stri
 function resolvedFor(
   destRoot: string | undefined,
   userPath = join(tmpdir(), "portage-serve-test-config.toml"),
+  devices: Record<string, DeviceConfig> = {},
 ): ResolvedConfig {
   return {
-    config: { ...DEFAULT_CONFIG, dest_root: destRoot ?? "" },
+    config: { ...DEFAULT_CONFIG, dest_root: destRoot ?? "", devices },
     sources: { userPath, drivePath: null },
     origins: {},
+  };
+}
+
+/**
+ * The device table `pull.start` needs in order to be allowed to start.
+ *
+ * Keyed the way the engine keys it — by `device.id`, not by serial — because a
+ * mismatched key reads as "no folders configured" and would test the refusal
+ * instead of the transfer.
+ */
+function configuredDevice(): Record<string, DeviceConfig> {
+  return {
+    [fakeDevice().id]: {
+      label: "",
+      roots: ["/sdcard/Movies"],
+      exclude: [],
+    },
   };
 }
 
@@ -369,7 +387,8 @@ describe("pull.start, once", () => {
           sink: c.sink,
           runs,
           adb: async () => fakeAdb(fakeDevice()),
-          resolveConfig: async () => resolvedFor("/tmp/portage-not-a-drive"),
+          resolveConfig: async () =>
+            resolvedFor("/tmp/portage-not-a-drive", undefined, configuredDevice()),
         },
       );
 
@@ -408,7 +427,8 @@ describe("pull.start, once", () => {
           sink: c.sink,
           runs,
           adb: async () => fakeAdb(fakeDevice()),
-          resolveConfig: async () => resolvedFor("/tmp/portage-not-a-drive"),
+          resolveConfig: async () =>
+            resolvedFor("/tmp/portage-not-a-drive", undefined, configuredDevice()),
         },
       );
       const all = c.frames();
@@ -428,6 +448,97 @@ describe("pull.start, once", () => {
     const answer = answerFor(frames, "n1");
     expect(answer.ok).toBe(false);
     expect(answer.error?.message).toContain("no transfer is running");
+  });
+});
+
+// --- a device with nothing configured ---------------------------------------
+
+describe("a device with no source folders", () => {
+  test("plan names the device and says nothing on it will be copied", async () => {
+    const drive = await makeTempDrive("portage-serve-roots-");
+    try {
+      const device = fakeDevice();
+      // An entry that exists and names NO root: the shape `config.set` writes
+      // when a phone has been added to the app but no folder picked yet.
+      const { frames } = await runServe([cmd("r1", "plan", {})], {
+        adb: async () => fakeAdb(device),
+        resolveConfig: async () =>
+          resolvedFor(drive.root, undefined, {
+            [device.id]: { label: "", roots: [], exclude: [] },
+          }),
+      });
+
+      const answer = answerFor(frames, "r1");
+      expect(answer.ok).toBe(true);
+      expect(answer.data).toMatchObject({ fileCount: 0, warnings: 1 });
+
+      // The warning lives in the FRAME, which is what the plan screen renders;
+      // the answer only counts it.
+      const plan = one(frames, "plan").plan;
+      expect(plan.warnings.length).toBe(1);
+      expect(plan.warnings[0]).toContain(device.model);
+      expect(plan.warnings[0]).toContain("no source folders are configured");
+      expect(plan.warnings[0]).toContain("Phone folders");
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
+  test("pull.start refuses up front, and starts no run", async () => {
+    const c = collector();
+    const frames = connect(c.sink);
+    let starts = 0;
+    const starter: PullStarter = async () => {
+      starts += 1;
+      return { summary: new Promise<EngineSummary>(() => {}) };
+    };
+    const runs = new RunController(frames, starter, 5_000);
+    try {
+      await runServe(
+        [cmd("r2", "pull.start", { mode: "keep" }), cmd("r3", "pull.pause")],
+        {
+          sink: c.sink,
+          runs,
+          adb: async () => fakeAdb(fakeDevice()),
+          // No `devices` entry at all — the state a fresh install is in.
+          resolveConfig: async () => resolvedFor("/tmp/portage-not-a-drive"),
+        },
+      );
+
+      const all = c.frames();
+      const refused = answerFor(all, "r2");
+      expect(refused.ok).toBe(false);
+      expect(refused.error?.code).toBe(2);
+      expect(refused.error?.message).toBe(
+        "no source folders are configured, so there is nothing to copy",
+      );
+      expect(refused.error?.fix).toBe(
+        "add at least one folder on the Home screen (Phone folders), then start the pull again",
+      );
+      // The refusal is before the controller, so there is nothing to pause.
+      expect(starts).toBe(0);
+      expect(runs.running).toBe(false);
+      expect(answerFor(all, "r3").error?.message).toContain(
+        "no transfer is running",
+      );
+    } finally {
+      runs.dispose();
+    }
+  });
+
+  test("plan with no devices configured at all is still a read that succeeds", async () => {
+    const drive = await makeTempDrive("portage-serve-plan-empty-");
+    try {
+      const { frames } = await runServe([cmd("r4", "plan", {})], {
+        adb: async () => fakeAdb(fakeDevice()),
+        resolveConfig: async () => resolvedFor(drive.root),
+      });
+      const answer = answerFor(frames, "r4");
+      expect(answer.ok).toBe(true);
+      expect(answer.data).toMatchObject({ fileCount: 0, bytesTotal: 0 });
+    } finally {
+      await drive.cleanup();
+    }
   });
 });
 

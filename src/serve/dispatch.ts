@@ -29,7 +29,7 @@ import {
 } from "../config/load.ts";
 import { CONFIG_KEYS, FIELD_SCHEMAS, STATE_DIR } from "../config/schema.ts";
 import { Journal } from "../index/journal.ts";
-import { buildPlan } from "../plan/plan.ts";
+import { buildPlan, type PlanResult } from "../plan/plan.ts";
 import { scanDevice, summarise, type Candidate } from "../scan/scan.ts";
 import { AdbTransport } from "../xfer/adb.ts";
 import { applyPurge, planPurge } from "../xfer/purge.ts";
@@ -206,31 +206,47 @@ async function requireAdb(ctx: ServeContext): Promise<Adb> {
   return adb;
 }
 
+interface GatherResult {
+  candidates: Candidate[];
+  /** One entry per device that was skipped for having no source folders. */
+  warnings: string[];
+}
+
 /**
  * Walk the selected devices and classify what comes back.
  *
  * Mirrors `gather()` in `src/cli/commands/scan.ts` and `src/tui/runner.ts` — the
  * same walk, the same rule that a device with no configured roots is skipped
  * rather than being an excuse to scan all of /sdcard.
+ *
+ * A skipped device is still skipped — but no longer SILENTLY. It comes back as
+ * a warning, because "copied nothing" reported as success is the one answer a
+ * pull must never give.
  */
 async function gatherCandidates(
   adb: Adb,
   resolved: ResolvedConfig,
   devices: DeviceInfo[],
-): Promise<Candidate[]> {
+): Promise<GatherResult> {
   const { config } = resolved;
-  const all: Candidate[] = [];
+  const candidates: Candidate[] = [];
+  const warnings: string[] = [];
   for (const device of devices) {
     const deviceConfig = config.devices[device.id];
     const roots = deviceConfig?.roots ?? [];
-    if (roots.length === 0) continue;
+    if (roots.length === 0) {
+      warnings.push(
+        `${device.model || device.serial}: no source folders are configured, so nothing on it will be copied. Add a folder on the Home screen (Phone folders).`,
+      );
+      continue;
+    }
     const found = await scanDevice(adb, device, roots, {
       quietSeconds: config.quiet_seconds,
       deviceConfig,
     });
-    all.push(...found);
+    candidates.push(...found);
   }
-  return all;
+  return { candidates, warnings };
 }
 
 /** `7d` / `36h` / `900`. Mirrors `src/cli/index.ts` (and the TUI's copy). */
@@ -522,8 +538,11 @@ const handlerTable = {
     const adb = await requireAdb(ctx);
     const resolved = await ctx.resolveConfig();
     const devices = await selectReady(adb, args.device);
-    const found = await gatherCandidates(adb, resolved, devices);
-    const candidates = applyWindow(found, args.show, args.since);
+    const gathered = await gatherCandidates(adb, resolved, devices);
+    const candidates = applyWindow(gathered.candidates, args.show, args.since);
+    // A scan frame has no warning field and its shape is the app's contract, so
+    // a skipped device goes to the log channel — the one place it is not lost.
+    for (const warning of gathered.warnings) ctx.logger.warn(warning);
     const counts = summarise(candidates);
     ctx.frames.scan({ candidates, counts });
     return {
@@ -539,16 +558,24 @@ const handlerTable = {
     const resolved = await ctx.resolveConfig();
     const destRoot = requireDestRoot(resolved.config);
     const devices = await selectReady(adb, args.device);
-    const candidates = await gatherCandidates(adb, resolved, devices);
+    const gathered = await gatherCandidates(adb, resolved, devices);
     const journal = Journal.open(destRoot, ctx.logger);
     try {
-      const plan = buildPlan(candidates, {
+      const planned = buildPlan(gathered.candidates, {
         destRoot,
         journal,
         spaceHeadroom: resolved.config.space_headroom,
         show: args.show,
         sinceSeconds: parseSince(args.since),
       });
+      // `buildPlan` only ever sees the candidates it was handed, so a device
+      // that contributed none is invisible to it. The gather warnings are the
+      // other half of the picture, and they ride in a COPY of the plan: the
+      // plan object is the frame, and the frame has to say why it is empty.
+      const plan: PlanResult = {
+        ...planned,
+        warnings: [...planned.warnings, ...gathered.warnings],
+      };
       ctx.frames.plan(plan);
       return {
         fileCount: plan.fileCount,
@@ -572,6 +599,21 @@ const handlerTable = {
   ) => {
     const adb = await requireAdb(ctx);
     const resolved = await ctx.resolveConfig();
+    // A config check — no scan, no journal, no run. A device with no source
+    // folders has nothing to copy, and a run that "succeeds" having copied
+    // nothing is worse than a refusal. ONE configured device is enough: a run
+    // that legitimately finds no NEW files must still start, because resume and
+    // journal reconciliation live inside it.
+    const devices = await selectReady(adb, args.device);
+    const anyRoots = devices.some(
+      (device) => (resolved.config.devices[device.id]?.roots ?? []).length > 0,
+    );
+    if (!anyRoots) {
+      throw preconditionError(
+        "no source folders are configured, so there is nothing to copy",
+        "add at least one folder on the Home screen (Phone folders), then start the pull again",
+      );
+    }
     const mode = args.mode ?? "keep";
     const run: PullRunArgs = {
       adb,
