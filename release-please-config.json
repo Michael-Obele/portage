@@ -9,10 +9,79 @@
 		".": {
 			"changelog-path": "CHANGELOG.md",
 			"extra-files": [
-				{ "type": "json", "path": "apps/desktop/package.json", "jsonpath": "$.version" },
-				{ "type": "json", "path": "apps/desktop/src-tauri/tauri.conf.json", "jsonpath": "$.version" },
-				{ "type": "toml", "path": "apps/desktop/src-tauri/Cargo.toml", "jsonpath": "$.package.version" }
+				{
+					"type": "json",
+					"path": "apps/desktop/package.json",
+					"jsonpath": "$.version"
+				},
+				{
+					"type": "json",
+					"path": "apps/desktop/src-tauri/tauri.conf.json",
+					"jsonpath": "$.version"
+				},
+				{
+					"type": "toml",
+					"path": "apps/desktop/src-tauri/Cargo.toml",
+					"jsonpath": "$.package.version"
+				}
 			]
 		}
-	}
+	},
+	"changelog-sections": [
+		{
+			"type": "feat",
+			"section": "Features"
+		},
+		{
+			"type": "fix",
+			"section": "Bug Fixes"
+		},
+		{
+			"type": "perf",
+			"section": "Performance"
+		},
+		{
+			"type": "revert",
+			"section": "Reverts"
+		},
+		{
+			"type": "deps",
+			"section": "Dependencies"
+		},
+		{
+			"type": "ci",
+			"section": "CI",
+			"hidden": false
+		},
+		{
+			"type": "build",
+			"section": "Build",
+			"hidden": false
+		},
+		{
+			"type": "docs",
+			"section": "Documentation",
+			"hidden": false
+		},
+		{
+			"type": "refactor",
+			"section": "Refactoring",
+			"hidden": false
+		},
+		{
+			"type": "test",
+			"section": "Tests",
+			"hidden": false
+		},
+		{
+			"type": "style",
+			"section": "Style",
+			"hidden": false
+		},
+		{
+			"type": "chore",
+			"section": "Chores",
+			"hidden": true
+		}
+	]
 }

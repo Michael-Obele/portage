@@ -17,9 +17,12 @@ set -euo pipefail
 from="${1:?usage: check-commits.sh <from-sha> <to-sha>}"
 to="${2:?usage: check-commits.sh <from-sha> <to-sha>}"
 
-# Types release-please bumps on. `feat` bumps (patch while pre-1.0), `fix`,
-# `perf`, `deps` and `revert` bump, and anything with `!` bumps a minor.
-allowed='^(feat|fix|perf|deps|revert)(\([a-z0-9._-]+\))?!?: .+'
+# Every standard Conventional Commit type is allowed. This used to list only the
+# types release-please bumped on, so a `ci:` or `test:` commit was rejected by
+# CI *and* ignored by release-please: a fix to CI could never be committed. The
+# two rules now agree -- those types count as releases too (changelog-sections
+# in release-please-config.json).
+allowed='^(feat|fix|perf|deps|revert|ci|build|docs|refactor|test|style|chore)(\([a-z0-9._-]+\))?!?: .+'
 
 failed=0
 count=0
@@ -40,8 +43,9 @@ while IFS= read -r line; do
 
 	if ! printf '%s' "$subject" | grep -Eq "$allowed"; then
 		echo "::error::$sha is not a releasable commit: \"$subject\""
-		echo "           Use feat, fix, perf, deps or revert, with an optional scope,"
-		echo "           and add ! before the colon for a breaking change."
+		echo "           Use a Conventional Commit type (feat, fix, ci, docs, chore,"
+		echo "           test, build, refactor, style, perf, deps, revert), optionally"
+		echo "           with a scope, and ! before the colon for a breaking change."
 		failed=1
 	fi
 
