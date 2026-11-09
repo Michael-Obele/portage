@@ -8,57 +8,117 @@ permissions:
   contents: write
   pull-requests: write
 
+# The order is the point. release-please bumps the versions and opens the
+# release pull request, the desktop bundle is built from the merged version,
+# and only then is anything tagged. v0.1.8 was tagged before its bundle ran,
+# the AppImage step failed, and the release was left with a tag and no
+# installers.
 jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      # The tag this run published, or empty when there was nothing to tag.
-      tag: ${{ steps.tag.outputs.tag }}
+      # The tag this run should publish, or empty when there is nothing to do.
+      tag: ${{ steps.version.outputs.tag }}
     steps:
-      # While the version is 0.x this does what was asked for:
+      # While the version is 0.x this config does what was asked for:
       #   bump-minor-pre-major + bump-patch-for-minor-pre-major
-      # Every commit bumps a PATCH and only a breaking change (a `!` in the type,
-      # or a BREAKING CHANGE footer) bumps a MINOR. Neither reaches 1.0.0, so no
-      # release here is ever a major. See release-please-config.json.
+      # Every commit produces a PATCH, and only a breaking change (the `!`
+      # footer, or BREAKING CHANGE:) produces a MINOR. Neither can reach 1.0.0,
+      # so no release here is ever a major. See release-please-config.json.
+      #
+      # skip-github-release is load-bearing: it stops the action creating the
+      # tag and the release, which it would otherwise do before any build
+      # exists. The publish job below creates both, after the installers are
+      # built.
       - uses: googleapis/release-please-action@v4
         id: release
         with:
+          # The built-in token is enough to open and update the release PR.
+          # Caveat: workflows started by GITHUB_TOKEN do not start other
+          # workflows, so the release PR shows no CI checks. If that matters,
+          # add a fine-grained PAT as RELEASE_PLEASE_TOKEN and pass it here.
           token: ${{ github.token }}
+          skip-github-release: true
 
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # release-please maintains the version, the changelog and the release PR.
-      # Its own tagging step matches a merged release PR by parsing the PR title,
-      # which manifest mode never writes a version into, so it aborts with
-      # "untagged merged release PRs outstanding" and no tag is ever created.
-      #
-      # Rather than depend on that internal, this closes the loop from the one
-      # thing that is always true after a release PR merges: package.json holds
-      # the new version. If there is no tag for it, tag it and publish the notes.
-      - name: Tag the merged version when it has no tag
-        id: tag
+      # A merged release pull request leaves package.json holding the new
+      # version, which is the one thing always true afterwards. If this commit
+      # already has its tag, the release is done and this run had only the
+      # maintainer work to do.
+      - name: Work out whether a release is owed
+        id: version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           version="$(python3 -c "import json;print(json.load(open('package.json'))['version'])")"
           tag="v${version}"
-          echo "package.json says $tag"
+          echo "package.json says ${tag}"
 
           if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
-            echo "${tag} already exists; nothing to tag."
+            echo "${tag} already exists; nothing to publish."
             echo "tag=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if gh release view "${tag}" >/dev/null 2>&1; then
-            echo "${tag} already has a release; nothing to do."
+            echo "${tag} already has a release; nothing to publish."
             echo "tag=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # The notes are the changelog section release-please just wrote.
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+  # Same run as the tag decision, because a release created with the built-in
+  # token does not fire the `release` event and a second workflow would never
+  # start.
+  bundle:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.tag != '' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release-desktop.yml
+
+  # `needs` is the whole gate: if the bundle failed, this job never runs and
+  # nothing is tagged.
+  publish:
+    needs: [release-please, bundle]
+    if: ${{ needs.release-please.outputs.tag != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download the installers
+        uses: actions/download-artifact@v4
+        with:
+          name: portage-desktop-${{ github.sha }}
+          path: installers
+
+      - name: Tag, release and attach the installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag }}
+        run: |
+          set -euo pipefail
+          find installers -type f -printf '%p  %s bytes\n'
+
+          # A tag with nothing attached is the failure this workflow exists to
+          # prevent, so refuse one outright.
+          deb="$(find installers -type f -name '*.deb' | head -1)"
+          appimage="$(find installers -type f -name '*.AppImage' | head -1)"
+          if [ -z "$deb" ] || [ -z "$appimage" ]; then
+            echo "the bundle produced no deb or no AppImage; nothing is tagged"
+            exit 1
+          fi
+
+          version="${TAG#v}"
           python3 - "$version" > /tmp/notes.md <<'PY'
           import re, sys
           version, = sys.argv[1:]
@@ -72,15 +132,22 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git tag -a "${tag}" -m "${tag}"
-          git push origin "${tag}"
-          gh release create "${tag}" --title "${tag}" --notes-file /tmp/notes.md
-          echo "Published ${tag}. The desktop bundle attaches to it next."
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          if ! git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            git tag -a "${TAG}" -m "${TAG}"
+            git push origin "${TAG}"
+          fi
+
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" "$deb" "$appimage" --clobber
+          else
+            gh release create "${TAG}" --title "${TAG}" --notes-file /tmp/notes.md \
+              "$deb" "$appimage"
+          fi
+          echo "Published ${TAG} with both installers." >> "$GITHUB_STEP_SUMMARY"
 
       # release-please treats a merged release PR still labelled `pending` as an
       # unreleased version, and refuses to propose the next one while it sees
-      # that. Our tag now exists, so move the label to match reality.
+      # that. The tag exists by now, so move the label to match reality.
       - name: Mark merged release pull requests as tagged
         env:
           GH_TOKEN: ${{ github.token }}
@@ -97,36 +164,3 @@ jobs:
               --add-label "autorelease: tagged" >/dev/null
             echo "Marked #${pr} as tagged."
           done
-
-      # The repo setting `delete_branch_on_merge` already handles this, and it is
-      # the thing to rely on. This step is the belt to that braces: a release
-      # branch that merged while the setting was off (or that was merged by an
-      # integration which ignores it) would otherwise sit in the branch list
-      # forever. Deleting a stray branch is safe because release-please recreates
-      # it the next time it needs a release PR.
-      - name: Delete stale release branches
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          for branch in $(git ls-remote --heads origin \
-            'refs/heads/release-please--*' | awk '{print $2}' | sed 's|refs/heads/||'); do
-            # Keep it if an open pull request still uses it.
-            if [ -n "$(gh pr list --state open --head "$branch" --json number --jq '.[].number')" ]; then
-              echo "${branch} still has an open pull request; keeping it."
-              continue
-            fi
-            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${branch}" >/dev/null
-            echo "Deleted merged branch ${branch}."
-          done
-
-  # Runs in the same workflow run, so it is not blocked by the rule that
-  # events caused by the built-in token do not start other workflows.
-  bundle:
-    needs: release-please
-    if: ${{ needs.release-please.outputs.tag != '' }}
-    permissions:
-      contents: write
-    uses: ./.github/workflows/release-desktop.yml
-    with:
-      tag: ${{ needs.release-please.outputs.tag }}
