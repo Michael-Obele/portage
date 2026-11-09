@@ -470,15 +470,31 @@ describe("a device with no source folders", () => {
 
       const answer = answerFor(frames, "r1");
       expect(answer.ok).toBe(true);
-      expect(answer.data).toMatchObject({ fileCount: 0, warnings: 1 });
+      expect(answer.data).toMatchObject({ fileCount: 0 });
 
       // The warning lives in the FRAME, which is what the plan screen renders;
       // the answer only counts it.
+      //
+      // Asserted by CONTENT, not by count. `buildPlan` also adds a warning when
+      // it cannot vouch for the destination's free space, and whether it can
+      // depends on the machine running the test (a container without
+      // `util-linux`, a nearly full temp filesystem). Pinning the count made
+      // this test pass here and fail on CI, which is a test bug, not a product
+      // one — and the message names the siblings so the next failure says why.
       const plan = one(frames, "plan").plan;
-      expect(plan.warnings.length).toBe(1);
-      expect(plan.warnings[0]).toContain(device.model);
-      expect(plan.warnings[0]).toContain("no source folders are configured");
-      expect(plan.warnings[0]).toContain("Phone folders");
+      const rootsWarnings = plan.warnings.filter((warning) =>
+        warning.includes("no source folders are configured"),
+      );
+      const others = plan.warnings.filter(
+        (warning) => !warning.includes("no source folders are configured"),
+      );
+      expect(
+        rootsWarnings.length,
+        `the plan also warned: ${others.join(" | ")}`,
+      ).toBe(1);
+      const rootsWarning = rootsWarnings[0] ?? "";
+      expect(rootsWarning).toContain(device.model);
+      expect(rootsWarning).toContain("Phone folders");
     } finally {
       await drive.cleanup();
     }
