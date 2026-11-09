@@ -12,6 +12,7 @@
  */
 import {
 	PROTOCOL_VERSION,
+	type AnswerFor,
 	type ArgsFor,
 	type Candidate,
 	type CommandType,
@@ -25,6 +26,7 @@ import {
 	type PortageConfig,
 	type PurgePlanFrame,
 	type StateFrame,
+	type Verdict,
 	type Volume,
 } from "./protocol.ts";
 import {
@@ -94,6 +96,29 @@ const DRIVE = "/media/node/2TB";
 const DEST_ROOT = `${DRIVE}/Videos/$Anime`;
 const PHONE_ROOT = "/sdcard/Download/Anime";
 const CONNECT_AT = Date.now();
+
+/** Where the fixture says the config lives, and which layer won per key. */
+const MOCK_ORIGINS: Record<string, string> = {
+	jobs: "drive config",
+	dest_root: "drive config",
+};
+const MOCK_SOURCES = {
+	userPath: "/home/node/.config/portage/config.toml",
+	drivePath: `${DRIVE}/.portage/config.toml`,
+};
+
+/** Every verdict at zero, so a `scan` answer has the engine's shape. */
+function emptyCounts(): Record<Verdict, number> {
+	return {
+		new: 0,
+		"already-on-drive": 0,
+		"too-recent": 0,
+		excluded: 0,
+		"in-flight": 0,
+		"duplicate-candidate": 0,
+		empty: 0,
+	};
+}
 
 export function mockConfig(): PortageConfig {
 	return {
@@ -227,6 +252,8 @@ export interface RunFixtureOptions {
 	/** Index of the file that fails, and the engine's reason for it. */
 	failIndex?: number;
 	failReason?: string;
+	/** A paused run keeps sending frames, frozen where it stopped. */
+	paused?: boolean;
 }
 
 /** One deterministic snapshot of the run at `tick`. */
@@ -286,7 +313,7 @@ export function runStateFrame(tick: number, opts: RunFixtureOptions = {}): State
 		samples: tick,
 		elapsedMs,
 		jobs: 3,
-		paused: false,
+		paused: opts.paused ?? false,
 	};
 
 	return {
@@ -589,8 +616,17 @@ class MockEngine implements EnginePort {
 	private handlers: EngineHandlers | null = null;
 	private timers: MockTimers | null = null;
 	private tick = 0;
+	/** A paused run stops between files; the fixture freezes its tick too. */
+	private paused = false;
+	/** What `config.set` has written, persisted the way the engine's file is. */
+	private configOverride: Partial<PortageConfig> = {};
 
 	constructor(private readonly scenario: MockScenario) {}
+
+	/** The fixture config plus anything `config.set` has changed since connect. */
+	private currentConfig(): PortageConfig {
+		return { ...mockConfig(), ...this.configOverride };
+	}
 
 	async connect(handlers: EngineHandlers): Promise<EngineSubscriptions> {
 		this.handlers = handlers;
@@ -607,13 +643,13 @@ class MockEngine implements EnginePort {
 		};
 	}
 
-	async send<T extends CommandType, R = unknown>(
+	async send<T extends CommandType>(
 		type: T,
-		_args?: ArgsFor<T>,
+		args?: ArgsFor<T>,
 		_timeoutMs?: number,
-	): Promise<R> {
+	): Promise<AnswerFor<T>> {
 		await Promise.resolve();
-		return this.answerFor(type) as R;
+		return this.answerFor(type, args as Record<string, unknown> | undefined) as AnswerFor<T>;
 	}
 
 	async status(): Promise<EngineStatus> {
@@ -640,43 +676,213 @@ class MockEngine implements EnginePort {
 		this.handlers?.onFrame(value);
 	}
 
-	private answerFor(type: string): unknown {
+	/**
+	 * The answer for a command, and the payload frame the engine sends first.
+	 *
+	 * Both halves are the engine's own contract: `dispatch.ts` writes the frame,
+	 * THEN answers with a tally. The fixture used to answer a command with the
+	 * frame's payload (so `config.get` returned `{ config, sources }`), which made
+	 * the app look correct here and crash against the real engine with
+	 * `undefined is not an object (evaluating 'sources.userPath')`. Answers and
+	 * frames are now separate, exactly as on the wire.
+	 */
+	private answerFor(type: CommandType, args?: Record<string, unknown>): unknown {
 		switch (type) {
-			case "volumes.list":
-				return mockVolumes();
-			case "devices.list":
-				return mockDevices();
-			case "config.get":
+			case "volumes.list": {
+				const volumes = mockVolumes();
+				this.emit(frame("volumes", { volumes }));
+				return { count: volumes.length };
+			}
+			case "devices.list": {
+				const devices = mockDevices();
+				this.emit(frame("devices", { devices }));
+				return { count: devices.length, adbFound: true };
+			}
+			case "config.get": {
+				const config = this.currentConfig();
+				this.emit(frame("config", { config, origins: MOCK_ORIGINS, sources: MOCK_SOURCES }));
+				const key = typeof args?.key === "string" ? args.key : undefined;
+				if (key === undefined) return { keys: Object.keys(config).length };
 				return {
-					config: mockConfig(),
-					origins: { jobs: "drive config", dest_root: "drive config" },
-					sources: { userPath: "/home/node/.config/portage/config.toml", drivePath: `${DRIVE}/.portage/config.toml` },
+					key,
+					value: (config as unknown as Record<string, unknown>)[key],
+					origin: MOCK_ORIGINS[key] ?? "default",
 				};
-			case "scan":
-				return { candidates: [], counts: {} };
-			case "plan":
-				return { plan: mockPlan() };
-			case "dupes.scan":
-				return mockDupes();
-			case "purge.plan":
-				return mockPurgePlan();
-			case "doctor":
-				return mockDoctor();
-			case "status.get":
-				return { archive: { files: 1_402, bytes: 1_402_000_000_000 }, counts: {}, pending: [], runs: [], recent: [] };
+			}
+			case "config.set": {
+				const key = String(args?.key ?? "");
+				const value = args?.value;
+				this.configOverride = { ...this.configOverride, [key]: value };
+				const config = this.currentConfig();
+				this.emit(
+					frame("notice", {
+						level: "info",
+						message: `${key} = ${JSON.stringify(value)} written to ${MOCK_SOURCES.userPath}`,
+					}),
+				);
+				this.emit(frame("config", { config, origins: MOCK_ORIGINS, sources: MOCK_SOURCES }));
+				return { key, value, path: MOCK_SOURCES.userPath };
+			}
+			case "scan": {
+				const counts = emptyCounts();
+				this.emit(frame("scan", { candidates: [], counts }));
+				return { devices: 1, total: 0, counts };
+			}
+			case "plan": {
+				const plan = mockPlan();
+				this.emit(frame("plan", { plan }));
+				return {
+					fileCount: plan.fileCount,
+					bytesTotal: plan.bytesTotal,
+					bytesSkipped: plan.bytesSkipped,
+					skipped: plan.skipped.length,
+					spaceOk: plan.space.ok,
+					warnings: plan.warnings.length,
+					jobsAtPullTime: typeof args?.jobs === "number" ? args.jobs : null,
+				};
+			}
+			case "dupes.scan": {
+				const dupes = mockDupes();
+				this.emit(dupes);
+				return {
+					scanId: dupes.scanId,
+					groups: dupes.groups.length,
+					keys: dupes.groups.reduce((total, group) => total + group.members.length, 0),
+					reclaimableBytes: dupes.reclaimableBytes,
+					trashDir: `${DEST_ROOT}/.portage/trash/2026-11-08`,
+				};
+			}
+			case "purge.plan": {
+				const purge = mockPurgePlan();
+				this.emit(purge);
+				return {
+					planId: purge.planId,
+					eligible: purge.eligible.length,
+					refused: purge.refused.length,
+					bytesReclaimed: purge.bytesReclaimed,
+				};
+			}
+			case "doctor": {
+				const doctor = mockDoctor();
+				this.emit(doctor);
+				return {
+					checks: doctor.checks.length,
+					failed: doctor.checks.filter((check) => check.status === "fail").length,
+					exitCode: 1,
+				};
+			}
+			case "status.get": {
+				const status = {
+					archive: { files: 1_402, bytes: 1_402_000_000_000 },
+					counts: {},
+					pending: [],
+					runs: [],
+					recent: [],
+				};
+				this.emit(frame("status", status));
+				return { destRoot: DEST_ROOT, runs: 0, pending: 0, recent: 0 };
+			}
+			case "db.export":
+				return { path: String(args?.path ?? "") };
+			case "browse": {
+				const path = String(args?.path ?? PHONE_ROOT);
+				this.emit(
+					frame("browse", { path, depth: 1, entries: [], total: 0, truncated: false }),
+				);
+				return { device: DEVICE_ID, path, entries: 0, total: 0, truncated: false };
+			}
 			case "pull.start":
 				this.startRun();
-				return { ok: true, runId: "run-2026-11-08-01" };
+				return {
+					runId: "run-2026-11-08-01",
+					mode: args?.mode === "delete-after-verify" ? "delete-after-verify" : "keep",
+					note: "pause and stop take effect between files, never mid-file",
+				};
 			case "pull.pause":
-				return { ok: true, effect: "pausing between files" };
+				this.paused = true;
+				return { paused: true, effect: "pausing between files" };
 			case "pull.resume":
-				return { ok: true, effect: "resumed" };
-			case "pull.stop":
-				return { ok: true, effect: "finishing the file in flight, then stopping" };
+				this.paused = false;
+				return { paused: false, effect: "resumed" };
+			case "pull.stop": {
+				// The engine stops between files and ends the run with a summary
+				// frame. A fixture that kept ticking would be a run that refuses to
+				// stop — and Stop is the one control that must never look ignored.
+				this.timers?.stop();
+				this.timers = null;
+				const state = runStateFrame(this.tick, this.runOptions());
+				const done = state.rows.filter((row) => row.state === "done");
+				const failed = state.rows.filter((row) => row.state === "failed");
+				this.emit(state);
+				this.emit(
+					frame("run", {
+						summary: {
+							runId: 1,
+							transferred: done.length,
+							verified: done.length,
+							deleted: 0,
+							kept: done.length,
+							failed: failed.length,
+							skipped: 0,
+							bytesMoved: state.overall.bytesDone,
+							durationMs: state.overall.elapsedMs,
+							rateBps: state.overall.avgBps,
+							failures: failed.map((row) => ({
+								srcPath: row.srcPath,
+								reason: row.reason,
+							})),
+						},
+					}),
+				);
+				return { effect: "finishing the file in flight, then stopping" };
+			}
+			case "dupes.apply": {
+				// A fixture holds no files, so the only honest answer is the confirm
+				// sheet the engine sends when `confirm` does not match the scan id.
+				const scanId = String(args?.scanId ?? "");
+				const keys = Array.isArray(args?.keys) ? args.keys : [];
+				const trashDir = `${DEST_ROOT}/.portage/trash/2026-11-08`;
+				if (args?.confirm !== scanId) {
+					this.emit(
+						frame("needsConfirm", {
+							actionId: scanId,
+							action: "dupes.apply",
+							paths: [],
+							count: keys.length,
+							bytes: 0,
+							trashDir,
+						}),
+					);
+					return {
+						needsConfirm: true,
+						actionId: scanId,
+						count: keys.length,
+						bytes: 0,
+						trashDir,
+					};
+				}
+				return { moved: 0, refused: 0, bytesMoved: 0, trashDir };
+			}
+			case "purge.apply": {
+				const planId = String(args?.planId ?? "");
+				const keys = Array.isArray(args?.keys) ? args.keys : [];
+				if (args?.confirm !== planId) {
+					this.emit(
+						frame("needsConfirm", {
+							actionId: planId,
+							action: "purge.apply",
+							paths: [],
+							count: keys.length,
+							bytes: 0,
+							trashDir: null,
+						}),
+					);
+					return { needsConfirm: true, actionId: planId, count: keys.length, bytes: 0 };
+				}
+				return { deleted: 0, failed: 0 };
+			}
 			case "shutdown":
-				return {};
-			default:
-				return {};
+				return { stopping: true };
 		}
 	}
 
@@ -702,9 +908,9 @@ class MockEngine implements EnginePort {
 
 		this.emit(
 			frame("config", {
-				config: mockConfig(),
-				origins: { jobs: "drive config" },
-				sources: { userPath: "/home/node/.config/portage/config.toml", drivePath: `${DRIVE}/.portage/config.toml` },
+				config: this.currentConfig(),
+				origins: MOCK_ORIGINS,
+				sources: MOCK_SOURCES,
 			}),
 		);
 		this.emit(frame("devices", { devices: mockDevices() }));
@@ -732,18 +938,23 @@ class MockEngine implements EnginePort {
 		}
 	}
 
+	private runOptions(): RunFixtureOptions {
+		return this.scenario === "run-failed"
+			? { failIndex: 5, failReason: "device offline mid-file" }
+			: { stallIndex: 3 };
+	}
+
 	private startRun(): void {
 		this.timers?.stop();
 		this.tick = 0;
+		this.paused = false;
 
-		const opts: RunFixtureOptions =
-			this.scenario === "run-failed"
-				? { failIndex: 5, failReason: "device offline mid-file" }
-				: { stallIndex: 3 };
+		const opts = this.runOptions();
 
 		const push = (): void => {
-			this.emit(runStateFrame(this.tick, opts));
-			this.tick += 1;
+			this.emit(runStateFrame(this.tick, { ...opts, paused: this.paused }));
+			// A paused run holds where it stopped rather than pretending to work.
+			if (!this.paused) this.tick += 1;
 		};
 		push();
 

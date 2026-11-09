@@ -268,26 +268,6 @@ export function rowFrom(file: PlannedFile, willTransfer: boolean): PlanRow {
 }
 
 /**
- * Pick the whole `PlanResult` out of whatever a `plan` request answered with.
- *
- * The engine emits the plan as a `plan` FRAME and answers the request with a
- * short tally, while the fixture answers with the plan itself. Both shapes are
- * accepted so a screen never has to care which engine is on the other end — and
- * when neither matches, this returns `null` and the screen keeps waiting for the
- * frame rather than rendering a half-built plan.
- */
-export function planFromAnswer(data: unknown): PlanResult | null {
-	if (typeof data !== "object" || data === null) return null;
-	const record = data as Record<string, unknown>;
-	const candidate = "plan" in record ? record["plan"] : record;
-	if (typeof candidate !== "object" || candidate === null) return null;
-	const plan = candidate as Record<string, unknown>;
-	if (!Array.isArray(plan["toTransfer"]) || !Array.isArray(plan["skipped"])) return null;
-	if (typeof plan["destRoot"] !== "string") return null;
-	return candidate as PlanResult;
-}
-
-/**
  * One ordered list: what would move, then what would not.
  *
  * A single table, because the two halves are one answer — "here is the plan" —

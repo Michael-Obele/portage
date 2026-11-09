@@ -35,7 +35,6 @@
 		intentSentence,
 		parseIntent,
 		planArgs,
-		planFromAnswer,
 		pullStartArgs,
 		type PullIntent
 	} from '../../lib/components/app/plan-filters.ts';
@@ -120,19 +119,16 @@
 		startFailure = null;
 		nothingToMove = false;
 		try {
-			const data = await app.port.send<'plan', unknown>(
-				'plan',
-				planArgs(filtersFromIntent(wanted))
-			);
-			const plan = planFromAnswer(data);
-			if (plan !== null) {
-				startingNames = plan.toTransfer.map((file) => file.candidate.srcPath);
-				if (plan.toTransfer.length === 0) {
-					nothingToMove = true;
-					return;
-				}
+			startingNames = [];
+			await app.port.send('plan', planArgs(filtersFromIntent(wanted)));
+			// The `plan` frame landed while that answer was in flight — the engine
+			// always writes it first — and the observer below filled this in, so an
+			// empty list is a real answer: there is nothing to copy.
+			if (startingNames.length === 0) {
+				nothingToMove = true;
+				return;
 			}
-			await app.port.send<'pull.start', unknown>('pull.start', pullStartArgs(wanted));
+			await app.port.send('pull.start', pullStartArgs(wanted));
 			// The counters are per-run: carrying them across would make the proof
 			// strip claim work this run has not done.
 			run.beginRun();

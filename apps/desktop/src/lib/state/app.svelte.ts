@@ -441,20 +441,20 @@ class AppState {
 		await this.setConfig("devices", next);
 	}
 
+	/**
+	 * Ask the engine to re-announce its config.
+	 *
+	 * `config.get` ANSWERS with a tally — `{ keys }` — and sends the config
+	 * itself in a `config` FRAME, which the engine writes first. The frame has
+	 * already reached `applyFrame` by the time the answer settles this promise,
+	 * so the state is current before this returns. Treating the answer as if it
+	 * were the frame is what threw
+	 * `undefined is not an object (evaluating 'sources.userPath')` on every
+	 * destination change. Same contract as `loadVolumes` and `loadDevices`.
+	 */
 	async loadConfig(): Promise<PortageConfig | null> {
-		const payload = await this.#port.send<
-			"config.get",
-			{
-				config: PortageConfig;
-				origins: Record<string, string>;
-				sources: { userPath: string; drivePath: string | null };
-			}
-		>("config.get");
-		this.config = payload.config;
-		this.origins = payload.origins;
-		this.userConfigPath = payload.sources.userPath;
-		this.driveConfigPath = payload.sources.drivePath;
-		return payload.config;
+		await this.#port.send("config.get");
+		return this.config;
 	}
 
 	/** Set one key. The engine owns the file; the app never writes it. */

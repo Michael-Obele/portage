@@ -362,9 +362,11 @@ const handlerTable = {
     ctx: ServeContext,
   ) => {
     const resolved = await ctx.resolveConfig();
-    if (args.key) {
-      const known = (resolved.config as Record<string, unknown>)[args.key];
-      if (known === undefined) {
+    if (args.key !== undefined) {
+      // `Object.hasOwn`, not a lookup: `__proto__` and `toString` are on every
+      // object, so a lookup answers for keys the config does not have — and an
+      // answer with no value in it is exactly what the wire must never carry.
+      if (!Object.hasOwn(resolved.config, args.key)) {
         throw usageError(
           `unknown config key: ${args.key}`,
           `known keys: ${CONFIG_KEYS.join(", ")}`,

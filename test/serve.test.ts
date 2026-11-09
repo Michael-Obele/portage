@@ -1082,3 +1082,53 @@ afterEach(() => {
   view.devices = [];
   view.notice = null;
 });
+
+// --- the process itself ------------------------------------------------------
+
+describe("the serve process", () => {
+  /**
+   * `bye` has to mean the process ENDS.
+   *
+   * `shutdown` stops the loop without waiting for EOF, and a caller usually
+   * leaves stdin open. The loop returned 0 while its stdin reader was still
+   * locked, so the runtime kept the event loop alive and a `bye`d engine sat
+   * there forever — a clean exit that never happened. The shell kills the child
+   * on its way out, which is exactly why this stayed invisible.
+   */
+  test("exits 0 after shutdown with stdin still open", async () => {
+    const home = await mkdtemp(join(tmpdir(), "portage-serve-exit-"));
+    const child = Bun.spawn({
+      cmd: ["bun", "run", "src/cli/index.ts", "serve"],
+      cwd: join(import.meta.dir, ".."),
+      env: { ...Bun.env, HOME: home },
+      stdin: "pipe",
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+    const stdout = child.stdout as ReadableStream<Uint8Array>;
+    const decoder = new TextDecoder();
+    let written = "";
+    const reading = (async () => {
+      for await (const chunk of stdout) written += decoder.decode(chunk);
+    })();
+
+    const sink = child.stdin as unknown as {
+      write(chunk: string): void;
+      flush?(): Promise<number>;
+    };
+    sink.write(`${cmd("bye1", "shutdown")}\n`);
+    await sink.flush?.();
+
+    const code = await Promise.race([
+      child.exited,
+      Bun.sleep(15_000).then(() => "timeout" as const),
+    ]);
+    if (code === "timeout") child.kill();
+    await reading.catch(() => undefined);
+    await rm(home, { recursive: true, force: true });
+
+    expect(written).toContain('"type":"bye"');
+    expect(code).toBe(0);
+  }, 30_000);
+});

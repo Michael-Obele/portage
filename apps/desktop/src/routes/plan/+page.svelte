@@ -29,7 +29,6 @@
 		intentFrom,
 		intentToSearch,
 		planArgs,
-		planFromAnswer,
 		planRows,
 		type PlanFilters as Filters,
 		type PlanRow,
@@ -139,12 +138,11 @@
 		else refetching = true;
 		failure = null;
 		try {
-			const data = await app.port.send<'plan', unknown>('plan', planArgs(filters));
-			const inline = planFromAnswer(data);
-			// The real engine emits the plan as its own frame and answers with a
-			// tally; the fixture answers with the plan itself. Either way, one
-			// of the two lands here.
-			if (inline !== null) setPlan(inline);
+			// The plan itself arrives as the `plan` FRAME — the engine writes it
+			// before it answers — and the observer below stores it. The answer is
+			// a tally, so reading the plan out of it is exactly the mistake that
+			// crashed the destination picker.
+			await app.port.send('plan', planArgs(filters));
 		} catch (error) {
 			failure = bandFrom(error);
 		} finally {

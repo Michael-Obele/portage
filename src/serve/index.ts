@@ -55,22 +55,29 @@ function stripCR(line: string): string {
 async function* stdinLines(): AsyncGenerator<string> {
   const decoder = new TextDecoder();
   const reader = Bun.stdin.stream().getReader();
-  let buffer = "";
+  try {
+    let buffer = "";
 
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let index = buffer.indexOf("\n");
-    while (index >= 0) {
-      yield stripCR(buffer.slice(0, index));
-      buffer = buffer.slice(index + 1);
-      index = buffer.indexOf("\n");
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let index = buffer.indexOf("\n");
+      while (index >= 0) {
+        yield stripCR(buffer.slice(0, index));
+        buffer = buffer.slice(index + 1);
+        index = buffer.indexOf("\n");
+      }
     }
-  }
 
-  buffer += decoder.decode();
-  if (buffer.length > 0) yield stripCR(buffer);
+    buffer += decoder.decode();
+    if (buffer.length > 0) yield stripCR(buffer);
+  } finally {
+    // `shutdown` stops the loop without waiting for EOF, and a stdin stream
+    // that is still open keeps the event loop alive: the process wrote `bye`,
+    // returned 0, and then never ended. Cancelling the read is what ends it.
+    await reader.cancel().catch(() => undefined);
+  }
 }
 
 /** Build the context and the frame writers, then announce readiness. */

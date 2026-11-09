@@ -350,6 +350,77 @@ export interface CommandArgs {
 export type CommandType = keyof CommandArgs;
 export type ArgsFor<T extends CommandType> = CommandArgs[T];
 
+/**
+ * The keys each command's `answer.data` carries — the app's half of the wire
+ * contract, and the ONLY place an answer's shape is written down.
+ *
+ * A command may answer with more than one shape (a refusal and an action), so
+ * each entry is a list of key sets. `test/serve-contract.test.ts` runs the real
+ * engine and fails when an answer's keys are not one of these, which is what
+ * stops the app believing in a field the engine never sends. That is exactly
+ * what broke a destination change: `config.get` answers with a key COUNT, and
+ * the config itself travels in the `config` frame, so reading
+ * `answer.sources.userPath` threw `undefined is not an object`.
+ */
+export const ANSWER_KEYS = {
+	"volumes.list": [["count"]],
+	"devices.list": [["count", "adbFound"]],
+	"config.get": [["keys"], ["key", "value", "origin"]],
+	"config.set": [["key", "value", "path"]],
+	"status.get": [["destRoot", "runs", "pending", "recent"]],
+	"db.export": [["path"]],
+	browse: [["device", "path", "entries", "total", "truncated"]],
+	scan: [["devices", "total", "counts"]],
+	plan: [
+		[
+			"fileCount",
+			"bytesTotal",
+			"bytesSkipped",
+			"skipped",
+			"spaceOk",
+			"warnings",
+			"jobsAtPullTime",
+		],
+	],
+	"pull.start": [["runId", "mode", "note"]],
+	"pull.pause": [["paused", "effect"]],
+	"pull.resume": [["paused", "effect"]],
+	"pull.stop": [["effect"]],
+	"dupes.scan": [["scanId", "groups", "keys", "reclaimableBytes", "trashDir"]],
+	"dupes.apply": [
+		["needsConfirm", "actionId", "count", "bytes", "trashDir"],
+		["moved", "refused", "bytesMoved", "trashDir"],
+	],
+	"purge.plan": [["planId", "eligible", "refused", "bytesReclaimed"]],
+	"purge.apply": [
+		["needsConfirm", "actionId", "count", "bytes"],
+		["deleted", "failed"],
+	],
+	doctor: [
+		["checks", "failed", "exitCode"],
+		["checks", "exitCode", "unreadable"],
+	],
+	shutdown: [["stopping"]],
+} as const satisfies Record<CommandType, readonly (readonly string[])[]>;
+
+/** One answer object a command can produce, with every field typed `unknown`. */
+export type AnswerShape<Keys extends readonly string[]> = {
+	[K in Keys[number]]: unknown;
+};
+
+/** Distributes over a command's declared shapes, so each stays separate. */
+type OneOf<Keys> = Keys extends readonly string[] ? AnswerShape<Keys> : never;
+
+/**
+ * What `send` resolves with for a command.
+ *
+ * A union of the command's acceptable shapes, so a field that NO shape carries
+ * is a type error at the call site rather than a runtime crash on the wire.
+ */
+export type AnswerFor<T extends CommandType> = OneOf<
+	(typeof ANSWER_KEYS)[T][number]
+>;
+
 /** One envelope per command. An unknown key is a rejected command, not a no-op. */
 export interface Envelope<T extends CommandType = CommandType> {
 	v: typeof PROTOCOL_VERSION;

@@ -17,6 +17,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 
 import {
 	PROTOCOL_VERSION,
+	type AnswerFor,
 	type AnswerFrame,
 	type ArgsFor,
 	type CommandType,
@@ -103,11 +104,11 @@ export interface PickFolderOptions {
 export interface EnginePort {
 	readonly kind: "engine" | "mock";
 	connect(handlers: EngineHandlers): Promise<EngineSubscriptions>;
-	send<T extends CommandType, R = unknown>(
+	send<T extends CommandType>(
 		type: T,
 		args?: ArgsFor<T>,
 		timeoutMs?: number,
-	): Promise<R>;
+	): Promise<AnswerFor<T>>;
 	status(): Promise<EngineStatus>;
 	restart(): Promise<void>;
 	pickFolder(options?: PickFolderOptions): Promise<string | null>;
@@ -206,16 +207,16 @@ class TauriEngine implements EnginePort {
 		return subscriptions;
 	}
 
-	async send<T extends CommandType, R = unknown>(
+	async send<T extends CommandType>(
 		type: T,
 		args?: ArgsFor<T>,
 		timeoutMs?: number,
-	): Promise<R> {
+	): Promise<AnswerFor<T>> {
 		const id = `req-${++this.counter}`;
 		const ms = timeoutMs ?? defaultTimeout(type);
 		const seconds = Math.round(ms / 1000);
 
-		const answer = new Promise<R>((resolve, reject) => {
+		const answer = new Promise<AnswerFor<T>>((resolve, reject) => {
 			const timer = setTimeout(() => {
 				// Delete FIRST: a late answer must not resolve a request the
 				// person has already been told failed.
@@ -231,7 +232,7 @@ class TauriEngine implements EnginePort {
 				}
 			}, ms);
 			this.pending.set(id, {
-				resolve: (value) => resolve(value as R),
+				resolve: (value) => resolve(value as AnswerFor<T>),
 				reject,
 				timer,
 			});
