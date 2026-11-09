@@ -61,8 +61,8 @@
 			{
 				label: 'Already on the drive',
 				value: formatBytes(plan.bytesSkipped),
-				tone: 'muted' as const,
-			},
+				tone: 'muted' as const
+			}
 		];
 	});
 
