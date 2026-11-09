@@ -11,6 +11,9 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      # The tag this run published, or empty when there was nothing to tag.
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       # While the version is 0.x this does what was asked for:
       #   bump-minor-pre-major + bump-patch-for-minor-pre-major
@@ -35,6 +38,7 @@ jobs:
       # thing that is always true after a release PR merges: package.json holds
       # the new version. If there is no tag for it, tag it and publish the notes.
       - name: Tag the merged version when it has no tag
+        id: tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -45,10 +49,12 @@ jobs:
 
           if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
             echo "${tag} already exists; nothing to tag."
+            echo "tag=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if gh release view "${tag}" >/dev/null 2>&1; then
             echo "${tag} already has a release; nothing to do."
+            echo "tag=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -70,3 +76,15 @@ jobs:
           git push origin "${tag}"
           gh release create "${tag}" --title "${tag}" --notes-file /tmp/notes.md
           echo "Published ${tag}. The desktop bundle attaches to it next."
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+  # Runs in the same workflow run, so it is not blocked by the rule that
+  # events caused by the built-in token do not start other workflows.
+  bundle:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.tag != '' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release-desktop.yml
+    with:
+      tag: ${{ needs.release-please.outputs.tag }}

@@ -5,6 +5,10 @@ name: release-desktop
 #      so a build can be tested before anything is merged;
 #   2. a published release -> the .deb and .AppImage attached to that release.
 
+# Called by release-please.yml in the same run, because a release created with
+# the built-in token does not trigger the `release` event and a second workflow
+# would never start. Also runs on a pull request, so a build can be tried before
+# anything is merged.
 on:
   pull_request:
     paths:
@@ -13,9 +17,14 @@ on:
       - "scripts/**"
       - "package.json"
       - "bun.lock"
-  release:
-    types: [published]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag to attach the installers to. Empty means do not attach.
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: release-desktop-${{ github.ref }}
@@ -93,9 +102,10 @@ jobs:
             apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
 
       - name: Attach to the release
-        if: ${{ github.event_name == 'release' }}
+        if: ${{ inputs.tag != '' }}
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag }}
           files: |
             apps/desktop/src-tauri/target/release/bundle/deb/*.deb
             apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
