@@ -4,6 +4,19 @@ on:
   push:
     branches: [master]
   pull_request:
+    # A generated release pull request changes only the version strings and the
+    # changelog. release-please opens it with GITHUB_TOKEN, and GitHub does not
+    # run workflows for those, so a run would sit in `action_required` forever.
+    # Ignoring those paths means no run is created at all. A normal pull request
+    # still runs, because it always touches something outside this list, and the
+    # push to master always runs.
+    paths-ignore:
+      - "CHANGELOG.md"
+      - ".release-please-manifest.json"
+      - "package.json"
+      - "apps/desktop/package.json"
+      - "apps/desktop/src-tauri/tauri.conf.json"
+      - "apps/desktop/src-tauri/Cargo.toml"
 
 concurrency:
   group: ci-${{ github.ref }}
