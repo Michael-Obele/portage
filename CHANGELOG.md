@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.5](https://github.com/Michael-Obele/portage/compare/v0.1.4...v0.1.5) (2026-11-09)
+
+
+### CI
+
+* delete merged branches automatically ([c1963a7](https://github.com/Michael-Obele/portage/commit/c1963a7a42d0f0661b549827a4e3f55d093d5f79))
+* let maintenance commits release and pass the guard ([7c5dd87](https://github.com/Michael-Obele/portage/commit/7c5dd876917590ba536b7d250eedb17c9be56cd2))
+
 ## [0.1.4](https://github.com/Michael-Obele/portage/compare/v0.1.3...v0.1.4) (2026-11-09)
 
 
