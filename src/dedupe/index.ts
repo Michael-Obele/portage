@@ -279,6 +279,11 @@ export async function applySelection(
   opts: ApplyOptions,
 ): Promise<ApplyResult> {
   const result: ApplyResult = { moved: [], refused: [], bytesMoved: 0 };
+  // Materialised once: the loop below consumes it, and the last-copy check
+  // asks whether a path is in the selection. A generator would answer "no" to
+  // every question after the first file, which turns a real move into a false
+  // "would remove the last copy" refusal.
+  const selected = [...paths];
   const known = new Map<string, DupeMember>();
   for (const g of report.groups)
     for (const m of g.members) known.set(m.path, m);
@@ -287,7 +292,7 @@ export async function applySelection(
     opts.trashRoot ??
     `${opts.destRoot}/.portage/trash/${new Date(opts.now ?? Date.now()).toISOString().slice(0, 10)}`;
 
-  for (const raw of paths) {
+  for (const raw of selected) {
     const member = known.get(raw);
     if (!member) {
       result.refused.push({
@@ -302,18 +307,30 @@ export async function applySelection(
       continue;
     }
     // §6 rule 6 — nothing outside dest_root, ever.
-    const target = resolveInside(opts.destRoot, member.relative);
+    //
+    // The containment check runs on the member's own absolute path, and the
+    // result IS the source. `member.relative` is relative to the SCAN root,
+    // which may be any folder inside the drive (or an extra archive root), so
+    // `destRoot + relative` names a different file — or nothing at all. Real
+    // evidence: scanning `/drive/sub` and applying refused with
+    // `ENOENT: rename '/drive/b/photo-copy.jpg'`, one path segment short.
+    const target = resolveInside(opts.destRoot, member.path);
     if (target === null) {
       result.refused.push({ path: raw, reason: "outside dest_root" });
       continue;
     }
+    // Where it lands inside the trash mirrors where it sat inside the drive,
+    // so two roots that share a relative path cannot collide.
+    const insideDrive = target
+      .slice(opts.destRoot.replace(/\/+$/, "").length)
+      .replace(/^\/+/, "");
     // §6 rule 5 — never delete the last copy of anything.
     const group = report.groups.find((g) =>
       g.members.some((m) => m.path === raw),
     );
     if (group) {
       const survivors = group.members.filter(
-        (m) => m.path !== raw && !pathsIncludes(paths, m.path),
+        (m) => m.path !== raw && !pathsIncludes(selected, m.path),
       );
       if (survivors.length === 0) {
         result.refused.push({
@@ -324,7 +341,7 @@ export async function applySelection(
       }
     }
 
-    const to = resolveInside(trashRoot, member.relative);
+    const to = resolveInside(trashRoot, insideDrive);
     if (to === null) {
       result.refused.push({
         path: raw,

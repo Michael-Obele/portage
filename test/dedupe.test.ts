@@ -249,6 +249,57 @@ describe("§6 rules 3, 5 and 6 — the apply path", () => {
     }
   });
 
+  test("a scan rooted at a FOLDER INSIDE the drive still moves the real file", async () => {
+    // The regression: `relative` is relative to the scan root, so a report
+    // rooted at `<drive>/sub` used to compute `<drive>/<relative>` as the
+    // source and fail with ENOENT, one path segment short.
+    const root = await drive();
+    try {
+      await put(root, "sub/a/photo.jpg", 4096, 0x41);
+      await put(root, "sub/b/photo-copy.jpg", 4096, 0x41);
+      const report = await scanDuplicates({ roots: [join(root, "sub")] });
+      const target = report.groups[0]!.members.find((m) => !m.keep)!;
+
+      const result = await applySelection(report, [target.path], {
+        destRoot: root,
+        now: Date.UTC(2026, 9, 3),
+      });
+      expect(result.refused).toHaveLength(0);
+      expect(result.moved).toHaveLength(1);
+      expect(result.moved[0]!.from).toBe(target.path);
+      // Trash mirrors the path INSIDE the drive, so the `sub/` segment survives.
+      expect(result.moved[0]!.to).toBe(
+        join(root, ".portage/trash/2026-10-03", "sub", target.relative),
+      );
+      expect(await Bun.file(target.path).exists()).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a report member outside the drive is refused, not renamed", async () => {
+    // §6 rule 6. Scanning an extra archive root outside dest_root reports it,
+    // but applying must refuse it by name rather than fail with ENOENT.
+    const root = await drive();
+    const outside = await mkdtemp(join(tmpdir(), "portage-outside-"));
+    try {
+      await put(outside, "a/photo.jpg", 4096, 0x42);
+      await put(outside, "b/photo-copy.jpg", 4096, 0x42);
+      const report = await scanDuplicates({ roots: [outside] });
+      const target = report.groups[0]!.members.find((m) => !m.keep)!;
+
+      const result = await applySelection(report, [target.path], {
+        destRoot: root,
+      });
+      expect(result.moved).toHaveLength(0);
+      expect(result.refused[0]!.reason).toBe("outside dest_root");
+      expect(await Bun.file(target.path).exists()).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
   test("a path that is not in the report is refused", async () => {
     const root = await drive();
     try {
