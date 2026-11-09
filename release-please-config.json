@@ -5,6 +5,7 @@
 	"separate-pull-requests": false,
 	"include-component-in-tag": false,
 	"release-type": "node",
+	"package-name": "portage",
 	"pull-request-title-pattern": "chore: release ${component} ${version}",
 	"packages": {
 		".": {
