@@ -3,35 +3,23 @@ name: release-desktop
 # Builds the installable desktop app. Two paths:
 #   1. any pull request touching the app or the engine -> a downloadable artifact,
 #      so a build can be tested before anything is merged;
-#   2. a published release -> the .deb and .AppImage attached to that release.
+#   2. called by release-please.yml when a release is owed -> the same artifacts,
+#      which that workflow attaches to the tag it then creates.
+#
+# It never tags or releases anything itself, so a release cannot exist before
+# its installers do.
 
-# Called by release-please.yml in the same run, because a release created with
-# the built-in token does not trigger the `release` event and a second workflow
-# would never start. Also runs on a pull request, so a build can be tried before
-# anything is merged.
 on:
   pull_request:
-    # A generated release pull request changes only the version strings and the
-    # changelog. release-please opens it with GITHUB_TOKEN, and GitHub does not
-    # run workflows for those: the run is created, no job executes, and it shows
-    # a red failure. Ignoring these paths means no run is created for it at all.
-    # Every other pull request still builds, and the push to master and the
-    # release itself always build.
-    paths-ignore:
-      - "CHANGELOG.md"
-      - ".release-please-manifest.json"
+    paths:
+      - "apps/desktop/**"
+      - "src/**"
+      - "scripts/**"
       - "package.json"
-      - "apps/desktop/package.json"
-      - "apps/desktop/src-tauri/tauri.conf.json"
-      - "apps/desktop/src-tauri/Cargo.toml"
+      - "bun.lock"
+      - ".github/workflows/release-desktop.yml"
   workflow_dispatch:
   workflow_call:
-    inputs:
-      tag:
-        description: Tag to attach the installers to. Empty means do not attach.
-        required: false
-        type: string
-        default: ""
 
 concurrency:
   group: release-desktop-${{ github.ref }}
@@ -43,11 +31,6 @@ permissions:
 jobs:
   build:
     name: bundle (deb, appimage)
-    # The generated release PR changes version strings only, and GitHub does not
-    # run workflows for pull requests opened by GITHUB_TOKEN, so a run here lands
-    # in action_required and then shows as a red failure with no jobs. The real
-    # build happens on the push to master, and again for the release itself.
-    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -58,6 +41,12 @@ jobs:
 
       # Tauri's Linux dependencies. webkit2gtk-4.1 is what Tauri v2 links
       # against; the 4.0 package will not satisfy it.
+      #
+      # libfuse2, patchelf and zsync are what the AppImage step needs and the
+      # runner image does not guarantee. linuxdeploy and appimagetool are
+      # themselves AppImages: without FUSE they exit before printing anything,
+      # and the bundler reports only "failed to run linuxdeploy", which is all
+      # the 0.1.8 run had to go on.
       - name: System libraries for Tauri
         run: |
           sudo apt-get update
@@ -66,6 +55,9 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             libxdo-dev \
+            libfuse2 \
+            patchelf \
+            zsync \
             build-essential \
             curl \
             wget \
@@ -90,9 +82,16 @@ jobs:
         working-directory: apps/desktop
         run: bun run sidecar
 
+      # `-v` keeps linuxdeploy's own output in the log. Without it a failure
+      # arrives as the four words "failed to run linuxdeploy" and nothing else.
+      #
+      # APPIMAGE_EXTRACT_AND_RUN makes those tools unpack and run instead of
+      # mounting through FUSE, which is the fragile part inside a container.
       - name: Bundle the app
         working-directory: apps/desktop
-        run: bun x tauri build --bundles deb,appimage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: bun x tauri build --bundles deb,appimage -v
 
       - name: Record what was built
         run: |
@@ -110,14 +109,5 @@ jobs:
           name: portage-desktop-${{ github.sha }}
           if-no-files-found: error
           path: |
-            apps/desktop/src-tauri/target/release/bundle/deb/*.deb
-            apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
-
-      - name: Attach to the release
-        if: ${{ inputs.tag != '' }}
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ inputs.tag }}
-          files: |
             apps/desktop/src-tauri/target/release/bundle/deb/*.deb
             apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
