@@ -1,33 +1,24 @@
 {
 	"$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+
+	"release-type": "node",
+
+	"//bump": "While 0.x: a patch for every commit, a minor for a breaking change, no path to a major. feat is downgraded to a patch by bump-patch-for-minor-pre-major.",
 	"bump-minor-pre-major": true,
 	"bump-patch-for-minor-pre-major": true,
-	"separate-pull-requests": false,
+
+	"//tag": "v0.1.3, not portage-v0.1.3.",
 	"include-component-in-tag": false,
-	"release-type": "node",
-	"package-name": "portage",
+
+	"changelog-path": "CHANGELOG.md",
+
+	"//title": "release-please matches a merged release PR to a version by parsing its title, so the title must carry the component.",
 	"pull-request-title-pattern": "chore: release ${component} ${version}",
-	"packages": {
-		".": {
-			"package-name": "portage",
-			"changelog-path": "CHANGELOG.md",
-			"extra-files": [
-				{
-					"type": "json",
-					"path": "apps/desktop/package.json",
-					"jsonpath": "$.version"
-				},
-				{
-					"type": "json",
-					"path": "apps/desktop/src-tauri/tauri.conf.json",
-					"jsonpath": "$.version"
-				},
-				{
-					"type": "toml",
-					"path": "apps/desktop/src-tauri/Cargo.toml",
-					"jsonpath": "$.package.version"
-				}
-			]
-		}
-	}
+
+	"//files": "Every place the version is written. The engine reads package.json; the desktop app and its installer read the other three.",
+	"extra-files": [
+		{ "type": "json", "path": "apps/desktop/package.json", "jsonpath": "$.version" },
+		{ "type": "json", "path": "apps/desktop/src-tauri/tauri.conf.json", "jsonpath": "$.version" },
+		{ "type": "toml", "path": "apps/desktop/src-tauri/Cargo.toml", "jsonpath": "$.package.version" }
+	]
 }
