@@ -107,12 +107,16 @@
 	}
 
 	/**
-	 * Ask the engine to start, and reset the per-run counters on its `ok`.
+	 * Ask the engine to start.
 	 *
 	 * The plan is requested first for one reason only: its filenames make the
 	 * starting skeleton say what is about to move. A plan that names nothing
 	 * stops here — starting a run with no files would be a run that does nothing
 	 * slowly.
+	 *
+	 * The per-run counters are cleared by the caller BEFORE `pull.start` goes
+	 * out: the engine writes frames before it answers, so clearing them here
+	 * would wipe the first frames of the run just begun.
 	 */
 	async function begin(wanted: PullIntent): Promise<void> {
 		starting = true;
@@ -129,11 +133,6 @@
 				return;
 			}
 			await app.port.send('pull.start', pullStartArgs(wanted));
-			// The counters are per-run: carrying them across would make the proof
-			// strip claim work this run has not done.
-			run.beginRun();
-			series = [];
-			firstVerifyAt = null;
 		} catch (error) {
 			startFailure = bandFrom(error);
 		} finally {
@@ -196,7 +195,15 @@
 		if (intent === null) return;
 		// One run at a time: the engine refuses a second one, and a reload must
 		// not restart a run that is already going.
-		if (viewIsLive(run.view) || run.view.ended) return;
+			if (viewIsLive(run.view)) return;
+			// The counters are per-run but this store outlives the screen, so an
+			// ended run from an earlier visit would otherwise be the last thing a
+			// later intent ever saw. Clear them BEFORE the engine is asked: frames
+			// precede answers, so clearing after `pull.start` resolves wipes the new
+			// run's first frames.
+			run.beginRun();
+			series = [];
+			firstVerifyAt = null;
 		void begin(intent);
 	});
 </script>
@@ -248,14 +255,12 @@
 	{:else}
 		<TransferHero overall={view.overall} proof={view.proof} />
 
-		<!-- The one live region on this screen, fed from the run store, which
-		     throttles it to one announcement every five seconds. Never bytes: a
-		     screen reader must not be read a 10 Hz counter. -->
-		<p
-			aria-live="polite"
-			aria-atomic="true"
-			class="flex flex-wrap items-baseline gap-2 text-body text-foreground"
-		>
+		<!-- Visible only. The window's one live region is in the layout, fed by
+		     this same string and throttled to one announcement every five
+		     seconds; a second `aria-live` here would say every status change
+		     twice. Never bytes: a screen reader must not be read a 10 Hz
+		     counter. -->
+		<p class="flex flex-wrap items-baseline gap-2 text-body text-foreground">
 			<span class="text-muted-foreground">Status</span>
 			<span>{run.announcement === '' ? 'Waiting for the first frame.' : run.announcement}</span>
 		</p>

@@ -82,6 +82,19 @@
 	});
 
 	/**
+	 * True when `path` is `mount`, or sits under it.
+	 *
+	 * `startsWith` alone is not containment: `/media/x/2TB2` starts with
+	 * `/media/x/2TB`, so a drive would take its neighbour's access as its own
+	 * and a read-only mount could pass for writable. A mount point is a
+	 * directory, and a sibling sharing its prefix is a different volume.
+	 */
+	function insideMount(path: string, mount: string): boolean {
+		const root = mount.endsWith('/') ? mount.slice(0, -1) : mount;
+		return path === root || path.startsWith(`${root}/`);
+	}
+
+	/**
 	 * What stops a pull, in the words the person needs. `null` means nothing
 	 * does.
 	 *
@@ -105,7 +118,10 @@
 				code: null
 			};
 		}
-		const volume = app.volumes.find((entry) => plan?.destRoot.startsWith(entry.mountPoint));
+		// Captured before the callback: `plan` is reactive state, so TypeScript
+		// does not keep the null check above across a closure boundary.
+		const destRoot = plan.destRoot;
+		const volume = app.volumes.find((entry) => insideMount(destRoot, entry.mountPoint));
 		if (volume && volume.readOnly !== false) {
 			return {
 				what:
@@ -132,7 +148,7 @@
 		failure = null;
 	}
 
-	async function request(): Promise<void> {
+	async function request(): Promise<boolean> {
 		const first = plan === null;
 		if (first) loading = true;
 		else refetching = true;
@@ -143,8 +159,10 @@
 			// a tally, so reading the plan out of it is exactly the mistake that
 			// crashed the destination picker.
 			await app.port.send('plan', planArgs(filters));
+			return true;
 		} catch (error) {
 			failure = bandFrom(error);
+			return false;
 		} finally {
 			loading = false;
 			refetching = false;
@@ -172,7 +190,9 @@
 
 	async function dryRun(): Promise<void> {
 		dryRunNote = null;
-		await request();
+		// The failure band is the one place a refused request is explained. A
+		// "finished" note under it would claim the opposite of what it says.
+		if (!(await request())) return;
 		dryRunNote =
 			'Dry run finished. The plan was rebuilt from the phone and the drive; nothing was copied and nothing was deleted.';
 	}
@@ -203,6 +223,12 @@
 		if (requested) return;
 		if (app.connection === 'connecting') return;
 		requested = true;
+		// The read-only check reads the volume list, and only Home ever asks for
+		// one — the engine emits no `volumes` frame at startup, so a direct load
+		// of this screen checked an empty list and called every mount writable. A
+		// list that cannot be read stays empty on purpose: the check then says
+		// access is unknown, which still stops a pull.
+		void app.loadVolumes().catch(() => {});
 		void request();
 	});
 </script>
