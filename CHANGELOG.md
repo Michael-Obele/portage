@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.6](https://github.com/Michael-Obele/portage/compare/v0.1.5...v0.1.6) (2026-11-09)
+
+
+### Bug Fixes
+
+* **desktop:** type check the app's own scripts ([fac38f4](https://github.com/Michael-Obele/portage/commit/fac38f4761b70da228b74c7cf6f663eb755a20b0))
+
+
+### CI
+
+* do not create a run for a release-only pull request ([fda0c33](https://github.com/Michael-Obele/portage/commit/fda0c333b9aa840c8623c18163c68ce8112f23e7))
+* skip the generated release pull request ([a28880e](https://github.com/Michael-Obele/portage/commit/a28880e080131e4e84de3e435081f8e65e8299cb))
+
 ## [0.1.5](https://github.com/Michael-Obele/portage/compare/v0.1.4...v0.1.5) (2026-11-09)
 
 
