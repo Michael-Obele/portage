@@ -13,6 +13,34 @@ permissions:
   contents: read
 
 jobs:
+  commits:
+    name: commits (every commit must be releasable)
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # release-please only bumps for the commit types it understands, so a
+      # metadata-only commit would land with no version change. The rule here is
+      # "every commit is a patch, only a breaking change is a minor", and this
+      # step is what makes that rule true rather than hoped for.
+      - name: Check the commit range
+        env:
+          BEFORE: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$BASE_SHA" ]; then
+            range_start="$BASE_SHA"
+          elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            range_start="$BEFORE"
+          else
+            # A brand-new branch: compare against the default branch instead.
+            range_start="$(git merge-base HEAD origin/master || git rev-list --max-parents=0 HEAD | tail -1)"
+          fi
+          ./scripts/check-commits.sh "$range_start" HEAD
+
   engine:
     name: engine (tests, types, frozen files)
     runs-on: ubuntu-latest

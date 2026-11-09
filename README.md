@@ -256,6 +256,11 @@ These are designed but not built yet. The plan is in the git history:
 
 ## Desktop app
 
+Versions move with every commit. A commit bumps a patch; a breaking change
+(a `!` before the colon) bumps a minor, and nothing reaches 1.0.0 while the
+project is pre-major. `scripts/check-commits.sh` enforces the commit type in
+CI, because release-please only bumps for the types it understands.
+
 A Tauri window over the same engine, for when a terminal dashboard is not what
 you want to look at. The engine ships inside the app as a sidecar, so installing
 the `.deb` and opening it from the menu is the whole setup.
