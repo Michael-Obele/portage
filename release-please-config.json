@@ -5,8 +5,10 @@
 	"separate-pull-requests": false,
 	"include-component-in-tag": false,
 	"release-type": "node",
+	"pull-request-title-pattern": "chore: release ${component} ${version}",
 	"packages": {
 		".": {
+			"package-name": "portage",
 			"changelog-path": "CHANGELOG.md",
 			"extra-files": [
 				{
