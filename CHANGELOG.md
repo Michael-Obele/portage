@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.3](https://github.com/Michael-Obele/portage/compare/v0.1.2...v0.1.3) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ci:** put the component in the release PR title ([560ef1e](https://github.com/Michael-Obele/portage/commit/560ef1ecb212f49dc33f42961dbf6749afb92364))
+* **ci:** run release-please in single-package mode ([1c987d7](https://github.com/Michael-Obele/portage/commit/1c987d7bbab4dbbf86185a6f2e1d60abc068811d))
+* **ci:** set the package name where the PR title reads it ([351b1b9](https://github.com/Michael-Obele/portage/commit/351b1b9631879361f27fa2fb2b72b30f1b68a438))
+* **ci:** stop release-please expecting a package component ([05979b8](https://github.com/Michael-Obele/portage/commit/05979b8a48338c60a9da04b75c205e2fd7ce984a))
+* **ci:** tag the merged version instead of relying on title matching ([3a7a3be](https://github.com/Michael-Obele/portage/commit/3a7a3bee6f5a79f4079456371c83ef6ff68e6118))
+* **ci:** verify the automatic tag after the component fix ([a5d68e9](https://github.com/Michael-Obele/portage/commit/a5d68e9d15a993500d184d07946538b45ea4f823))
+
 ## [0.1.2](https://github.com/Michael-Obele/portage/compare/v0.1.1...v0.1.2) (2026-11-09)
 
 
