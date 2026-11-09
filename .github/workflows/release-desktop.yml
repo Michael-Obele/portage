@@ -36,6 +36,11 @@ permissions:
 jobs:
   build:
     name: bundle (deb, appimage)
+    # The generated release PR changes version strings only, and GitHub does not
+    # run workflows for pull requests opened by GITHUB_TOKEN, so a run here lands
+    # in action_required and then shows as a red failure with no jobs. The real
+    # build happens on the push to master, and again for the release itself.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4

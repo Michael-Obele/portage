@@ -15,7 +15,7 @@ permissions:
 jobs:
   commits:
     name: commits (every commit must be releasable)
-    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +42,12 @@ jobs:
           ./scripts/check-commits.sh "$range_start" HEAD
 
   engine:
+    # Skip the generated release PR: it only changes version
+    # strings and the changelog. GitHub does not run workflows for
+    # pull requests opened by GITHUB_TOKEN, so these runs land in
+    # action_required and then show as a red failure with zero jobs.
+    # The real check happens on the push to master after the merge.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     name: engine (tests, types, frozen files)
     runs-on: ubuntu-latest
     steps:
@@ -76,6 +82,12 @@ jobs:
           echo "Frozen files untouched."
 
   desktop:
+    # Skip the generated release PR: it only changes version
+    # strings and the changelog. GitHub does not run workflows for
+    # pull requests opened by GITHUB_TOKEN, so these runs land in
+    # action_required and then show as a red failure with zero jobs.
+    # The real check happens on the push to master after the merge.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     name: desktop (types, tests, AAA contrast)
     runs-on: ubuntu-latest
     defaults:
