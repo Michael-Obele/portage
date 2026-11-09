@@ -15,5 +15,6 @@ export { default as ConfirmSheet } from './confirm-sheet.svelte';
 export { default as DataTable, type TableColumn } from './data-table.svelte';
 export { default as KeyHint } from './key-hint.svelte';
 export { default as PlaceholderScreen } from './placeholder-screen.svelte';
+export { default as SourceFolders } from './source-folders.svelte';
 
 export { CONTROL, IDENTIFIER, NUMERIC, PROSE, ROW, ROW_NAME, SUNKEN, SURFACE } from './tokens.ts';

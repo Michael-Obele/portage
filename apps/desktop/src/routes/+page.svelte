@@ -18,6 +18,7 @@
 		ErrorBand,
 		PageHeader,
 		SkeletonRows,
+		SourceFolders,
 		SURFACE
 	} from '../lib/components/app/index.ts';
 	import { Button } from '../lib/components/ui/button/index.js';
@@ -62,6 +63,7 @@
 
 	const drivesWaiting = $derived(app.volumes.length === 0 && (app.ready === null || reading));
 	const phonesWaiting = $derived(app.devices.length === 0 && (app.ready === null || reading));
+	const readyDevices = $derived(app.devices.filter((device) => phoneState(device) === 'device'));
 
 	/** A path boundary, so `/media/one` is not treated as living inside `/media/on`. */
 	function holds(path: string, mount: string): boolean {
@@ -110,6 +112,22 @@
 						: 'Try again, or restart the engine from Settings.',
 				code: error instanceof EngineFailure ? error.code : null
 			};
+		}
+	}
+
+	/**
+	 * Save one phone's folders, then re-read the config the engine wrote.
+	 *
+	 * `config.set` takes the whole `devices` table and the engine owns the file,
+	 * so this goes through the same task/failure path as every other write on
+	 * this screen: a refusal lands in the band above with the engine's own fix.
+	 */
+	async function saveRoots(deviceId: string, roots: string[]): Promise<void> {
+		savingTo = deviceId;
+		try {
+			await attempt(() => app.setDeviceRoots(deviceId, roots));
+		} finally {
+			savingTo = null;
 		}
 	}
 
@@ -191,6 +209,11 @@
 	$effect(() => {
 		if (requested) return;
 		if (app.connection !== 'connected' && app.connection !== 'mock') return;
+		// `destinationConfigured` is what decides whether asking for the config
+		// is meaningful, and it arrives in the `ready` frame. Reading before
+		// that frame makes the answer "unknown", and a first run then looked
+		// fully configured because `config.get` still answers with defaults.
+		if (app.ready === null) return;
 		requested = true;
 		readEverything();
 	});
@@ -442,6 +465,38 @@
 					</li>
 				{/each}
 			</ul>
+		{/if}
+	</section>
+
+	<section class="flex flex-col gap-3" aria-labelledby="phone-folders">
+		<h2 id="phone-folders" class="text-lead font-medium text-foreground">Phone folders</h2>
+
+		{#if readyDevices.length === 0}
+			<p class="measure text-body text-muted-foreground">
+				{app.devices.length === 0
+					? 'Plug in a phone and its folders can be chosen here.'
+					: 'A phone has to be ready before its folders can be chosen.'}
+			</p>
+		{:else}
+			{#each readyDevices as device (device.id)}
+				{@const roots = app.config?.devices?.[device.id]?.roots ?? []}
+				<div class={cn(SURFACE, 'flex flex-col gap-3 p-4')}>
+					<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+						<span class="min-w-0 truncate text-body text-foreground">
+							{device.model.trim() !== '' ? device.model : device.serial}
+						</span>
+						<span class="font-mono text-caption text-muted-foreground">
+							{device.id.slice(0, 12)}
+						</span>
+					</div>
+					<SourceFolders
+						{device}
+						{roots}
+						{busy}
+						onchange={(next) => void saveRoots(device.id, next)}
+					/>
+				</div>
+			{/each}
 		{/if}
 	</section>
 </div>

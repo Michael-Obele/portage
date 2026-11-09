@@ -102,10 +102,39 @@
 	}
 
 	async function recheck(): Promise<void> {
+		// A restart swaps the child process; Save and Revert must not race it.
+		saving = true;
 		saveError = null;
 		saveFix = '';
-		await app.restartEngine();
+		try {
+			await app.restartEngine();
+		} catch (error) {
+			saveError = error instanceof Error ? error.message : 'The engine did not answer.';
+			saveFix = error instanceof EngineFailure ? error.fix : '';
+		} finally {
+			saving = false;
+		}
 	}
+
+	/**
+	 * Read the config once, and only once the shell has settled which engine
+	 * answers.
+	 *
+	 * The shell chooses the port (a real engine or a fixture) inside its own
+	 * mount, which is later than this screen's — and the engine emits `ready`
+	 * but no `config` at startup, so a direct load of this screen left the adb
+	 * field disabled for good: `canSave` needs a config to compare against.
+	 */
+	let loaded = $state(false);
+	$effect(() => {
+		if (loaded) return;
+		if (app.connection !== 'connected' && app.connection !== 'mock') return;
+		loaded = true;
+		void app.loadConfig().catch((error: unknown) => {
+			saveError = error instanceof Error ? error.message : 'The engine did not answer.';
+			saveFix = error instanceof EngineFailure ? error.fix : '';
+		});
+	});
 </script>
 
 <PageHeader title="Settings" summary="Change the config without wondering which value won." />
