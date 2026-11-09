@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.4](https://github.com/Michael-Obele/portage/compare/v0.1.3...v0.1.4) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ci:** attach installers in the same run as the tag ([d94954d](https://github.com/Michael-Obele/portage/commit/d94954d7e7bb71cde64c29675117814839461048))
+* **ci:** close the release loop on merged release PRs ([b69972d](https://github.com/Michael-Obele/portage/commit/b69972dc5648c243d5d643fce205e996b146cf46))
+* **ci:** confirm the release proposal after the label fix ([4336cdf](https://github.com/Michael-Obele/portage/commit/4336cdfcc757676acfa3831c0131d03eee9c19c3))
+
 ## [0.1.3](https://github.com/Michael-Obele/portage/compare/v0.1.2...v0.1.3) (2026-11-09)
 
 
