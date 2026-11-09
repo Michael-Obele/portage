@@ -6,7 +6,8 @@
 
 [![Bun](https://img.shields.io/badge/Bun-%E2%89%A5%201.2-black)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-48%20passing-2ea44f)](#build-and-develop)
+[![Tests](https://img.shields.io/badge/tests-184%20passing-2ea44f)](#build-and-develop)
+[![Desktop](https://img.shields.io/badge/desktop-Tauri%20%2B%20SvelteKit-2ea44f)](#desktop-app)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey)](#what-it-does-not-do)
 
 <sub>
@@ -253,6 +254,24 @@ These are designed but not built yet. The plan is in the git history:
   season number.
 - **`verify --deep`** and **`retry`** as first-class commands.
 
+## Desktop app
+
+A Tauri window over the same engine, for when a terminal dashboard is not what
+you want to look at. The engine ships inside the app as a sidecar, so installing
+the `.deb` and opening it from the menu is the whole setup.
+
+```bash
+# download from the latest release, then:
+sudo dpkg -i Portage_<version>_amd64.deb
+```
+
+It shows the same numbers as `portage pull` because it reads the same state: two
+labelled rates, an ETA that stays blank until it can be honest, and a proof strip
+that counts written, verified, deleted and kept as the run goes.
+
+Build it yourself with `bun run sidecar` then `bun x tauri build` in
+`apps/desktop`.
+
 ## Install
 
 Requires [Bun](https://bun.sh) ≥ 1.2 and `adb` from the Android platform-tools.
@@ -330,7 +349,7 @@ Everything runs on Bun. There is no `npm` step and no tooling beyond `bun` itsel
 | Command                 | What it does                                      |
 | ----------------------- | ------------------------------------------------- |
 | `bun install`           | install dependencies                              |
-| `bun test`              | 48 tests; no phone, no drive, and no `adb` needed |
+| `bun test`              | 184 tests; no phone, no drive, and no `adb` needed |
 | `bun run typecheck`     | `tsc --noEmit`                                    |
 | `bun run build`         | compile a single binary to `dist/portage`         |
 | `bun run dev`           | run the CLI with `--watch`                        |
