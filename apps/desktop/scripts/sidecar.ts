@@ -6,6 +6,7 @@
  * Run from apps/desktop: `bun run sidecar`, or `SKIP_BUILD=1 bun run sidecar`
  * to restage a binary that is already in dist/.
  */
+/// <reference types="bun" />
 import { chmodSync, existsSync, mkdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 

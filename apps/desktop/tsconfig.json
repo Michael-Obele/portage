@@ -9,5 +9,5 @@
 		},
 		"types": ["$app/types", "bun"]
 	},
-	"include": ["src", "vite.config.ts", "prettier.config.js", "tests"]
+	"include": ["src", "scripts", "vite.config.ts", "prettier.config.js", "tests"]
 }
