@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.1.11](https://github.com/Michael-Obele/portage/compare/v0.1.10...v0.1.11) (2026-11-09)
+
+
+### Features
+
+* **desktop:** choose a phone's source folders from Home ([4657212](https://github.com/Michael-Obele/portage/commit/46572123dfc9eab7cecd87f85f1a924cb4d7401f))
+* **desktop:** scan and trash duplicates from the Duplicates screen ([08cfe1f](https://github.com/Michael-Obele/portage/commit/08cfe1fc6f64f6c6ebf96a253b9c106ae9fda7ef))
+
+
+### Bug Fixes
+
+* **dedupe:** resolve a trashed file from the member's own path ([916f771](https://github.com/Michael-Obele/portage/commit/916f771cee3d55759a72353021cbcabee1a23ddf))
+* **desktop:** start a run from a fresh intent, read readiness first ([478f08f](https://github.com/Michael-Obele/portage/commit/478f08fd7be59c8fd45114c69ac88086684b05d4))
+* **serve:** refuse a pull with no source folders, and say so ([8cab7d6](https://github.com/Michael-Obele/portage/commit/8cab7d619fc9be393dcc6df3906404aa7e956a4e))
+
+
+### Build
+
+* **desktop:** catch the Rust lockfile up to the released version ([00084be](https://github.com/Michael-Obele/portage/commit/00084beda4b0e1ca7d5cb8b71006b608574b6628))
+
+
+### Tests
+
+* **serve:** assert the roots warning by content, not by count ([91f336f](https://github.com/Michael-Obele/portage/commit/91f336f6f89b1be11adaec4dafe19371e23aa36c))
+
 ## [0.1.10](https://github.com/Michael-Obele/portage/compare/v0.1.9...v0.1.10) (2026-11-09)
 
 
