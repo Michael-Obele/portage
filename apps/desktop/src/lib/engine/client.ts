@@ -120,6 +120,27 @@ interface Pending {
 	timer: ReturnType<typeof setTimeout>;
 }
 
+/**
+ * True inside the Tauri window, false in a plain browser tab.
+ *
+ * The distinction matters because `http://localhost:5174` serves the UI with no
+ * engine behind it. Every command path has to say that, or the person debugging
+ * it sees a dead end.
+ */
+function inDesktopShell(): boolean {
+	return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
+/** The one sentence a browser tab gets, from every entry point. */
+function noShellFailure(): EngineFailure {
+	return new EngineFailure(
+		"offline",
+		"This window is not running inside the desktop shell, so there is no engine to talk to.",
+		0,
+		"Open the app with `bun x tauri dev`, or add ?mock=<scenario> to the URL to view a fixture.",
+	);
+}
+
 function failureFrom(error: EngineError | undefined): EngineFailure {
 	if (!error) {
 		return new EngineFailure(
@@ -153,14 +174,7 @@ class TauriEngine implements EnginePort {
 		// deep inside the API with `cannot read 'transformCallback'`. That is an
 		// unreadable error for a state the app can name exactly, and it used to
 		// leave the window on "starting" forever. Say what is true instead.
-		if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
-			throw new EngineFailure(
-				"offline",
-				"This window is not running inside the desktop shell, so there is no engine to talk to.",
-				0,
-				"Open the app with `bun x tauri dev`, or add ?mock=<scenario> to the URL to view a fixture.",
-			);
-		}
+		if (!inDesktopShell()) throw noShellFailure();
 
 		const unlisten: UnlistenFn[] = await Promise.all([
 			listen<string>(EVENT_FRAME, (event) =>
@@ -254,10 +268,31 @@ class TauriEngine implements EnginePort {
 	}
 
 	async restart(): Promise<void> {
-		await invoke("engine_restart");
+		// A browser tab has no `invoke` at all, so the raw failure here is
+		// `cannot read properties of undefined`, which is what the person saw as
+		// "the engine could not be restarted". Name the actual state instead.
+		if (!inDesktopShell()) throw noShellFailure();
+		try {
+			await invoke("engine_restart");
+		} catch (error) {
+			// `engine_restart` rejects with the Rust side's own sentence, and that
+			// sentence is the only place the reason exists: a sidecar that is not
+			// there, a file busy because a rebuild replaced it, a shell that is
+			// already shutting down. Replacing it with a generic message is how
+			// "the engine could not be restarted" became a dead end.
+			throw new EngineFailure(
+				"offline",
+				typeof error === "string" && error.trim().length > 0
+					? error.trim()
+					: "The shell refused to restart the engine.",
+				0,
+				"Rebuild the engine sidecar, then reopen Portage.",
+			);
+		}
 	}
 
 	async pickFolder(options: PickFolderOptions = {}): Promise<string | null> {
+		if (!inDesktopShell()) throw noShellFailure();
 		const picked = await open({
 			directory: true,
 			multiple: false,
@@ -268,6 +303,7 @@ class TauriEngine implements EnginePort {
 	}
 
 	async revealPath(path: string): Promise<void> {
+		if (!inDesktopShell()) throw noShellFailure();
 		await revealItemInDir(path);
 	}
 

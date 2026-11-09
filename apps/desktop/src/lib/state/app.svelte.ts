@@ -42,6 +42,24 @@ export type ThemeChoice = "light" | "dark" | "system";
 
 export const THEME_STORAGE_KEY = "portage-theme";
 
+/**
+ * The sizes Appearance offers.
+ *
+ * The whole app is laid out in rem: the type tokens, the row heights, the
+ * radii and every Tailwind spacing step. So one multiplier on the root font
+ * size scales all of it together, and there is no second place to keep in
+ * step. 200 % is the top of the range because `design.md` requires the app to
+ * stay usable there; 90 % exists for a small screen.
+ */
+export const UI_SCALES = [0.9, 1, 1.15, 1.3, 1.5, 1.75, 2] as const;
+export type UiScale = (typeof UI_SCALES)[number];
+export const UI_SCALE_STORAGE_KEY = "portage-ui-scale";
+
+/** A label for a size button: 1 → "100%", 1.15 → "115%". */
+export function scalePercent(scale: number): string {
+	return `${Math.round(scale * 100)}%`;
+}
+
 export interface NoticeAction {
 	label: string;
 	run(): void;
@@ -87,6 +105,17 @@ function readStoredTheme(): ThemeChoice {
 	}
 }
 
+/** Anything that is not one of the offered steps falls back to 100 %. */
+function readStoredScale(): UiScale {
+	if (!browser) return 1;
+	try {
+		const stored = Number(localStorage.getItem(UI_SCALE_STORAGE_KEY));
+		return UI_SCALES.find((step) => step === stored) ?? 1;
+	} catch {
+		return 1;
+	}
+}
+
 class AppState {
 	connection = $state<ConnectionStatus>("connecting");
 	ready = $state<Omit<ReadyFrame, "v" | "type"> | null>(null);
@@ -99,6 +128,8 @@ class AppState {
 	volumes = $state<Volume[]>([]);
 	notices = $state<Notice[]>([]);
 	theme = $state<ThemeChoice>("system");
+	/** Root font size multiplier; everything in the app is rem, so this is the size control. */
+	uiScale = $state<UiScale>(1);
 	/** The engine speaks a version this app does not. Fatal, and shown. */
 	protocolMismatch = $state<number | null>(null);
 	/** The last few stderr lines, so the banner can name the real reason. */
@@ -150,7 +181,9 @@ class AppState {
 		}
 
 		this.theme = readStoredTheme();
+		this.uiScale = readStoredScale();
 		this.applyTheme();
+		this.applyUiScale();
 
 		try {
 			this.#subscriptions = await this.#port.connect({
@@ -218,10 +251,22 @@ class AppState {
 					engineVersion: frame.engineVersion,
 					platform: frame.platform,
 					adbFound: frame.adbFound,
+					adbPath: frame.adbPath ?? null,
+					adbSource: frame.adbSource ?? "none",
 					destinationConfigured: frame.destinationConfigured,
 				};
 				if (this.connection !== "mock" && frame.protocolVersion !== undefined) {
 					this.connection = "connected";
+				}
+				// A sidecar left over from an older build speaks an older version,
+				// and one from before `serve` existed cannot even say `ready`. The
+				// version is the cheapest tell, and saying it out loud is the
+				// difference between "the engine is broken" and "rebuild it".
+				if (this.mock === null && frame.engineVersion !== __APP_VERSION__) {
+					this.pushNotice(
+						"warn",
+						`The engine is version ${frame.engineVersion} but this app is ${__APP_VERSION__}. Rebuild the sidecar so both halves match.`,
+					);
 				}
 				return;
 			}
@@ -320,18 +365,80 @@ class AppState {
 		document.documentElement.classList.toggle("dark", dark);
 	}
 
-	// --- actions -------------------------------------------------------------
+	// --- size ----------------------------------------------------------------
 
-	async loadVolumes(): Promise<Volume[]> {
-		const volumes = await this.#port.send<"volumes.list", Volume[]>("volumes.list");
-		this.volumes = volumes;
-		return volumes;
+	/**
+	 * Set the multiplier and remember it.
+	 *
+	 * This is a property of this window, not of a drive, so it lives in
+	 * localStorage beside the theme rather than in the engine's config. The
+	 * engine never needs to know how big the text is.
+	 */
+	setUiScale(scale: UiScale): void {
+		this.uiScale = scale;
+		try {
+			localStorage.setItem(UI_SCALE_STORAGE_KEY, String(scale));
+		} catch {
+			// A blocked localStorage must not stop the size changing now.
+		}
+		this.applyUiScale();
 	}
 
+	/** One step larger or smaller, clamped at both ends. For Ctrl + and Ctrl -. */
+	nudgeScale(direction: 1 | -1): void {
+		const index = UI_SCALES.indexOf(this.uiScale);
+		const next = UI_SCALES.at(
+			Math.min(UI_SCALES.length - 1, Math.max(0, index + direction)),
+		);
+		if (next !== undefined && next !== this.uiScale) this.setUiScale(next);
+	}
+
+	applyUiScale(): void {
+		if (!browser) return;
+		document.documentElement.style.setProperty("--ui-scale", String(this.uiScale));
+	}
+
+	// --- actions -------------------------------------------------------------
+
+	/**
+	 * Ask for the mounted volumes.
+	 *
+	 * The answer carries only a count: the volumes themselves arrive as a
+	 * `volumes` frame, which `applyFrame` stores. Returning the FRAME's data as
+	 * the list (as this used to) put `{count: 2}` into `app.volumes` and the list
+	 * rendered nothing, which is exactly the kind of lie a typed generic hides.
+	 */
+	async loadVolumes(): Promise<Volume[]> {
+		await this.#port.send("volumes.list");
+		return this.volumes;
+	}
+
+	/** Same contract as `loadVolumes`: the `devices` frame carries the rows. */
 	async loadDevices(): Promise<DeviceInfo[]> {
-		const devices = await this.#port.send<"devices.list", DeviceInfo[]>("devices.list");
-		this.devices = devices;
-		return devices;
+		await this.#port.send("devices.list");
+		return this.devices;
+	}
+
+	/**
+	 * Replace one phone's source roots, keeping the rest of its block.
+	 *
+	 * The engine writes the config file; the app never touches it. `config.set`
+	 * takes the whole `devices` table, so the current one is read back and only
+	 * this device's key is replaced.
+	 */
+	async setDeviceRoots(deviceId: string, roots: string[]): Promise<void> {
+		const current = this.config?.devices ?? {};
+		const existing = current[deviceId];
+		const next = {
+			...current,
+			[deviceId]: {
+				...existing,
+				label: existing?.label ?? "",
+				roots,
+				exclude: existing?.exclude ?? [],
+			},
+		};
+		await this.setConfig("devices", next);
 	}
 
 	async loadConfig(): Promise<PortageConfig | null> {
@@ -379,11 +486,17 @@ class AppState {
 
 	#onRestartFailure(error: unknown): void {
 		this.connection = "stopped";
+		// Every error carries a reason. Dropping a plain `Error` (or a rejected
+		// string from Tauri) in favour of a fixed sentence leaves the person with
+		// nothing to act on, which is what "could not be restarted" was.
 		const message =
-			error instanceof EngineFailure
+			error instanceof Error && error.message.length > 0
 				? error.message
 				: "The engine could not be restarted.";
 		this.pushNotice("error", message);
+		if (error instanceof EngineFailure && error.fix.length > 0) {
+			this.pushNotice("info", error.fix);
+		}
 	}
 }
 

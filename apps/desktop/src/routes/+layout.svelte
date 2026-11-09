@@ -116,6 +116,27 @@
 	}
 
 	function onKeydown(event: KeyboardEvent): void {
+		// Ctrl/Cmd with +, minus or 0 resizes the whole UI. Handled BEFORE the
+		// field guard below, because these are window commands: they have to work
+		// while the cursor sits in the adb path field.
+		if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+			if (event.key === '=' || event.key === '+') {
+				event.preventDefault();
+				app.nudgeScale(1);
+				return;
+			}
+			if (event.key === '-' || event.key === '_') {
+				event.preventDefault();
+				app.nudgeScale(-1);
+				return;
+			}
+			if (event.key === '0') {
+				event.preventDefault();
+				app.setUiScale(1);
+				return;
+			}
+		}
+
 		const target = event.target;
 		if (target instanceof HTMLElement) {
 			const tag = target.tagName;
@@ -324,6 +345,12 @@
 			<div class="flex items-center gap-4">
 				<dt><KeyHint keys="Escape" label="Leave an overlay and return focus" /></dt>
 				<dd class="sr-only">Escape closes the focused overlay</dd>
+			</div>
+			<div class="flex items-center gap-4">
+				<dt><KeyHint keys="Ctrl + / − / 0" label="Resize the UI" /></dt>
+				<dd class="sr-only">
+					Control plus, control minus and control zero change the size of the interface
+				</dd>
 			</div>
 			<div class="flex flex-col gap-1">
 				<dt><KeyHint keys="g" label="then a letter, to go to a screen" /></dt>

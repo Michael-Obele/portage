@@ -370,8 +370,15 @@ export interface ReadyFrame extends Head<"ready"> {
 	engineVersion: string;
 	platform: string;
 	adbFound: boolean;
+	/** Absolute path of the binary the engine will use, or null. */
+	adbPath: string | null;
+	/** Why that binary: the config value, `PATH`, the SDK search, or nothing. */
+	adbSource: AdbSource;
 	destinationConfigured: boolean;
 }
+
+/** Mirrors `AdbSource` in `src/device/adb.ts`, plus the "found nothing" case. */
+export type AdbSource = "config" | "path" | "search" | "none";
 
 export type NoticeLevel = "info" | "warn" | "error";
 export type FrameLogLevel = "debug" | "info" | "warn" | "error";

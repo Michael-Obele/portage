@@ -617,7 +617,10 @@ class MockEngine implements EnginePort {
 	}
 
 	async status(): Promise<EngineStatus> {
-		return { running: true, last: { ready: frame("ready", {}) } };
+		// The real engine keeps the last frame of each type. This fixture used to
+		// return an EMPTY `ready`, which overwrote a complete one in the app and
+		// made every screen read `adbFound: undefined` as "nothing found".
+		return { running: true, last: { ready: frame("ready", this.readyPayload()) } };
 	}
 
 	async restart(): Promise<void> {
@@ -677,18 +680,23 @@ class MockEngine implements EnginePort {
 		}
 	}
 
+	/** The `ready` payload, from the scenario. Used at connect and by `status`. */
+	private readyPayload() {
+		return {
+			protocolVersion: PROTOCOL_VERSION,
+			engineVersion: "0.1.0-mock",
+			platform: "linux",
+			adbFound: true,
+			adbPath: "/usr/local/bin/adb",
+			adbSource: "path" as const,
+			destinationConfigured: this.scenario !== "fresh",
+		};
+	}
+
 	private prelude(): void {
 		const configured = this.scenario !== "fresh";
 
-		this.emit(
-			frame("ready", {
-				protocolVersion: PROTOCOL_VERSION,
-				engineVersion: "0.1.0-mock",
-				platform: "linux",
-				adbFound: true,
-				destinationConfigured: configured,
-			}),
-		);
+		this.emit(frame("ready", this.readyPayload()));
 
 		if (!configured) return;
 

@@ -141,8 +141,8 @@
 	];
 
 	const DENSITY = [
-		{ name: '--row-h', value: '32px', use: 'a comfortable row' },
-		{ name: '--row-h-compact', value: '28px', use: 'a compact row' },
+		{ name: '--row-h', value: '2rem', use: 'a comfortable row (32 px at 100 %)' },
+		{ name: '--row-h-compact', value: '1.75rem', use: 'a compact row (28 px at 100 %)' },
 		{ name: '--measure', value: '68ch', use: 'prose width' },
 		{ name: '--radius-control', value: '6px', use: 'controls and inputs' },
 		{ name: '--radius-surface', value: '10px', use: 'cards and sheets' }
