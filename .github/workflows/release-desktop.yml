@@ -11,12 +11,19 @@ name: release-desktop
 # anything is merged.
 on:
   pull_request:
-    paths:
-      - "apps/desktop/**"
-      - "src/**"
-      - "scripts/**"
+    # A generated release pull request changes only the version strings and the
+    # changelog. release-please opens it with GITHUB_TOKEN, and GitHub does not
+    # run workflows for those: the run is created, no job executes, and it shows
+    # a red failure. Ignoring these paths means no run is created for it at all.
+    # Every other pull request still builds, and the push to master and the
+    # release itself always build.
+    paths-ignore:
+      - "CHANGELOG.md"
+      - ".release-please-manifest.json"
       - "package.json"
-      - "bun.lock"
+      - "apps/desktop/package.json"
+      - "apps/desktop/src-tauri/tauri.conf.json"
+      - "apps/desktop/src-tauri/Cargo.toml"
   workflow_dispatch:
   workflow_call:
     inputs:
