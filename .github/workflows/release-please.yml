@@ -78,6 +78,26 @@ jobs:
           echo "Published ${tag}. The desktop bundle attaches to it next."
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
 
+      # release-please treats a merged release PR still labelled `pending` as an
+      # unreleased version, and refuses to propose the next one while it sees
+      # that. Our tag now exists, so move the label to match reality.
+      - name: Mark merged release pull requests as tagged
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          merged="$(gh pr list --state merged --label "autorelease: pending" \
+            --json number --jq '.[].number')"
+          if [ -z "$merged" ]; then
+            echo "Nothing left pending."
+            exit 0
+          fi
+          for pr in $merged; do
+            gh pr edit "$pr" --remove-label "autorelease: pending" \
+              --add-label "autorelease: tagged" >/dev/null
+            echo "Marked #${pr} as tagged."
+          done
+
   # Runs in the same workflow run, so it is not blocked by the rule that
   # events caused by the built-in token do not start other workflows.
   bundle:
