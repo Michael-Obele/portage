@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.9](https://github.com/Michael-Obele/portage/compare/v0.1.8...v0.1.9) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ci:** build the bundle before tagging ([6d299fb](https://github.com/Michael-Obele/portage/commit/6d299fb1af2a8c3a32ca2aaae260c37a3f80c178))
+* **ci:** build the bundle before tagging ([e4e8c52](https://github.com/Michael-Obele/portage/commit/e4e8c528b4fce00b387c1e18b1b4e954b272aa66))
+
 ## [0.1.8](https://github.com/Michael-Obele/portage/compare/v0.1.7...v0.1.8) (2026-11-09)
 
 
