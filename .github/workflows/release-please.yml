@@ -98,6 +98,28 @@ jobs:
             echo "Marked #${pr} as tagged."
           done
 
+      # The repo setting `delete_branch_on_merge` already handles this, and it is
+      # the thing to rely on. This step is the belt to that braces: a release
+      # branch that merged while the setting was off (or that was merged by an
+      # integration which ignores it) would otherwise sit in the branch list
+      # forever. Deleting a stray branch is safe because release-please recreates
+      # it the next time it needs a release PR.
+      - name: Delete stale release branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for branch in $(git ls-remote --heads origin \
+            'refs/heads/release-please--*' | awk '{print $2}' | sed 's|refs/heads/||'); do
+            # Keep it if an open pull request still uses it.
+            if [ -n "$(gh pr list --state open --head "$branch" --json number --jq '.[].number')" ]; then
+              echo "${branch} still has an open pull request; keeping it."
+              continue
+            fi
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${branch}" >/dev/null
+            echo "Deleted merged branch ${branch}."
+          done
+
   # Runs in the same workflow run, so it is not blocked by the rule that
   # events caused by the built-in token do not start other workflows.
   bundle:
