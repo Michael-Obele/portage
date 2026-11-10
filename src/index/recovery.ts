@@ -191,7 +191,11 @@ export function checkDestination(
   }
 
   const { free, total } = space;
-  const reserve = Math.ceil(total * headroom);
+  // The headroom is a margin for the bytes this run is about to write. A plan
+  // that moves nothing writes nothing, so it needs no margin — without this,
+  // `0 > free - reserve` refused an EMPTY plan on any drive with less free
+  // space than the reserve (2 % of 2 TB is 40 GB).
+  const reserve = plannedBytes > 0 ? Math.ceil(total * headroom) : 0;
   const usable = free - reserve;
 
   if (plannedBytes > usable) {

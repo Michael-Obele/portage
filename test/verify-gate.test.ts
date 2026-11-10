@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 
 import { Journal } from "../src/index/journal.ts";
-import { reconcile } from "../src/index/recovery.ts";
+import { checkDestination, reconcile } from "../src/index/recovery.ts";
 import { runTransfer, type EngineOptions } from "../src/xfer/engine.ts";
 import type {
   CopyOutcome,
@@ -428,6 +428,27 @@ describe("crash recovery", () => {
 
     expect(report.orphanPartials.length).toBeGreaterThan(0);
     expect(report.notes.join(" ")).toContain("no journal row");
+  });
+});
+
+describe("destination pre-flight", () => {
+  // The headroom is a margin for the bytes a run will write. A plan that
+  // copies nothing writes nothing, so the reserve must not apply to it: at the
+  // maximum allowed headroom (0.9) the old arithmetic answered "need 0 bytes,
+  // short by N" on any drive that was not nearly empty.
+  test("an empty plan is never refused for lack of space", () => {
+    const verdict = checkDestination(drive.root, 0, 0.9);
+
+    expect(verdict.ok).toBe(true);
+    expect(verdict.reason).toBeUndefined();
+  });
+
+  test("a plan that cannot fit is still refused", () => {
+    const verdict = checkDestination(drive.root, Number.MAX_SAFE_INTEGER, 0.02);
+
+    expect(verdict.ok).toBe(false);
+    expect(verdict.reason).toContain("not enough space");
+    expect(verdict.fix).toContain("dupes");
   });
 });
 
