@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.14](https://github.com/Michael-Obele/portage/compare/v0.1.13...v0.1.14) (2026-11-13)
+
+
+### Bug Fixes
+
+* **desktop:** sync Cargo.lock with the 0.1.13 bump ([5849b93](https://github.com/Michael-Obele/portage/commit/5849b9331d70d8b0ab7e09948d215da8bdb1b743))
+
 ## [0.1.13](https://github.com/Michael-Obele/portage/compare/v0.1.12...v0.1.13) (2026-11-13)
 
 
