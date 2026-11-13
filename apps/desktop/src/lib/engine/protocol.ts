@@ -20,9 +20,9 @@ export const PROTOCOL_VERSION = 1;
 // `src/tui/state.svelte.ts`. They are the ENGINE'S shapes; the app copies them
 // so a payload can be typed without importing the engine's runtime.
 
-export type DeleteSource = "after-verify" | "never" | "prompt";
-export type VerifyMode = "standard" | "paranoid";
-export type TransportChoice = "auto" | "adb" | "rsync";
+export type DeleteSource = 'after-verify' | 'never' | 'prompt';
+export type VerifyMode = 'standard' | 'paranoid';
+export type TransportChoice = 'auto' | 'adb' | 'rsync';
 
 export interface DeviceConfig {
 	label: string;
@@ -47,9 +47,9 @@ export interface PortageConfig {
 	devices: Record<string, DeviceConfig>;
 }
 
-export type ConfigKey = keyof Omit<PortageConfig, "devices"> | "devices";
+export type ConfigKey = keyof Omit<PortageConfig, 'devices'> | 'devices';
 
-export type DeviceState = "device" | "offline" | "unauthorized" | "unknown";
+export type DeviceState = 'device' | 'offline' | 'unauthorized' | 'unknown';
 
 export interface DeviceInfo {
 	id: string;
@@ -76,16 +76,16 @@ export interface Volume {
 }
 
 export type TransferState =
-	| "eligible"
-	| "queued"
-	| "copying"
-	| "written"
-	| "verified"
-	| "source_deleted"
-	| "done"
-	| "failed"
-	| "skipped_excluded"
-	| "skipped_duplicate";
+	| 'eligible'
+	| 'queued'
+	| 'copying'
+	| 'written'
+	| 'verified'
+	| 'source_deleted'
+	| 'done'
+	| 'failed'
+	| 'skipped_excluded'
+	| 'skipped_duplicate';
 
 export interface TransferRow {
 	id: number;
@@ -98,7 +98,7 @@ export interface TransferRow {
 	src_mtime: number;
 	state: TransferState;
 	hash: string | null;
-	hash_scope: "full" | "partial" | null;
+	hash_scope: 'full' | 'partial' | null;
 	attempts: number;
 	last_error: string | null;
 	started_at: number | null;
@@ -111,7 +111,7 @@ export interface RunRow {
 	transport: string;
 	started_at: number;
 	finished_at: number | null;
-	status: "running" | "done" | "failed" | "interrupted";
+	status: 'running' | 'done' | 'failed' | 'interrupted';
 	bytes_total: number;
 	bytes_done: number;
 	files_total: number;
@@ -120,13 +120,13 @@ export interface RunRow {
 }
 
 export type Verdict =
-	| "new"
-	| "already-on-drive"
-	| "too-recent"
-	| "excluded"
-	| "in-flight"
-	| "duplicate-candidate"
-	| "empty";
+	| 'new'
+	| 'already-on-drive'
+	| 'too-recent'
+	| 'excluded'
+	| 'in-flight'
+	| 'duplicate-candidate'
+	| 'empty';
 
 export interface Candidate {
 	deviceId: string;
@@ -145,7 +145,7 @@ export interface ArchiveHit {
 	path: string;
 	size: number;
 	hash: string | null;
-	relation: "identical" | "same-size" | "collision";
+	relation: 'identical' | 'same-size' | 'collision';
 	note: string;
 }
 
@@ -156,6 +156,8 @@ export interface PlannedFile {
 	matchesArchive?: ArchiveHit | null;
 	alreadyTransferred: boolean;
 	skipReason?: string;
+	/** True when a person removed this file from the pull by hand. */
+	excluded?: boolean;
 	bytes: number;
 }
 
@@ -175,6 +177,8 @@ export interface PlanResult {
 	skipped: PlannedFile[];
 	bytesTotal: number;
 	bytesSkipped: number;
+	/** The part of `bytesSkipped` removed by hand, so the count stays honest. */
+	bytesExcluded: number;
 	fileCount: number;
 	/** Null when there is not enough throughput history to be honest about it. */
 	etaSeconds: number | null;
@@ -197,7 +201,7 @@ export interface EngineSummary {
 }
 
 export interface FileEvent {
-	type: "start" | "progress" | "verified" | "deleted" | "failed" | "skipped";
+	type: 'start' | 'progress' | 'verified' | 'deleted' | 'failed' | 'skipped';
 	file: PlannedFile;
 	bytes?: number;
 	total?: number;
@@ -205,7 +209,7 @@ export interface FileEvent {
 	reason?: string;
 }
 
-export type PurgeProof = "journal-hash" | "recomputed-hash";
+export type PurgeProof = 'journal-hash' | 'recomputed-hash';
 
 export interface PurgeCandidate {
 	deviceId: string;
@@ -240,13 +244,7 @@ export interface DupeGroup {
 
 // --- the view snapshot (`state` frames) --------------------------------------
 
-export type RowState =
-	| "queued"
-	| "copying"
-	| "done"
-	| "failed"
-	| "skipped"
-	| "duplicate";
+export type RowState = 'queued' | 'copying' | 'done' | 'failed' | 'skipped' | 'duplicate';
 
 export interface FileRow {
 	/** Stable identity: the journal's own (deviceId, srcPath, size) key. */
@@ -288,7 +286,7 @@ export interface Overall {
 	paused: boolean;
 }
 
-export type ScreenName = "dashboard" | "dupes" | "help" | "confirm";
+export type ScreenName = 'dashboard' | 'dupes' | 'help' | 'confirm';
 
 // --- the error shape ---------------------------------------------------------
 
@@ -305,16 +303,16 @@ export interface EngineError {
 // --- commands (app -> engine) ------------------------------------------------
 
 export interface CommandArgs {
-	"volumes.list": Record<string, never>;
-	"devices.list": Record<string, never>;
+	'volumes.list': Record<string, never>;
+	'devices.list': Record<string, never>;
 
-	"config.get": { key?: string | undefined };
-	"config.set": { key: string; value: unknown };
+	'config.get': { key?: string | undefined };
+	'config.set': { key: string; value: unknown };
 
-	"status.get": { run?: number | null | undefined; limit?: number | undefined };
+	'status.get': { run?: number | null | undefined; limit?: number | undefined };
 
 	doctor: { bench?: boolean | undefined };
-	"db.export": { path: string };
+	'db.export': { path: string };
 
 	browse: { device?: string | undefined; path: string; depth?: number | undefined };
 
@@ -325,24 +323,26 @@ export interface CommandArgs {
 		since?: string | undefined;
 		jobs?: number | undefined;
 		overwrite?: boolean | undefined;
+		exclude?: string[] | undefined;
 	};
 
-	"pull.start": {
+	'pull.start': {
 		device?: string | undefined;
 		show?: string | undefined;
 		since?: string | undefined;
 		jobs?: number | undefined;
-		mode?: "delete-after-verify" | "keep" | undefined;
+		exclude?: string[] | undefined;
+		mode?: 'delete-after-verify' | 'keep' | undefined;
 	};
-	"pull.pause": Record<string, never>;
-	"pull.resume": Record<string, never>;
-	"pull.stop": Record<string, never>;
+	'pull.pause': Record<string, never>;
+	'pull.resume': Record<string, never>;
+	'pull.stop': Record<string, never>;
 
-	"dupes.scan": { tier?: 1 | 2 | undefined; roots?: string[] | undefined };
-	"dupes.apply": { scanId: string; keys: string[]; confirm?: string | undefined };
+	'dupes.scan': { tier?: 1 | 2 | undefined; roots?: string[] | undefined };
+	'dupes.apply': { scanId: string; keys: string[]; confirm?: string | undefined };
 
-	"purge.plan": { verifyHash?: boolean | undefined };
-	"purge.apply": { planId: string; keys: string[]; confirm?: string | undefined };
+	'purge.plan': { verifyHash?: boolean | undefined };
+	'purge.apply': { planId: string; keys: string[]; confirm?: string | undefined };
 
 	shutdown: Record<string, never>;
 }
@@ -363,44 +363,36 @@ export type ArgsFor<T extends CommandType> = CommandArgs[T];
  * `answer.sources.userPath` threw `undefined is not an object`.
  */
 export const ANSWER_KEYS = {
-	"volumes.list": [["count"]],
-	"devices.list": [["count", "adbFound"]],
-	"config.get": [["keys"], ["key", "value", "origin"]],
-	"config.set": [["key", "value", "path"]],
-	"status.get": [["destRoot", "runs", "pending", "recent"]],
-	"db.export": [["path"]],
-	browse: [["device", "path", "entries", "total", "truncated"]],
-	scan: [["devices", "total", "counts"]],
+	'volumes.list': [['count']],
+	'devices.list': [['count', 'adbFound']],
+	'config.get': [['keys'], ['key', 'value', 'origin']],
+	'config.set': [['key', 'value', 'path']],
+	'status.get': [['destRoot', 'runs', 'pending', 'recent']],
+	'db.export': [['path']],
+	browse: [['device', 'path', 'entries', 'total', 'truncated']],
+	scan: [['devices', 'total', 'counts']],
 	plan: [
-		[
-			"fileCount",
-			"bytesTotal",
-			"bytesSkipped",
-			"skipped",
-			"spaceOk",
-			"warnings",
-			"jobsAtPullTime",
-		],
+		['fileCount', 'bytesTotal', 'bytesSkipped', 'skipped', 'spaceOk', 'warnings', 'jobsAtPullTime']
 	],
-	"pull.start": [["runId", "mode", "note"]],
-	"pull.pause": [["paused", "effect"]],
-	"pull.resume": [["paused", "effect"]],
-	"pull.stop": [["effect"]],
-	"dupes.scan": [["scanId", "groups", "keys", "reclaimableBytes", "trashDir"]],
-	"dupes.apply": [
-		["needsConfirm", "actionId", "count", "bytes", "trashDir"],
-		["moved", "refused", "bytesMoved", "trashDir"],
+	'pull.start': [['runId', 'mode', 'note']],
+	'pull.pause': [['paused', 'effect']],
+	'pull.resume': [['paused', 'effect']],
+	'pull.stop': [['effect']],
+	'dupes.scan': [['scanId', 'groups', 'keys', 'reclaimableBytes', 'trashDir']],
+	'dupes.apply': [
+		['needsConfirm', 'actionId', 'count', 'bytes', 'trashDir'],
+		['moved', 'refused', 'bytesMoved', 'trashDir']
 	],
-	"purge.plan": [["planId", "eligible", "refused", "bytesReclaimed"]],
-	"purge.apply": [
-		["needsConfirm", "actionId", "count", "bytes"],
-		["deleted", "failed"],
+	'purge.plan': [['planId', 'eligible', 'refused', 'bytesReclaimed']],
+	'purge.apply': [
+		['needsConfirm', 'actionId', 'count', 'bytes'],
+		['deleted', 'failed']
 	],
 	doctor: [
-		["checks", "failed", "exitCode"],
-		["checks", "exitCode", "unreadable"],
+		['checks', 'failed', 'exitCode'],
+		['checks', 'exitCode', 'unreadable']
 	],
-	shutdown: [["stopping"]],
+	shutdown: [['stopping']]
 } as const satisfies Record<CommandType, readonly (readonly string[])[]>;
 
 /** One answer object a command can produce, with every field typed `unknown`. */
@@ -417,9 +409,7 @@ type OneOf<Keys> = Keys extends readonly string[] ? AnswerShape<Keys> : never;
  * A union of the command's acceptable shapes, so a field that NO shape carries
  * is a type error at the call site rather than a runtime crash on the wire.
  */
-export type AnswerFor<T extends CommandType> = OneOf<
-	(typeof ANSWER_KEYS)[T][number]
->;
+export type AnswerFor<T extends CommandType> = OneOf<(typeof ANSWER_KEYS)[T][number]>;
 
 /** One envelope per command. An unknown key is a rejected command, not a no-op. */
 export interface Envelope<T extends CommandType = CommandType> {
@@ -436,7 +426,7 @@ interface Head<T extends string> {
 	type: T;
 }
 
-export interface ReadyFrame extends Head<"ready"> {
+export interface ReadyFrame extends Head<'ready'> {
 	protocolVersion: number;
 	engineVersion: string;
 	platform: string;
@@ -449,45 +439,45 @@ export interface ReadyFrame extends Head<"ready"> {
 }
 
 /** Mirrors `AdbSource` in `src/device/adb.ts`, plus the "found nothing" case. */
-export type AdbSource = "config" | "path" | "search" | "none";
+export type AdbSource = 'config' | 'path' | 'search' | 'none';
 
-export type NoticeLevel = "info" | "warn" | "error";
-export type FrameLogLevel = "debug" | "info" | "warn" | "error";
+export type NoticeLevel = 'info' | 'warn' | 'error';
+export type FrameLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-export interface NoticeFrame extends Head<"notice"> {
+export interface NoticeFrame extends Head<'notice'> {
 	level: NoticeLevel;
 	message: string;
 }
 
-export interface LogFrame extends Head<"log"> {
+export interface LogFrame extends Head<'log'> {
 	level: FrameLogLevel;
 	message: string;
 }
 
-export interface ConfigFrame extends Head<"config"> {
+export interface ConfigFrame extends Head<'config'> {
 	config: PortageConfig;
 	origins: Record<string, string>;
 	sources: { userPath: string; drivePath: string | null };
 }
 
-export interface DevicesFrame extends Head<"devices"> {
+export interface DevicesFrame extends Head<'devices'> {
 	devices: DeviceInfo[];
 }
 
-export interface VolumesFrame extends Head<"volumes"> {
+export interface VolumesFrame extends Head<'volumes'> {
 	volumes: Volume[];
 }
 
-export interface ScanFrame extends Head<"scan"> {
+export interface ScanFrame extends Head<'scan'> {
 	candidates: Candidate[];
 	counts: Record<Verdict, number>;
 }
 
-export interface PlanFrame extends Head<"plan"> {
+export interface PlanFrame extends Head<'plan'> {
 	plan: PlanResult;
 }
 
-export interface StateFrame extends Head<"state"> {
+export interface StateFrame extends Head<'state'> {
 	screen: ScreenName;
 	rows: FileRow[];
 	overall: Overall;
@@ -495,7 +485,7 @@ export interface StateFrame extends Head<"state"> {
 	notice: string | null;
 }
 
-export interface RunFrame extends Head<"run"> {
+export interface RunFrame extends Head<'run'> {
 	summary: EngineSummary;
 }
 
@@ -520,7 +510,7 @@ export interface WireDupeGroup {
 	reclaimableBytes: number;
 }
 
-export interface DupesFrame extends Head<"dupes"> {
+export interface DupesFrame extends Head<'dupes'> {
 	scanId: string;
 	groups: WireDupeGroup[];
 	tier1Count: number;
@@ -543,14 +533,14 @@ export interface WirePurgeCandidate {
 	hash: string;
 }
 
-export interface PurgePlanFrame extends Head<"purgePlan"> {
+export interface PurgePlanFrame extends Head<'purgePlan'> {
 	planId: string;
 	eligible: WirePurgeCandidate[];
 	refused: Array<{ srcPath: string; reason: string }>;
 	bytesReclaimed: number;
 }
 
-export type DoctorStatus = "ok" | "warn" | "fail" | "info";
+export type DoctorStatus = 'ok' | 'warn' | 'fail' | 'info';
 
 export interface DoctorCheck {
 	status: DoctorStatus;
@@ -559,12 +549,12 @@ export interface DoctorCheck {
 	fix: string | null;
 }
 
-export interface DoctorFrame extends Head<"doctor"> {
+export interface DoctorFrame extends Head<'doctor'> {
 	ok: boolean;
 	checks: DoctorCheck[];
 }
 
-export interface StatusFrame extends Head<"status"> {
+export interface StatusFrame extends Head<'status'> {
 	archive: { files: number; bytes: number };
 	counts: Record<string, number>;
 	pending: TransferRow[];
@@ -575,13 +565,13 @@ export interface StatusFrame extends Head<"status"> {
 export interface BrowseEntry {
 	name: string;
 	path: string;
-	kind: "dir" | "file";
+	kind: 'dir' | 'file';
 	/** Bytes for a file, null for a directory. Never a guessed size. */
 	size: number | null;
 	depth: number;
 }
 
-export interface BrowseFrame extends Head<"browse"> {
+export interface BrowseFrame extends Head<'browse'> {
 	path: string;
 	depth: number;
 	entries: BrowseEntry[];
@@ -590,9 +580,9 @@ export interface BrowseFrame extends Head<"browse"> {
 }
 
 /** Emitted BEFORE anything moves. `confirm` on the follow-up must equal `actionId`. */
-export interface NeedsConfirmFrame extends Head<"needsConfirm"> {
+export interface NeedsConfirmFrame extends Head<'needsConfirm'> {
 	actionId: string;
-	action: "dupes.apply" | "purge.apply";
+	action: 'dupes.apply' | 'purge.apply';
 	paths: string[];
 	count: number;
 	bytes: number;
@@ -600,14 +590,14 @@ export interface NeedsConfirmFrame extends Head<"needsConfirm"> {
 	trashDir: string | null;
 }
 
-export interface AnswerFrame extends Head<"answer"> {
+export interface AnswerFrame extends Head<'answer'> {
 	id: string;
 	ok: boolean;
 	data?: unknown;
 	error?: EngineError;
 }
 
-export interface ByeFrame extends Head<"bye"> {}
+export interface ByeFrame extends Head<'bye'> {}
 
 export type Frame =
 	| ReadyFrame
@@ -629,21 +619,9 @@ export type Frame =
 	| AnswerFrame
 	| ByeFrame;
 
-export type FrameType = Frame["type"];
+export type FrameType = Frame['type'];
 
-export type FramePayload<T extends Frame> = Omit<T, "v" | "type">;
+export type FramePayload<T extends Frame> = Omit<T, 'v' | 'type'>;
 
 /** Everything except the error channel. */
 export type NonAnswerFrame = Exclude<Frame, AnswerFrame>;
-
-/**
- * A frame's `answer` and the terminal `bye`. The runner resolves one pending
- * request per `answer.id`, and treats `bye` as the engine leaving.
- */
-export function isAnswer(frame: Frame): frame is AnswerFrame {
-	return frame.type === "answer";
-}
-
-export function isBye(frame: Frame): frame is ByeFrame {
-	return frame.type === "bye";
-}
