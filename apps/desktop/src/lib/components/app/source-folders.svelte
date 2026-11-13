@@ -157,7 +157,7 @@
 	</p>
 
 	{#if roots.length > 0}
-		<ul class="divide-y divide-border rounded-[var(--radius-surface)] border border-border">
+		<ul class="divide-y divide-border rounded-surface border border-border">
 			{#each roots as root (root)}
 				<li class="flex items-center gap-3 px-3 py-2">
 					<span class="min-w-0 flex-1 truncate font-mono text-body text-foreground" title={root}>
@@ -180,9 +180,7 @@
 </div>
 
 <Dialog bind:open>
-	<DialogContent
-		class="max-h-[85dvh] overflow-y-auto rounded-[var(--radius-surface)] shadow-lg sm:max-w-xl"
-	>
+	<DialogContent class="max-h-[85dvh] overflow-y-auto rounded-surface shadow-lg sm:max-w-xl">
 		<DialogHeader class="gap-2">
 			<DialogTitle class="text-title font-medium tracking-normal normal-case">
 				Add a folder
@@ -223,7 +221,7 @@
 					<ScrollArea
 						type="auto"
 						orientation="horizontal"
-						class="max-h-[42vh] rounded-[var(--radius-surface)] border border-border"
+						class="max-h-[42vh] rounded-surface border border-border"
 					>
 						<ul class="divide-y divide-border">
 							{#each folders as folder (folder.path)}
