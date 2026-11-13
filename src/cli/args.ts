@@ -174,3 +174,17 @@ export function int(
   }
   return n;
 }
+
+/** `--since 7d` / `--since 36h` / `--since 900` (seconds). */
+export function sinceSeconds(flags: ParsedArgs["flags"]): number | undefined {
+  const raw = str(flags, "since");
+  if (!raw) return undefined;
+  const match = /^(\d+)([smhdw]?)$/.exec(raw.trim());
+  if (!match) {
+    throw usageError(`--since needs a value like 7d or 36h, got "${raw}"`);
+  }
+  const n = Number(match[1]);
+  const unit = match[2] ?? "s";
+  const multiplier = { s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[unit] ?? 1;
+  return n * multiplier;
+}

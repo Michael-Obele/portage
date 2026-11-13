@@ -41,13 +41,12 @@ import { palette, type Semantic } from "./theme.ts";
 export {
   BoxRenderable,
   InputRenderable,
-  RGBA,
   ScrollBoxRenderable,
   TextRenderable,
 } from "@opentui/core";
 
 /** The constructor argument every renderable takes. */
-export type { CliRenderer, KeyEvent, RenderContext } from "@opentui/core";
+export type { CliRenderer, KeyEvent } from "@opentui/core";
 
 /** Semantic name -> colour. undefined means "terminal default", which is how
  * NO_COLOR keeps the layout identical and loses only the ink. */

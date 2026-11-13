@@ -46,8 +46,6 @@ export const preconditionError = (message: string, fix?: string) =>
   new PortageError(ExitCode.precondition, message, fix);
 
 /** Verification did not pass. Never paired with a deletion. */
-export const verificationError = (message: string, fix?: string) =>
-  new PortageError(ExitCode.verification, message, fix);
 
 /** Turn anything thrown into a user-facing line + exit code. */
 export function describeError(err: unknown): {

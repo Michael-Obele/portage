@@ -7,8 +7,6 @@
  * off unless `delete_source` says so.
  */
 
-import { join } from "node:path";
-
 import { Adb } from "../../device/adb.ts";
 import type { DeviceInfo } from "../../device/adb.ts";
 import type { ResolvedConfig } from "../../config/load.ts";
@@ -28,7 +26,7 @@ import {
   truncateMiddle,
 } from "../../util/paths.ts";
 import type { Output } from "../../output/output.ts";
-import { createLogger, type Logger } from "../../util/log.ts";
+import type { Logger } from "../../util/log.ts";
 import { preconditionError, ExitCode } from "../../util/errors.ts";
 import type { DeleteSource } from "../../config/schema.ts";
 
@@ -417,9 +415,7 @@ export async function purge(ctx: PullContext): Promise<number> {
 }
 
 /** Set from the signal handler; the engine polls it between files. */
-export let stopped = false;
+let stopped = false;
 export function requestStop(): void {
   stopped = true;
 }
-
-export { createLogger, join, planPurge, applyPurge };

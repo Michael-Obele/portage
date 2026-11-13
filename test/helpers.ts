@@ -66,16 +66,6 @@ export function fakeDevice(overrides: Partial<DeviceInfo> = {}): DeviceInfo {
   };
 }
 
-/** A file with deterministic content, for hash comparisons. */
-export async function writeFixture(
-  path: string,
-  sizeBytes: number,
-  fill = 0x41,
-): Promise<string> {
-  await Bun.write(path, new Uint8Array(sizeBytes).fill(fill));
-  return path;
-}
-
 /** The sha256 of the same content, computed the way a test asserts it. */
 export function sha256OfBytes(sizeBytes: number, fill = 0x41): string {
   return new Bun.CryptoHasher("sha256")

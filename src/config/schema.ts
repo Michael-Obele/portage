@@ -28,7 +28,6 @@ export type VerifyMode = v.InferOutput<typeof VerifyMode>;
 
 /** Which transport to try first. `auto` picks adb and falls back on failure. */
 export const Transport = v.picklist(["auto", "adb", "rsync"]);
-export type TransportChoice = v.InferOutput<typeof Transport>;
 
 export const DeviceConfigSchema = v.object({
   /** Human label. Free to rename — the key is the device id, not this. */

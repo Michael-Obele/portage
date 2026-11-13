@@ -16,7 +16,7 @@ import {
   type DeviceConfig,
 } from "../config/schema.ts";
 import type { Adb, DeviceFile, DeviceInfo } from "../device/adb.ts";
-import { basename, extname } from "../util/paths.ts";
+import { extname } from "../util/paths.ts";
 
 /** Why a file is or isn't a candidate. Shown verbatim by `scan` and `plan`. */
 export type Verdict =
@@ -214,5 +214,3 @@ export function summarise(candidates: Candidate[]): Record<Verdict, number> {
   for (const c of candidates) counts[c.verdict] = (counts[c.verdict] ?? 0) + 1;
   return counts as Record<Verdict, number>;
 }
-
-export { basename };

@@ -15,7 +15,7 @@ import {
   writeConfigFile,
 } from "../../config/load.ts";
 import { CONFIG_KEYS } from "../../config/schema.ts";
-import { formatBytes, formatDuration } from "../../util/paths.ts";
+import { formatBytes } from "../../util/paths.ts";
 import type { Output } from "../../output/output.ts";
 import { usageError } from "../../util/errors.ts";
 
@@ -274,5 +274,3 @@ export async function db(ctx: {
     journal.close();
   }
 }
-
-export { formatDuration };

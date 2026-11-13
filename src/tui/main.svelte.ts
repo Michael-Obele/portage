@@ -15,7 +15,7 @@
  * ladder: `portage pull | cat` produces the plain output, byte for byte, with no
  * escape sequence in it.
  */
-import { bool, parseArgs, str } from "../cli/args.ts";
+import { bool, parseArgs, sinceSeconds, str } from "../cli/args.ts";
 import { Adb } from "../device/adb.ts";
 import { loadConfig } from "../config/load.ts";
 import { createLogger, type LogLevel } from "../util/log.ts";
@@ -31,20 +31,6 @@ import { view } from "./state.svelte.ts";
 import { createControl, startPull } from "./runner.ts";
 import { DashboardScreen } from "./screens/dashboard.ts";
 import { deferred } from "./deferred.ts";
-
-/** `--since 7d` / `--since 36h` / `--since 900` (seconds). Mirrors cli/index.ts. */
-function sinceSeconds(
-  flags: Record<string, string | boolean>,
-): number | undefined {
-  const raw = str(flags, "since");
-  if (!raw) return undefined;
-  const match = /^(\d+)([smhdw]?)$/.exec(raw.trim());
-  if (!match)
-    throw new Error(`--since needs a value like 7d or 36h, got "${raw}"`);
-  const multiplier =
-    { s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[match[2] ?? "s"] ?? 1;
-  return Number(match[1]) * multiplier;
-}
 
 /** A promise the dashboard settles when the user actually wants out. */
 

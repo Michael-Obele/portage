@@ -25,8 +25,6 @@ import type { EngineSummary, FileEvent } from "../xfer/engine.ts";
 
 import {
   EWMA_ALPHA,
-  ETA_MIN_BYTES,
-  ETA_MIN_SAMPLES,
   honestEta,
   rowIndexByKey,
   view,
@@ -320,4 +318,3 @@ export class TransferSink implements ViewSink {
 }
 
 /** Exposed for tests and for the `--json` writer. */
-export const ETA_RULES = { ETA_MIN_SAMPLES, ETA_MIN_BYTES } as const;

@@ -369,5 +369,4 @@ function pathsIncludes(paths: Iterable<string>, candidate: string): boolean {
   return false;
 }
 
-export { suggestKeeper };
 export * from "./types.ts";

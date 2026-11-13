@@ -15,13 +15,13 @@ import {
   parseLsusbTree,
   type DeviceInfo,
 } from "../../device/adb.ts";
-import { diskSpace, isDirectory, statSyncSafe } from "../../util/fs.ts";
+import { diskSpace, isDirectory } from "../../util/fs.ts";
 import { formatBytes } from "../../util/paths.ts";
 import type { Output } from "../../output/output.ts";
 import type { ResolvedConfig } from "../../config/load.ts";
-import { requireDestRoot } from "../../config/load.ts";
+
 import { Journal } from "../../index/journal.ts";
-import { preconditionError } from "../../util/errors.ts";
+
 import { realSpawn } from "../../util/spawn.ts";
 
 export interface DoctorContext {
@@ -372,5 +372,3 @@ async function benchmark(
 
   return `${mbPerSec.toFixed(1)} MB/s over 256 MB (transfer + flush)`;
 }
-
-export { preconditionError, requireDestRoot, statSyncSafe };

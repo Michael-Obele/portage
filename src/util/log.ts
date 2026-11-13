@@ -17,8 +17,6 @@ export interface Logger {
   out(msg: string): void;
 }
 
-const PREFIX = "portage";
-
 export function createLogger(level: LogLevel): Logger {
   const write = (stream: "out" | "err", msg: string) => {
     const text = `${msg}\n`;
@@ -53,5 +51,3 @@ export const silentLogger: Logger = {
   error: () => {},
   out: () => {},
 };
-
-export { PREFIX };

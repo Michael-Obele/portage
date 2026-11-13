@@ -96,23 +96,7 @@ export function statSyncSafe(path: string): FileStat | null {
   };
 }
 
-/** Recursive byte total + file count for a tree. Skips unreadable entries. */
-export function treeSize(root: string): { bytes: number; files: number } {
-  const bytes = Bun.spawnSync(["du", "-sb", root], { stderr: "ignore" });
-  const count = Bun.spawnSync(["find", root, "-type", "f"], {
-    stderr: "ignore",
-  });
-  const byteValue = Number(bytes.stdout.toString().trim().split(/\s+/)[0]);
-  const fileCount =
-    count.exitCode === 0
-      ? count.stdout.toString().trim().split("\n").filter(Boolean).length
-      : 0;
-  return {
-    bytes: Number.isFinite(byteValue) ? byteValue : 0,
-    files: fileCount,
-  };
-}
-
+/** Move a file, falling back to copy+unlink across a device boundary. */
 /** Create a directory (and parents) if missing. */
 export async function ensureDir(path: string): Promise<void> {
   await mkdir(path, { recursive: true });
@@ -142,8 +126,6 @@ export async function isDirectory(path: string): Promise<boolean> {
   });
   return res.exitCode === 0;
 }
-
-export { mkdir, rm, rename };
 
 /** Move a file, falling back to copy+unlink across a device boundary. */
 export async function moveFile(from: string, to: string): Promise<void> {

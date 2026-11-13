@@ -12,14 +12,6 @@
  * one sample is emitted as `null`, never as a confident guess.
  */
 
-import {
-  formatBytes,
-  formatDuration,
-  formatRate,
-  truncateMiddle,
-} from "../util/paths.ts";
-import { formatDuration as fmtDuration } from "../util/paths.ts";
-
 export type OutputMode = "tty" | "plain" | "json";
 
 export interface Output {
@@ -151,16 +143,3 @@ function padVisible(s: string, width: number): string {
   const pad = width - visibleLength(s);
   return pad > 0 ? `${s}${" ".repeat(pad)}` : s;
 }
-
-export {
-  formatBytes,
-  formatDuration,
-  formatRate,
-  truncateMiddle,
-  fmtDuration,
-  BOLD,
-  DIM,
-  GREEN,
-  YELLOW,
-  RED,
-};

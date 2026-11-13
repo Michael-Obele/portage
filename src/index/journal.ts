@@ -54,12 +54,6 @@ export const TERMINAL_STATES: readonly TransferState[] = [
 ];
 
 /** States that mean "bytes are on the drive and they check out". */
-export const PROVEN_STATES: readonly TransferState[] = [
-  "verified",
-  "source_deleted",
-  "done",
-];
-
 export interface TransferRow {
   id: number;
   run_id: number | null;
@@ -484,38 +478,34 @@ export class Journal {
         .all(deviceId, ...states);
     }
     return this.db
-      .query<
-        TransferRow,
-        string[]
-      >(`SELECT * FROM transfers WHERE state IN (${placeholders}) ORDER BY src_path`)
+      .query<TransferRow, string[]>(
+        `SELECT * FROM transfers WHERE state IN (${placeholders}) ORDER BY src_path`,
+      )
       .all(...states);
   }
 
   listByState(state: TransferState, limit = 100): TransferRow[] {
     return this.db
-      .query<
-        TransferRow,
-        [string, number]
-      >(`SELECT * FROM transfers WHERE state = ? ORDER BY finished_at DESC LIMIT ?`)
+      .query<TransferRow, [string, number]>(
+        `SELECT * FROM transfers WHERE state = ? ORDER BY finished_at DESC LIMIT ?`,
+      )
       .all(state, limit);
   }
 
   /** `portage status` — recent transfers with their outcome. */
   listRecent(limit = 50): TransferRow[] {
     return this.db
-      .query<
-        TransferRow,
-        [number]
-      >("SELECT * FROM transfers ORDER BY id DESC LIMIT ?")
+      .query<TransferRow, [number]>(
+        "SELECT * FROM transfers ORDER BY id DESC LIMIT ?",
+      )
       .all(limit);
   }
 
   countByState(): Record<string, number> {
     const rows = this.db
-      .query<
-        { state: string; n: number },
-        []
-      >("SELECT state, COUNT(*) AS n FROM transfers GROUP BY state")
+      .query<{ state: string; n: number }, []>(
+        "SELECT state, COUNT(*) AS n FROM transfers GROUP BY state",
+      )
       .all();
     const out: Record<string, number> = {};
     for (const r of rows) out[r.state] = r.n;
@@ -579,10 +569,9 @@ export class Journal {
   findArchive(pathNorm: string): ArchiveRow | null {
     return (
       this.db
-        .query<
-          ArchiveRow,
-          [string]
-        >("SELECT * FROM archive WHERE path_norm = ?")
+        .query<ArchiveRow, [string]>(
+          "SELECT * FROM archive WHERE path_norm = ?",
+        )
         .get(pathNorm) ?? null
     );
   }
@@ -601,10 +590,9 @@ export class Journal {
 
   countArchive(): { files: number; bytes: number } {
     const row = this.db
-      .query<
-        { files: number; bytes: number },
-        []
-      >("SELECT COUNT(*) AS files, COALESCE(SUM(size), 0) AS bytes FROM archive")
+      .query<{ files: number; bytes: number }, []>(
+        "SELECT COUNT(*) AS files, COALESCE(SUM(size), 0) AS bytes FROM archive",
+      )
       .get();
     return { files: row?.files ?? 0, bytes: row?.bytes ?? 0 };
   }
@@ -648,10 +636,9 @@ export class Journal {
 
   recentEvents(limit = 50): Array<{ at: number; level: string; msg: string }> {
     return this.db
-      .query<
-        { at: number; level: string; msg: string },
-        [number]
-      >("SELECT at, level, msg FROM events ORDER BY id DESC LIMIT ?")
+      .query<{ at: number; level: string; msg: string }, [number]>(
+        "SELECT at, level, msg FROM events ORDER BY id DESC LIMIT ?",
+      )
       .all(limit);
   }
 

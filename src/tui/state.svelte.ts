@@ -34,12 +34,7 @@ export const STALL_MS = 10_000;
 /** Per-file state. A deliberately small union: the glyph set is finite and
  * every one of these has a text twin, so a monochrome terminal loses nothing. */
 export type RowState =
-  | "queued"
-  | "copying"
-  | "done"
-  | "failed"
-  | "skipped"
-  | "duplicate";
+  "queued" | "copying" | "done" | "failed" | "skipped" | "duplicate";
 
 export interface FileRow {
   /** Stable identity across events. The engine has no index, so this is the
@@ -160,16 +155,6 @@ export function rowIndexByKey(key: string): number {
   return view.rows.findIndex((r) => r.key === key);
 }
 
-/** EWMA. One place, so the screen and the JSON can never disagree. */
-export function ewma(
-  previous: number,
-  sample: number,
-  alpha = EWMA_ALPHA,
-): number {
-  if (previous <= 0) return sample;
-  return alpha * sample + (1 - alpha) * previous;
-}
-
 /**
  * The ETA, or null when it would not be honest.
  * Exported so `--json` and the screen call the SAME function — gate D4.
@@ -216,7 +201,7 @@ export type DuplicateGroup = DupeGroup;
 export type DuplicateMember = DupeMember;
 
 import { BAR_CELLS, type Capabilities, type Sizing } from "./degrade.ts";
-import { boxChars, glyphs, type Palette } from "./theme.ts";
+import { boxChars, glyphs } from "./theme.ts";
 
 /** `██████████████░░░░░░` — fixed BAR_CELLS wide so it never misleads. */
 export function bar(
@@ -380,4 +365,4 @@ export function frame(
   return [top, bottom];
 }
 
-export type { Capabilities, Sizing, Palette };
+export type { Capabilities, Sizing };

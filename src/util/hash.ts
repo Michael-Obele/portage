@@ -11,8 +11,6 @@
  * comparison. Both must produce the same hex digest — that is the entire proof.
  */
 
-import { createHash } from "node:crypto";
-
 /** sha1 of a short string — used for the device id (`sha1(ro.serialno)`). */
 export function sha1Hex(input: string): string {
   return new Bun.CryptoHasher("sha1").update(input).digest("hex");
@@ -99,6 +97,3 @@ export async function sampleHash(
  * Kept for the `--transport rsync` path, where we want to reproduce what rsync
  * computes (`xxh3`) rather than our own choice of algorithm.
  */
-export function hashBuffer(algorithm: string, data: Uint8Array): string {
-  return createHash(algorithm).update(data).digest("hex");
-}

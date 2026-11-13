@@ -7,8 +7,6 @@
  * value rather than a rewrite.
  */
 
-import type { Adb } from "../device/adb.ts";
-
 export interface CopyRequest {
   serial: string;
   /** Device-side path. */
@@ -48,5 +46,3 @@ export interface Transport {
    */
   removeSource(serial: string, srcPath: string): Promise<boolean>;
 }
-
-export type { Adb };

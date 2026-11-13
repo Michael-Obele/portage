@@ -102,9 +102,6 @@ export function stripCR(s: string): string {
 }
 
 /** True when an executable resolves on PATH. */
-export async function commandExists(cmd: string): Promise<boolean> {
-  return (await Bun.which(cmd)) !== null;
-}
 
 /**
  * Resolve an executable to an absolute path, honouring a config override.

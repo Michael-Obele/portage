@@ -12,7 +12,7 @@
  *   0 success · 1 usage/config · 2 precondition · 3 transfer · 4 verification · 5 interrupted
  */
 
-import { bool, int, parseArgs, str } from "./args.ts";
+import { bool, int, parseArgs, sinceSeconds, str } from "./args.ts";
 import { Adb } from "../device/adb.ts";
 import { loadConfig, requireDestRoot } from "../config/load.ts";
 import { CONFIG_KEYS } from "../config/schema.ts";
@@ -256,22 +256,6 @@ async function main(): Promise<number> {
         `try one of: ${COMMANDS.map(([c]) => c).join(", ")}`,
       );
   }
-}
-
-/** `--since 7d` / `--since 36h` / `--since 900` (seconds). */
-function sinceSeconds(
-  flags: Record<string, string | boolean>,
-): number | undefined {
-  const raw = str(flags, "since");
-  if (!raw) return undefined;
-  const match = /^(\d+)([smhdw]?)$/.exec(raw.trim());
-  if (!match) {
-    throw usageError(`--since needs a value like 7d or 36h, got "${raw}"`);
-  }
-  const n = Number(match[1]);
-  const unit = match[2] ?? "s";
-  const multiplier = { s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[unit] ?? 1;
-  return n * multiplier;
 }
 
 async function devices(ctx: {

@@ -16,6 +16,7 @@ import {
   type SpawnFn,
 } from "../util/spawn.ts";
 import { sha1Hex } from "../util/hash.ts";
+import { preconditionError } from "../util/errors.ts";
 
 /**
  * Why a particular adb binary is being used.
@@ -476,4 +477,44 @@ export function maxLinkSpeed(speeds: Map<string, number>): number {
 
 export function isUsb2(speedMbit: number): boolean {
   return speedMbit > 0 && speedMbit <= 480;
+}
+
+/**
+ * The ready devices a command may act on, honouring an optional filter.
+ *
+ * One implementation for the CLI and for `serve`: the filter matches an id
+ * prefix, an exact serial, or a model substring, and a filter that matches
+ * nothing is an error that lists what is attached — never an empty run. Two
+ * copies of this drifted once already (different separators, different
+ * formatting); the rule lives here now.
+ */
+export async function selectReady(
+  adb: Adb,
+  filter?: string,
+): Promise<DeviceInfo[]> {
+  const ready = (await adb.devices()).filter((d) => d.state === "device");
+  if (ready.length === 0) {
+    throw preconditionError(
+      "no device is attached and authorised",
+      "plug in a phone, enable USB debugging, and accept the RSA prompt",
+    );
+  }
+  if (!filter) return ready;
+
+  const matched = ready.filter(
+    (d) =>
+      d.id.startsWith(filter) ||
+      d.serial === filter ||
+      d.model.toLowerCase().includes(filter.toLowerCase()),
+  );
+  if (matched.length === 0) {
+    const available = ready
+      .map((d) => `  ${d.id.slice(0, 12)}…  ${d.model || d.serial}`)
+      .join("\n");
+    throw preconditionError(
+      `no attached device matches "${filter}"`,
+      `attached devices:\n${available}`,
+    );
+  }
+  return matched;
 }

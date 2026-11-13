@@ -1,0 +1,39 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+
+  // A symbol used inside its own module is not dead code. Most of this
+  // repo's "unused export" hits were valibot schemas and helpers that only
+  // ever compose within the file that declares them.
+  "ignoreExportsUsedInFile": true,
+
+  // A documented one-off, run by hand: `bun run scripts/solve.ts`.
+  // Nothing imports it, by design.
+  "entry": ["apps/desktop/scripts/solve.ts"],
+
+  // Hide findings *owned by* these files, without removing them from the
+  // module graph — otherwise the components they re-export look orphaned.
+  "ignoreFindings": [
+    // shadcn barrels export every component twice: the bare name (`Root`)
+    // and the prefixed one (`Select`). Screens use the prefixed names; the
+    // bare aliases are the component library's public surface.
+    "apps/desktop/src/lib/components/ui/**/index.ts",
+    // Exists only so the shadcn CLI can resolve the bare `#lib` alias in
+    // components.json. Nothing imports it from source.
+    "apps/desktop/src/lib/index.ts",
+  ],
+
+  "rules": {
+    // The app mirrors the engine's wire contract in
+    // apps/desktop/src/lib/engine/protocol.ts. The two sides are separate
+    // build units (a SvelteKit bundle and a Bun sidecar), so the same type
+    // name existing in both is the boundary working — not copy-paste.
+    "duplicate-exports": "off",
+  },
+
+  "duplicates": {
+    // The same file is also where clone detection finds nine "copies": the
+    // mirrored frame types are identical by design. Compare the engine
+    // against anything else, but not against its own contract.
+    "ignore": ["apps/desktop/src/lib/engine/protocol.ts"],
+  },
+}

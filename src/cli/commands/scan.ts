@@ -8,15 +8,13 @@
  * drift.
  */
 
-import { join } from "node:path";
-
-import { Adb, type DeviceInfo } from "../../device/adb.ts";
+import { Adb, selectReady, type DeviceInfo } from "../../device/adb.ts";
 import type { ResolvedConfig } from "../../config/load.ts";
 import { requireDestRoot } from "../../config/load.ts";
 import { Journal } from "../../index/journal.ts";
 import { scanDevice, summarise, type Candidate } from "../../scan/scan.ts";
 import { buildPlan, planSummary, type PlanResult } from "../../plan/plan.ts";
-import { ensureStateDirs } from "../../util/fs.ts";
+
 import { formatBytes, formatDuration } from "../../util/paths.ts";
 import type { Output } from "../../output/output.ts";
 import { preconditionError } from "../../util/errors.ts";
@@ -30,45 +28,13 @@ export interface ScanContext {
   sinceSeconds?: number;
 }
 
-/** Resolve devices to scan, honouring `--device`. */
-async function selectDevices(adb: Adb, filter?: string): Promise<DeviceInfo[]> {
-  const all = await adb.devices();
-  const ready = all.filter((d) => d.state === "device");
-
-  if (ready.length === 0) {
-    throw preconditionError(
-      "no device is attached and authorised",
-      "plug in a phone, enable USB debugging, and accept the RSA prompt",
-    );
-  }
-
-  if (!filter) return ready;
-
-  const matched = ready.filter(
-    (d) =>
-      d.id.startsWith(filter) ||
-      d.serial === filter ||
-      d.model.toLowerCase().includes(filter.toLowerCase()),
-  );
-  if (matched.length === 0) {
-    const available = ready
-      .map((d) => `  ${d.id.slice(0, 12)}…  ${d.model || d.serial}`)
-      .join("\n");
-    throw preconditionError(
-      `no attached device matches "${filter}"`,
-      `attached devices:\n${available}`,
-    );
-  }
-  return matched;
-}
-
 /** Walk every selected device and classify what comes back. */
 async function gather(
   ctx: ScanContext,
 ): Promise<{ devices: DeviceInfo[]; candidates: Candidate[] }> {
   if (!ctx.adb) throw preconditionError("adb is not available");
   const { config } = ctx.resolved;
-  const devices = await selectDevices(ctx.adb, ctx.deviceFilter);
+  const devices = await selectReady(ctx.adb, ctx.deviceFilter);
 
   const all: Candidate[] = [];
   for (const device of devices) {
@@ -253,5 +219,3 @@ function renderPlan(result: PlanResult, o: Output): number {
 
   return result.space.ok ? 0 : 2;
 }
-
-export { ensureStateDirs, join };

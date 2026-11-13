@@ -26,15 +26,12 @@
  *     byte moves, so a crash leaves a recoverable record, not an orphan file.
  */
 
-import { join } from "node:path";
-
 import type { Adb, DeviceInfo } from "../device/adb.ts";
 import type { Journal, TransferState } from "../index/journal.ts";
 import type { PlanResult, PlannedFile } from "../plan/plan.ts";
 import type { DeleteSource } from "../config/schema.ts";
-import { ensureDir, fsyncPath, statSyncSafe } from "../util/fs.ts";
+import { statSyncSafe } from "../util/fs.ts";
 import { sha256File } from "../util/hash.ts";
-import { dirname } from "../util/paths.ts";
 import type { Logger } from "../util/log.ts";
 import type { CopyRequest, Transport } from "./transport.ts";
 
@@ -411,6 +408,3 @@ async function verifyFile(
 
 /** Injection point re-exported so tests can build a fake `hashRemote`. */
 export type { Adb };
-
-export { ensureDir, fsyncPath, join, dirname };
-export type { TransferState };
