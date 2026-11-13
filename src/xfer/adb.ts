@@ -15,12 +15,15 @@
  * comparing the phone's own `sha256sum` against the local hash.
  */
 
-import { join } from "node:path";
+import { createWriteStream } from "node:fs";
+import { once } from "node:events";
 import { rm } from "node:fs/promises";
+import { join } from "node:path";
+import { finished } from "node:stream/promises";
 
 import type { Adb } from "../device/adb.ts";
 import { ensureDir, fsyncPath, statSyncSafe } from "../util/fs.ts";
-import { basename, dirname } from "../util/paths.ts";
+import { dirname } from "../util/paths.ts";
 import type { CopyOutcome, CopyRequest, Transport } from "./transport.ts";
 
 export class AdbTransport implements Transport {
@@ -51,7 +54,9 @@ export class AdbTransport implements Transport {
 
     const resumeWorthIt =
       req.partialBytes > 0 &&
-      req.size > 0 &&
+      // A file longer than the source cannot be a partial of it: appending
+      // would overwrite its head with the tail. Leave it to fail verification.
+      req.partialBytes < req.size &&
       req.partialBytes / req.size >= req.resumeThreshold;
 
     if (req.partialBytes > 0 && !resumeWorthIt) {
@@ -129,19 +134,27 @@ export class AdbTransport implements Transport {
     const stream = proc.stdout as ReadableStream<Uint8Array>;
 
     let written = req.partialBytes;
+    // `r+` writes from an explicit offset, so the bytes already on disk survive.
+    // `Bun.file().writer()` starts at offset 0 and silently overwrites the head
+    // of the file it was meant to continue; every resume then failed its hash.
+    const sink = createWriteStream(req.destPath, {
+      flags: "r+",
+      start: req.partialBytes,
+    });
     try {
-      const sink = Bun.file(req.destPath).writer();
       const reader = stream.getReader();
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         if (!value) continue;
-        sink.write(value);
+        if (!sink.write(value)) await once(sink, "drain");
         written += value.byteLength;
         req.onProgress?.(written);
       }
-      await sink.end();
+      sink.end();
+      await finished(sink);
     } catch {
+      sink.destroy();
       await stream.cancel().catch(() => {});
       return null;
     }
@@ -279,5 +292,3 @@ function firstLine(s: string): string {
       ?.trim() ?? ""
   );
 }
-
-export { basename, join };
