@@ -9,7 +9,9 @@ rust-version = "1.90"
 
 [lib]
 name = "portage_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+# `rlib` only: the shell is desktop-only, so the mobile `staticlib`/`cdylib`
+# outputs have no consumer.
+crate-type = ["rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2.7.4", features = [] }
@@ -22,3 +24,9 @@ tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-single-instance = "2"
+# Debug-only (registered under cfg(debug_assertions) in src/lib.rs): lets an AI
+# assistant drive the running app over loopback. See apps/desktop/README.md.
+tauri-plugin-mcp-bridge = "0.13"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

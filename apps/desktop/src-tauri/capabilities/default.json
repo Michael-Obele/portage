@@ -1,46 +1,14 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the Portage main window: the engine sidecar, and nothing else.",
+  "description": "Capability for the Portage main window: the default core commands, the folder picker, revealing a path, and — in debug builds only — the MCP bridge an AI assistant uses to drive the running app.",
   "windows": [
     "main"
   ],
   "permissions": [
     "core:default",
-    "core:event:default",
-    "core:window:default",
-    "core:app:default",
-    "core:path:default",
-    "core:resources:default",
-    {
-      "identifier": "shell:allow-execute",
-      "allow": [
-        {
-          "name": "portage-engine",
-          "cmd": "portage*",
-          "args": [
-            "serve"
-          ],
-          "sidecar": true
-        }
-      ]
-    },
-    {
-      "identifier": "shell:allow-spawn",
-      "allow": [
-        {
-          "name": "portage-engine",
-          "cmd": "portage*",
-          "args": [
-            "serve"
-          ],
-          "sidecar": true
-        }
-      ]
-    },
-    "shell:allow-stdin-write",
-    "shell:allow-kill",
     "dialog:default",
-    "opener:default"
+    "opener:default",
+    "mcp-bridge:default"
   ]
 }

@@ -7,9 +7,8 @@ mod engine;
 
 use tauri::{Manager, RunEvent, WindowEvent};
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         // Single instance must be registered first: a second launch hands its
         // argv here instead of opening a second window over the same engine.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -21,7 +20,20 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_opener::init());
+
+    // Development only: an in-process bridge that the `mcp-server-tauri` MCP
+    // talks to over loopback, so an agent can read the running app's screenshots,
+    // DOM, console and IPC instead of a screenshot taken by hand. Bound to
+    // 127.0.0.1 (the default is all interfaces) and never registered in a release.
+    #[cfg(debug_assertions)]
+    let builder = builder.plugin(
+        tauri_plugin_mcp_bridge::Builder::new()
+            .bind_address("127.0.0.1")
+            .build(),
+    );
+
+    builder
         .manage(engine::EngineState::default())
         .invoke_handler(tauri::generate_handler![
             engine::engine_send,
@@ -33,7 +45,7 @@ pub fn run() {
             // window says nothing, while the events below put a stopped engine
             // and a manual restart in front of the person using it.
             if let Err(err) = engine::start(app.handle()) {
-                eprintln!("portage: could not start the engine: {err}");
+                engine::note(&format!("portage: could not start the engine: {err}"));
                 engine::report_start_failure(app.handle(), &err);
             }
             Ok(())

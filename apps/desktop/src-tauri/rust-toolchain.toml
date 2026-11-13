@@ -1,0 +1,11 @@
+# One toolchain for the whole crate. `rust-version` in Cargo.toml is only a
+# floor (1.90); this is what actually runs locally and in CI. Declaring the
+# components means `cargo fmt` and `cargo clippy` exist for everyone, so the
+# checks in .github/workflows/ci.yml can be run by hand without setup.
+#
+# Pinning an exact version (e.g. "1.90.0") instead of "stable" is the stricter
+# alternative: it freezes the compiler, so new lints never appear unannounced,
+# at the cost of a manual bump.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]

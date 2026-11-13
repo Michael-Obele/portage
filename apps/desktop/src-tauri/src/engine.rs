@@ -10,6 +10,7 @@
 //! `engine://exit`. `engine_send` writes exactly one line to the child's stdin.
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard};
@@ -18,8 +19,8 @@ use std::time::Duration;
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
-use tauri_plugin_shell::process::{Command, CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
+use tauri_plugin_shell::process::{Command, CommandChild, CommandEvent};
 
 /// A stdout line, verbatim: the frame exactly as the engine wrote it.
 pub const EVENT_FRAME: &str = "engine://frame";
@@ -39,12 +40,41 @@ const DEV_ENGINE_ENV: &str = "PORTAGE_DEV_ENGINE";
 /// A lock that survives a poisoned mutex: a panic in one thread must not turn
 /// every later call into a panic. Nothing here panics while holding the lock.
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// Emit and forget. A failed emit means no webview is listening.
 fn emit<P: Serialize + Clone>(app: &AppHandle, event: &str, payload: P) {
     let _ = app.emit(event, payload);
+}
+
+/// The shell's own diagnostics. A window launched from a desktop entry has no
+/// console, so these are appended to a file as well as written to stderr (which
+/// only a terminal sees). Best effort: a failure to log never stops the app.
+pub fn note(message: &str) {
+    eprintln!("{message}");
+    if let Some(path) = log_path()
+        && let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+    {
+        let _ = writeln!(file, "{message}");
+    }
+}
+
+/// `$XDG_STATE_HOME/portage/desktop.log`, or `~/.local/state/...` when unset.
+fn log_path() -> Option<PathBuf> {
+    let base = std::env::var_os("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/state"))
+        })?;
+    let dir = base.join("portage");
+    std::fs::create_dir_all(&dir).ok()?;
+    Some(dir.join("desktop.log"))
 }
 
 /// Every frame type the engine can write.
@@ -109,7 +139,9 @@ fn dev_engine_root() -> Option<PathBuf> {
     if root.is_dir() {
         Some(root)
     } else {
-        eprintln!("portage: {DEV_ENGINE_ENV}=\"{trimmed}\" is not a directory; using the sidecar");
+        note(&format!(
+            "portage: {DEV_ENGINE_ENV}=\"{trimmed}\" is not a directory; using the sidecar"
+        ));
         None
     }
 }
@@ -157,11 +189,19 @@ pub fn start(app: &AppHandle) -> Result<(), String> {
             match event {
                 CommandEvent::Stdout(bytes) => on_stdout(&handle, &bytes),
                 CommandEvent::Stderr(bytes) => {
-                    emit(&handle, EVENT_STDERR, String::from_utf8_lossy(&bytes).into_owned());
+                    emit(
+                        &handle,
+                        EVENT_STDERR,
+                        String::from_utf8_lossy(&bytes).into_owned(),
+                    );
                 }
                 CommandEvent::Error(message) => emit(&handle, EVENT_STDERR, message),
                 CommandEvent::Terminated(payload) => {
-                    if handle.state::<EngineState>().generation.load(Ordering::SeqCst) != generation
+                    if handle
+                        .state::<EngineState>()
+                        .generation
+                        .load(Ordering::SeqCst)
+                        != generation
                     {
                         continue; // a child this session already replaced
                     }
@@ -184,15 +224,21 @@ pub fn engine_restart(app: AppHandle) -> Result<(), String> {
     start(&app)
 }
 
-/// Write exactly one line to the engine's stdin.
-#[tauri::command]
-pub fn engine_send(app: AppHandle, line: String) -> Result<(), String> {
-    let mut payload = line.into_bytes();
-    // Exactly one terminating newline, whatever the caller sent.
+/// Exactly one terminating newline, whatever the caller sent. The wire is one
+/// frame per line, so a caller that supplies its own newline must not make two.
+fn one_line(line: &str) -> Vec<u8> {
+    let mut payload = line.as_bytes().to_vec();
     while matches!(payload.last().copied(), Some(b'\n' | b'\r')) {
         payload.pop();
     }
     payload.push(b'\n');
+    payload
+}
+
+/// Write exactly one line to the engine's stdin.
+#[tauri::command]
+pub fn engine_send(app: AppHandle, line: String) -> Result<(), String> {
+    let payload = one_line(&line);
 
     let state = app.state::<EngineState>();
     let mut guard = lock(&state.child);
@@ -233,9 +279,9 @@ pub fn report_start_failure(app: &AppHandle, reason: &str) {
 /// The child ended. Clear the handle and decide whether it comes back.
 fn on_terminated(app: &AppHandle, code: Option<i32>) {
     let state = app.state::<EngineState>();
-    if let Some(child) = lock(&state.child).take() {
-        drop(child);
-    }
+    // The child has already exited; this only empties the slot before a restart
+    // can fill it.
+    let _ = lock(&state.child).take();
 
     if state.shutdown.load(Ordering::SeqCst) {
         return; // the app is going away; nothing to resurrect
@@ -251,6 +297,9 @@ fn on_terminated(app: &AppHandle, code: Option<i32>) {
 
 /// One restart after a short backoff, on a plain thread: a single 500 ms delay
 /// is not worth pulling an async timer into this crate.
+///
+/// A manual `engine_restart` landing inside this window is harmless: whichever
+/// start wins supersedes the other, and the engine still ends up running.
 fn restart_later(app: AppHandle) {
     std::thread::spawn(move || {
         std::thread::sleep(RESTART_BACKOFF);
@@ -264,20 +313,30 @@ fn restart_later(app: AppHandle) {
 /// Forward one stdout line verbatim, and remember it when it is a whole frame.
 fn on_stdout(app: &AppHandle, bytes: &[u8]) {
     let line = String::from_utf8_lossy(bytes).into_owned();
-    emit(app, EVENT_FRAME, line.clone());
 
-    // The only field Rust ever reads. Everything else in the frame is opaque to
-    // it, which is the point: the payload's meaning lives in the engine, in one
-    // codebase, next to the tests that pin it.
-    let Ok(value) = serde_json::from_str::<Value>(&line) else {
-        return;
-    };
-    let Some(kind) = value.get("type").and_then(Value::as_str) else {
-        return;
-    };
-    let Some(kind) = FRAME_TYPES.iter().copied().find(|known| *known == kind) else {
-        return;
-    };
-    let state = app.state::<EngineState>();
-    lock(&state.last).insert(kind, value);
+    // Parse before forwarding so the line need not be cloned (`emit` takes
+    // ownership). The only field Rust ever reads is the type. Everything else in
+    // the frame is opaque to it, which is the point: the payload's meaning lives
+    // in the engine, in one codebase, next to the tests that pin it.
+    if let Ok(value) = serde_json::from_str::<Value>(&line)
+        && let Some(kind) = value.get("type").and_then(Value::as_str)
+        && let Some(kind) = FRAME_TYPES.iter().copied().find(|known| *known == kind)
+    {
+        lock(&app.state::<EngineState>().last).insert(kind, value);
+    }
+
+    emit(app, EVENT_FRAME, line);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::one_line;
+
+    #[test]
+    fn one_line_leaves_exactly_one_terminating_newline() {
+        assert_eq!(one_line("x"), b"x\n");
+        assert_eq!(one_line("x\n"), b"x\n");
+        assert_eq!(one_line("x\r\n\r\n"), b"x\n");
+        assert_eq!(one_line(""), b"\n");
+    }
 }
