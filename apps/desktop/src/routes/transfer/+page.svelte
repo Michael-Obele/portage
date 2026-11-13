@@ -124,7 +124,7 @@
 		nothingToMove = false;
 		try {
 			startingNames = [];
-			await app.port.send('plan', planArgs(filtersFromIntent(wanted)));
+			await app.port.send('plan', planArgs(filtersFromIntent(wanted), wanted.exclude));
 			// The `plan` frame landed while that answer was in flight — the engine
 			// always writes it first — and the observer below filled this in, so an
 			// empty list is a real answer: there is nothing to copy.
@@ -195,15 +195,15 @@
 		if (intent === null) return;
 		// One run at a time: the engine refuses a second one, and a reload must
 		// not restart a run that is already going.
-			if (viewIsLive(run.view)) return;
-			// The counters are per-run but this store outlives the screen, so an
-			// ended run from an earlier visit would otherwise be the last thing a
-			// later intent ever saw. Clear them BEFORE the engine is asked: frames
-			// precede answers, so clearing after `pull.start` resolves wipes the new
-			// run's first frames.
-			run.beginRun();
-			series = [];
-			firstVerifyAt = null;
+		if (viewIsLive(run.view)) return;
+		// The counters are per-run but this store outlives the screen, so an
+		// ended run from an earlier visit would otherwise be the last thing a
+		// later intent ever saw. Clear them BEFORE the engine is asked: frames
+		// precede answers, so clearing after `pull.start` resolves wipes the new
+		// run's first frames.
+		run.beginRun();
+		series = [];
+		firstVerifyAt = null;
 		void begin(intent);
 	});
 </script>

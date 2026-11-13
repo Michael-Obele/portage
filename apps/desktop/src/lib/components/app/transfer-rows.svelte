@@ -15,6 +15,7 @@
 	import { cn } from '../../utils.ts';
 	import DataTable, { type TableColumn } from './data-table.svelte';
 	import StateChip from './state-chip.svelte';
+	import * as Table from '../ui/table/index.js';
 	import { IDENTIFIER, NUMERIC, ROW_NAME } from './tokens.ts';
 	import type { RowView } from './transfer-series.ts';
 
@@ -53,21 +54,21 @@
 	skeletonRows={6}
 >
 	{#snippet row(item)}
-		<td role="gridcell" class="ps-3">
+		<Table.Cell role="gridcell">
 			<StateChip state={item.chip} />
-		</td>
-		<td role="gridcell" class="px-3">
+		</Table.Cell>
+		<Table.Cell role="gridcell">
 			<span class="flex min-w-0 flex-col">
 				<span class={ROW_NAME} title={item.srcPath}>{truncateMiddle(item.name, 48)}</span>
 				<span class={cn(IDENTIFIER, 'truncate text-muted-foreground')} title={item.destPath}>
 					{truncateMiddle(item.destPath, 64)}
 				</span>
 			</span>
-		</td>
-		<td role="gridcell" class={cn('px-3', NUMERIC)}>
+		</Table.Cell>
+		<Table.Cell role="gridcell" class={NUMERIC}>
 			{formatBytes(item.bytes)} / {formatBytes(item.size)}
-		</td>
-		<td role="gridcell" class="px-3">
+		</Table.Cell>
+		<Table.Cell role="gridcell">
 			<div class="flex items-center gap-2">
 				<!-- The bar is the picture; the percent beside it is the reading. -->
 				<div class="h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-muted" aria-hidden="true">
@@ -83,12 +84,12 @@
 					</span>
 				{/if}
 			</div>
-		</td>
-		<td role="gridcell" class="px-3">
+		</Table.Cell>
+		<Table.Cell role="gridcell">
 			<span class="block truncate text-body text-muted-foreground" title={item.reason}>
 				{item.reason === '' ? DASH : item.reason}
 			</span>
-		</td>
+		</Table.Cell>
 	{/snippet}
 
 	{#snippet empty()}

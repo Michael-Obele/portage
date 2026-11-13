@@ -22,6 +22,7 @@
 	import { plural } from '../../util/format.ts';
 	import { cn } from '../../utils.ts';
 	import { Button } from '../ui/button/index.js';
+	import { ScrollArea } from '../ui/scroll-area/index.js';
 	import {
 		Dialog,
 		DialogContent,
@@ -42,6 +43,8 @@
 		normalizePath,
 		parentPath,
 		removeRoot,
+		replaceRoot,
+		rootVerdict,
 		rootsSentence
 	} from './source-folders.ts';
 	import { CONTROL } from './tokens.ts';
@@ -73,8 +76,22 @@
 
 	const folders = $derived(dirEntries(entries));
 	const up = $derived(parentPath(path));
-	/** Same array means `addRoot` would change nothing, so the button says why. */
-	const covered = $derived(addRoot(roots, path) === roots);
+	/** What adding this folder would do, so the button and its reason agree. */
+	const verdict = $derived(rootVerdict(roots, path));
+	const notice = $derived.by(() => {
+		const said = verdict;
+		if (said.kind === 'already') return 'This folder is already in the list.';
+		if (said.kind === 'covered') return `A pull from ${said.by} already copies everything here.`;
+		if (said.kind === 'replaces') {
+			return `This folder contains ${said.roots.join(', ')}, already in the list. Using it replaces ${
+				said.roots.length === 1 ? 'that folder' : 'those folders'
+			}.`;
+		}
+		return null;
+	});
+	const canUse = $derived(
+		!busy && !loading && (verdict.kind === 'free' || verdict.kind === 'replaces')
+	);
 
 	onMount(() =>
 		app.observeFrame((frame) => {
@@ -111,7 +128,12 @@
 	}
 
 	function use(): void {
-		const next = addRoot(roots, path);
+		const next =
+			verdict.kind === 'free'
+				? addRoot(roots, path)
+				: verdict.kind === 'replaces'
+					? replaceRoot(roots, path)
+					: roots;
 		if (next !== roots) onchange(next);
 		open = false;
 	}
@@ -158,7 +180,9 @@
 </div>
 
 <Dialog bind:open>
-	<DialogContent class="rounded-[var(--radius-surface)] shadow-lg sm:max-w-xl">
+	<DialogContent
+		class="max-h-[85dvh] overflow-y-auto rounded-[var(--radius-surface)] shadow-lg sm:max-w-xl"
+	>
 		<DialogHeader class="gap-2">
 			<DialogTitle class="text-title font-medium tracking-normal normal-case">
 				Add a folder
@@ -196,25 +220,29 @@
 						body="There is nothing underneath this folder to pick. Go up, or use this folder itself."
 					/>
 				{:else}
-					<ul
-						class="max-h-[42vh] divide-y divide-border overflow-y-auto rounded-[var(--radius-surface)] border border-border"
+					<ScrollArea
+						type="auto"
+						orientation="horizontal"
+						class="max-h-[42vh] rounded-[var(--radius-surface)] border border-border"
 					>
-						{#each folders as folder (folder.path)}
-							<li>
-								<button
-									type="button"
-									class={cn(
-										CONTROL,
-										'flex w-full items-center gap-2 px-3 py-2 text-left text-body text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none'
-									)}
-									onclick={() => void load(folder.path)}
-								>
-									<Folder class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-									<span class="truncate font-mono">{folder.name}</span>
-								</button>
-							</li>
-						{/each}
-					</ul>
+						<ul class="divide-y divide-border">
+							{#each folders as folder (folder.path)}
+								<li>
+									<button
+										type="button"
+										class={cn(
+											CONTROL,
+											'flex w-full items-center gap-2 px-3 py-2 text-left text-body text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none'
+										)}
+										onclick={() => void load(folder.path)}
+									>
+										<Folder class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+										<span class="truncate font-mono">{folder.name}</span>
+									</button>
+								</li>
+							{/each}
+						</ul>
+					</ScrollArea>
 				{/if}
 
 				{#if folders.length > 0 || truncated}
@@ -225,12 +253,6 @@
 					</p>
 				{/if}
 			</div>
-		{/if}
-
-		{#if covered}
-			<p class="text-caption text-muted-foreground">
-				This folder overlaps one already in the list.
-			</p>
 		{/if}
 
 		<DialogFooter class="mt-1 gap-2 sm:justify-between">
@@ -251,15 +273,14 @@
 					Cancel
 				</Button>
 			</div>
-			<Button
-				variant="default"
-				size="sm"
-				class={CONTROL}
-				disabled={busy || loading || covered}
-				onclick={use}
-			>
-				Use this folder
-			</Button>
+			<div class="flex flex-col items-end gap-1">
+				{#if notice}
+					<p class="measure text-right text-caption text-muted-foreground">{notice}</p>
+				{/if}
+				<Button variant="default" size="sm" class={CONTROL} disabled={!canUse} onclick={use}>
+					Use this folder
+				</Button>
+			</div>
 		</DialogFooter>
 	</DialogContent>
 </Dialog>

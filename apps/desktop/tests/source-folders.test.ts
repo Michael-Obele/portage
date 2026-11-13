@@ -20,6 +20,8 @@ import {
 	normalizePath,
 	parentPath,
 	removeRoot,
+	replaceRoot,
+	rootVerdict,
 	rootsSentence
 } from '../src/lib/components/app/source-folders.ts';
 
@@ -203,5 +205,42 @@ describe('describeConsequence', () => {
 		expect(describeConsequence(['/sdcard/DCIM', '/sdcard/Music'])).toBe(
 			'A pull copies every file under these 2 folders.'
 		);
+	});
+});
+
+describe('rootVerdict', () => {
+	test('a folder outside every root is free', () => {
+		expect(rootVerdict(['/sdcard/DCIM'], '/sdcard/Music')).toEqual({ kind: 'free' });
+	});
+
+	test('the same folder is already in the list', () => {
+		expect(rootVerdict(['/sdcard/DCIM'], '/sdcard/DCIM/')).toEqual({ kind: 'already' });
+	});
+
+	test('a folder under an existing root is already covered', () => {
+		expect(rootVerdict(['/sdcard/Download'], '/sdcard/Download/Move')).toEqual({
+			kind: 'covered',
+			by: '/sdcard/Download'
+		});
+	});
+
+	test('a folder containing an existing root replaces it', () => {
+		expect(rootVerdict(['/sdcard/Download/Move'], '/sdcard/Download')).toEqual({
+			kind: 'replaces',
+			roots: ['/sdcard/Download/Move']
+		});
+	});
+});
+
+describe('replaceRoot', () => {
+	test('drops the narrower roots it contains and keeps the rest', () => {
+		expect(replaceRoot(['/sdcard/Download/Move', '/sdcard/Music'], '/sdcard/Download')).toEqual([
+			'/sdcard/Music',
+			'/sdcard/Download'
+		]);
+	});
+
+	test('never duplicates a folder already present', () => {
+		expect(replaceRoot(['/sdcard/Download'], '/sdcard/Download')).toEqual(['/sdcard/Download']);
 	});
 });

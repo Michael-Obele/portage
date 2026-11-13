@@ -21,6 +21,8 @@
 	} from '../../lib/components/app/index.ts';
 	import PlanFilters from '../../lib/components/app/plan-filters.svelte';
 	import PlanTable from '../../lib/components/app/plan-table.svelte';
+	import StatStrip from '../../lib/components/app/stat-strip.svelte';
+	import CopyButton from '../../lib/components/app/copy-button.svelte';
 	import {
 		deviceLabel,
 		emptyFilters,
@@ -49,21 +51,35 @@
 	let failure = $state<Band | null>(null);
 	let selected = $state<PlanRow | null>(null);
 	let dryRunNote = $state<string | null>(null);
+	/** Source paths removed from this pull. The plan is re-read after each one. */
+	let excluded = $state<string[]>([]);
 
-	import StatStrip from '../../lib/components/app/stat-strip.svelte';
 	const rows = $derived(plan === null ? [] : planRows(plan));
+	const removedCount = $derived(
+		plan === null ? 0 : plan.skipped.filter((file) => file.excluded).length
+	);
 	const stats = $derived.by(() => {
 		if (plan === null) return [];
-		return [
+		const items = [
 			{ label: 'To move', value: plural(plan.toTransfer.length, 'file') },
 			{ label: 'Bytes', value: formatBytes(plan.bytesTotal) },
 			{ label: 'Skipped', value: plural(plan.skipped.length, 'file') },
 			{
+				// Excluded bytes are skipped too, but they are not "already on the
+				// drive" — subtracting them keeps the label true.
 				label: 'Already on the drive',
-				value: formatBytes(plan.bytesSkipped),
+				value: formatBytes(plan.bytesSkipped - plan.bytesExcluded),
 				tone: 'muted' as const
 			}
 		];
+		if (removedCount > 0) {
+			items.push({
+				label: 'Removed by hand',
+				value: plural(removedCount, 'file'),
+				tone: 'muted' as const
+			});
+		}
+		return items;
 	});
 
 	const active = $derived(filtersActive(filters));
@@ -158,7 +174,7 @@
 			// before it answers — and the observer below stores it. The answer is
 			// a tally, so reading the plan out of it is exactly the mistake that
 			// crashed the destination picker.
-			await app.port.send('plan', planArgs(filters));
+			await app.port.send('plan', planArgs(filters, excluded));
 			return true;
 		} catch (error) {
 			failure = bandFrom(error);
@@ -185,7 +201,24 @@
 	}
 
 	function startPull(mode: PullMode): void {
-		void goto(`/transfer${intentToSearch(intentFrom(filters, mode))}`);
+		void goto(`/transfer${intentToSearch(intentFrom(filters, mode, excluded))}`);
+	}
+
+	function remove(row: PlanRow): void {
+		if (excluded.includes(row.srcPath)) return;
+		excluded = [...excluded, row.srcPath];
+		void request();
+	}
+
+	function restore(row: PlanRow): void {
+		excluded = excluded.filter((path) => path !== row.srcPath);
+		void request();
+	}
+
+	function restoreAll(): void {
+		if (excluded.length === 0) return;
+		excluded = [];
+		void request();
 	}
 
 	async function dryRun(): Promise<void> {
@@ -237,9 +270,10 @@
 
 <div class="flex flex-col gap-4 px-6 pb-8">
 	{#if plan}
-		<p class="flex flex-wrap items-baseline gap-2 text-label">
+		<p class="flex flex-wrap items-center gap-2 text-label">
 			<span class="text-muted-foreground">Destination</span>
 			<span class="font-mono break-all text-foreground">{plan.destRoot}</span>
+			<CopyButton value={plan.destRoot} label="Copy the destination path" />
 			<span class="text-muted-foreground" data-numeric>
 				{formatBytes(plan.space.freeBytes)} free
 			</span>
@@ -257,7 +291,6 @@
 		onsubmit={() => apply({ show: showDraft })}
 		ondevice={(id) => apply({ device: id })}
 		onsince={(window) => apply({ since: window })}
-		onoverwrite={(on) => apply({ overwrite: on })}
 		onclear={clear}
 	/>
 
@@ -283,40 +316,6 @@
 			/>
 		{/if}
 	{:else}
-		{#if plan.warnings.length > 0}
-			<ul
-				class="flex flex-col gap-1 rounded-[var(--radius-surface)] border border-border bg-muted px-4 py-3"
-			>
-				{#each plan.warnings as warning, index (index)}
-					<li class="measure text-body text-foreground">{warning}</li>
-				{/each}
-			</ul>
-		{/if}
-
-		{#if plan.toTransfer.length === 0 && !active}
-			<EmptyState
-				title={refetching ? 'Reading the phone and the drive' : 'Nothing new on this phone'}
-				body={plan.skipped.length > 0
-					? `${plural(plan.skipped.length, 'file')} are already on the drive, or were passed over. Nothing would be copied.`
-					: 'The scan found no files to move and nothing to skip.'}
-				action="Review duplicates"
-				onselect={() => void goto('/duplicates')}
-				busy={refetching}
-			/>
-		{/if}
-
-		{#if rows.length > 0 || active}
-			<PlanTable
-				{rows}
-				loading={loading && plan === null}
-				filtersSentence={inForce}
-				{selected}
-				onactivate={(row) => (selected = row)}
-				onclear={clear}
-				onreveal={reveal}
-			/>
-		{/if}
-
 		<footer
 			class="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--radius-surface)] border border-border bg-card px-4 py-3"
 		>
@@ -354,6 +353,15 @@
 				plan and moves nothing.
 			</p>
 
+			{#if removedCount > 0}
+				<p class="flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
+					{plural(removedCount, 'file')} removed from this pull by hand.
+					<Button class={CONTROL} size="sm" variant="ghost" onclick={restoreAll}
+						>Put them back</Button
+					>
+				</p>
+			{/if}
+
 			{#if blocker}
 				<p class="measure text-body text-state-failed" data-numeric>
 					{blocker.what}
@@ -370,5 +378,41 @@
 				<p class="measure text-body text-muted-foreground">{dryRunNote}</p>
 			{/if}
 		</footer>
+
+		{#if plan.warnings.length > 0}
+			<ul
+				class="flex flex-col gap-1 rounded-[var(--radius-surface)] border border-border bg-muted px-4 py-3"
+			>
+				{#each plan.warnings as warning, index (index)}
+					<li class="measure text-body text-foreground">{warning}</li>
+				{/each}
+			</ul>
+		{/if}
+
+		{#if plan.toTransfer.length === 0 && !active}
+			<EmptyState
+				title={refetching ? 'Reading the phone and the drive' : 'Nothing new on this phone'}
+				body={plan.skipped.length > 0
+					? `${plural(plan.skipped.length, 'file')} are already on the drive, or were passed over. Nothing would be copied.`
+					: 'The scan found no files to move and nothing to skip.'}
+				action="Review duplicates"
+				onselect={() => void goto('/duplicates')}
+				busy={refetching}
+			/>
+		{/if}
+
+		{#if rows.length > 0 || active}
+			<PlanTable
+				{rows}
+				loading={loading && plan === null}
+				filtersSentence={inForce}
+				{selected}
+				onactivate={(row) => (selected = row)}
+				onclear={clear}
+				onreveal={reveal}
+				onremove={remove}
+				onrestore={restore}
+			/>
+		{/if}
 	{/if}
 </div>

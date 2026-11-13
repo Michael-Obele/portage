@@ -15,8 +15,8 @@ import type {
 	Overall,
 	RunFrame,
 	ScreenName,
-	StateFrame,
-} from "../engine/protocol.ts";
+	StateFrame
+} from '../engine/protocol.ts';
 
 /**
  * How long a `copying` row may go without a byte before it says `stalled`.
@@ -61,20 +61,20 @@ export function emptyOverall(): Overall {
 		samples: 0,
 		elapsedMs: 0,
 		jobs: 1,
-		paused: false,
+		paused: false
 	};
 }
 
 export function emptyRunView(): RunView {
 	return {
-		screen: "dashboard",
+		screen: 'dashboard',
 		rows: [],
 		overall: emptyOverall(),
 		devices: [],
 		notice: null,
 		proof: { written: 0, verified: 0, deleted: 0, kept: 0 },
 		summary: null,
-		ended: false,
+		ended: false
 	};
 }
 
@@ -89,13 +89,13 @@ export function startRun(previous: RunView): RunView {
 	return {
 		...emptyRunView(),
 		screen: previous.screen,
-		devices: previous.devices,
+		devices: previous.devices
 	};
 }
 
 /** A row the copy has finished but the engine has not yet confirmed. */
 export function isVerifying(row: FileRow): boolean {
-	return row.state === "copying" && row.size > 0 && row.bytes >= row.size;
+	return row.state === 'copying' && row.size > 0 && row.bytes >= row.size;
 }
 
 /** A row's own progress, 0..1. Zero when the size is unknown. */
@@ -105,7 +105,7 @@ export function rowFraction(row: FileRow): number {
 }
 
 export function stalledFor(row: FileRow, now: number): number {
-	if (row.state !== "copying" || row.startedAt === null) return 0;
+	if (row.state !== 'copying' || row.startedAt === null) return 0;
 	if (isVerifying(row)) return 0;
 	const since = now - Math.max(row.lastProgressAt, row.startedAt);
 	return since >= STALL_MS ? since : 0;
@@ -117,7 +117,7 @@ function mergeProof(previous: ProofCounts, next: ProofCounts): ProofCounts {
 		written: Math.max(previous.written, next.written),
 		verified: Math.max(previous.verified, next.verified),
 		deleted: Math.max(previous.deleted, next.deleted),
-		kept: Math.max(previous.kept, next.kept),
+		kept: Math.max(previous.kept, next.kept)
 	};
 }
 
@@ -132,7 +132,7 @@ function proofFromRows(rows: FileRow[]): ProofCounts {
 	let written = 0;
 	let verified = 0;
 	for (const row of rows) {
-		if (row.state === "done") {
+		if (row.state === 'done') {
 			verified++;
 			written++;
 		} else if (isVerifying(row)) {
@@ -151,7 +151,7 @@ export function reduceState(view: RunView, frame: StateFrame): RunView {
 		overall: frame.overall,
 		devices: frame.devices,
 		notice: frame.notice,
-		proof: mergeProof(view.proof, proofFromRows(frame.rows)),
+		proof: mergeProof(view.proof, proofFromRows(frame.rows))
 	};
 }
 
@@ -169,8 +169,8 @@ export function reduceRun(view: RunView, frame: RunFrame): RunView {
 			written: s.transferred,
 			verified: s.verified,
 			deleted: s.deleted,
-			kept: s.kept,
-		}),
+			kept: s.kept
+		})
 	};
 }
 
@@ -194,7 +194,7 @@ export function rates(overall: Overall): {
 } {
 	return {
 		instant: overall.rateBps > 0 ? overall.rateBps : null,
-		average: overall.avgBps > 0 ? overall.avgBps : null,
+		average: overall.avgBps > 0 ? overall.avgBps : null
 	};
 }
 
@@ -211,10 +211,6 @@ export function proofCounts(view: RunView): ProofCounts {
 }
 
 /** Rows that stopped, with the reason the engine gave for each. */
-export function failedRows(view: RunView): FileRow[] {
-	return view.rows.filter((row) => row.state === "failed");
-}
-
 /**
  * The one sentence the live region says. File counts and the phase, never
  * bytes: a screen reader must not be read a 10 Hz byte counter.
@@ -224,12 +220,9 @@ export function runAnnouncement(view: RunView): string {
 	if (view.ended) {
 		return `Run finished. ${o.filesDone} of ${o.filesTotal} files finished, ${o.failed} failed.`;
 	}
-	if (o.filesTotal === 0) return "No transfer is running.";
-	const phase = o.paused ? "Paused" : "Copying";
+	if (o.filesTotal === 0) return 'No transfer is running.';
+	const phase = o.paused ? 'Paused' : 'Copying';
 	return `${phase}. ${o.filesDone} of ${o.filesTotal} files finished, ${o.failed} failed.`;
 }
 
 /** True while there is a run worth announcing: started, and not yet ended. */
-export function runIsLive(view: RunView): boolean {
-	return view.overall.filesTotal > 0 && !view.ended;
-}

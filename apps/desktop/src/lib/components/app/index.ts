@@ -17,4 +17,4 @@ export { default as KeyHint } from './key-hint.svelte';
 export { default as PlaceholderScreen } from './placeholder-screen.svelte';
 export { default as SourceFolders } from './source-folders.svelte';
 
-export { CONTROL, IDENTIFIER, NUMERIC, PROSE, ROW, ROW_NAME, SUNKEN, SURFACE } from './tokens.ts';
+export { CONTROL, PROSE, SURFACE } from './tokens.ts';

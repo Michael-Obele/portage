@@ -15,6 +15,7 @@
 	import { cn } from '../../utils.ts';
 	import { Button } from '../ui/button/index.js';
 	import DataTable, { type TableColumn } from './data-table.svelte';
+	import * as Table from '../ui/table/index.js';
 	import { CONTROL, IDENTIFIER, ROW_NAME } from './tokens.ts';
 	import type { ReceiptFailure, ReceiptHeadline, ProofLine } from './summary-receipt.ts';
 
@@ -101,18 +102,18 @@
 				caption={`Failed files, ${failures.length}`}
 			>
 				{#snippet row(item)}
-					<td role="gridcell" class="px-3">
+					<Table.Cell role="gridcell">
 						<span class="flex min-w-0 flex-col">
 							<span class={ROW_NAME} title={item.srcPath}>{item.name}</span>
 							<span class={cn(IDENTIFIER, 'truncate text-muted-foreground')}>{item.srcPath}</span>
 						</span>
-					</td>
-					<td role="gridcell" class="px-3">
+					</Table.Cell>
+					<Table.Cell role="gridcell">
 						<span class="block text-body text-foreground">
 							{item.reason === '' ? 'The engine did not give a reason.' : item.reason}
 						</span>
-					</td>
-					<td role="gridcell" class="px-3">
+					</Table.Cell>
+					<Table.Cell role="gridcell">
 						<div class="flex items-center gap-2">
 							<code class="truncate font-mono text-label text-foreground" title={item.command}>
 								{item.command}
@@ -126,7 +127,7 @@
 								Copy command
 							</Button>
 						</div>
-					</td>
+					</Table.Cell>
 				{/snippet}
 			</DataTable>
 			<p class="measure text-caption text-muted-foreground">

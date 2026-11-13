@@ -25,6 +25,7 @@
 	import type { Snippet } from 'svelte';
 	import { cn } from '../../utils.ts';
 	import { ScrollArea } from '../ui/scroll-area/index.js';
+	import * as Table from '../ui/table/index.js';
 	import SkeletonRows from './skeleton-rows.svelte';
 	let {
 		columns,
@@ -105,67 +106,77 @@
 	}
 </script>
 
-<div class={cn('relative flex min-h-0 flex-col', className)}>
+<div class="relative flex min-h-0 flex-col">
 	<!-- shadcn's ScrollArea, not `overflow-auto`. A native scrollbar on a desktop
 	     shell is a grey slab that reads as a browser, and this table is the one
-	     surface a person stares at for minutes at a time. -->
-	<ScrollArea orientation="both" class="min-h-0 flex-1" scrollbarYClasses="w-2">
-		<!-- `border-separate` is what makes a sticky header paint its own border
-		     instead of dropping it while it scrolls. `role="grid"` is the ARIA
-		     pattern for a table whose rows take focus and move with the arrow
-		     keys; callers give their cells `role="gridcell"` to complete it. -->
+	     surface a person stares at for minutes at a time.
+
+	 `className` lands on the SCROLL BOX, not on this wrapper: callers use it
+	 for the height cap (`max-h-[62dvh]`), and the viewport inherits that cap.
+	 A cap on this wrapper would size nothing, because the wrapper is a flex
+	 column whose child only fills a definite height. -->
+	<ScrollArea
+		orientation="both"
+		type="auto"
+		class={cn('min-h-0', className)}
+		scrollbarYClasses="w-2"
+	>
+		<!-- Header, rows and cells are shadcn's Table primitives. `Table.Root` is
+		     deliberately not used: it wraps the table in `overflow-x-auto`, which
+		     makes that wrapper the sticky header's scroll container — and it never
+		     scrolls vertically, so the header would slide away inside this
+		     ScrollArea. -->
 		<table
 			role="grid"
 			aria-rowcount={rows.length + 1}
 			aria-colcount={columns.length}
-			class="w-full border-separate border-spacing-0 text-body [&_tbody>tr]:h-[var(--row-h)] [&_tbody>tr:last-child>td]:border-b-0 [&_td]:border-b [&_td]:border-border [&_td]:px-3"
+			class="w-full border-separate border-spacing-0 text-body [&_tbody>tr]:h-[var(--row-h)] [&_tbody>tr:last-child>td]:border-b-0 [&_td]:border-b [&_td]:border-border [&_td]:px-3 [&_td]:py-0"
 			onkeydown={onKeyDown}
 		>
-			<caption class="sr-only">{caption}</caption>
-			<thead class="sticky top-0 z-10">
-				<tr class="h-8 bg-card">
+			<Table.Caption class="sr-only">{caption}</Table.Caption>
+			<Table.Header class="sticky top-0 z-10 bg-card">
+				<Table.Row class="h-8 hover:bg-transparent">
 					{#each columns as column (column.key)}
-						<th
+						<Table.Head
 							scope="col"
 							class={cn(
-								'border-b border-border px-3 text-label font-medium text-muted-foreground',
+								'h-8 border-b border-border px-3 text-label font-medium tracking-normal text-muted-foreground normal-case',
 								column.numeric ? 'text-right' : 'text-left',
 								column.class
 							)}
 						>
 							{column.label}
-						</th>
+						</Table.Head>
 					{/each}
-				</tr>
-			</thead>
-			<tbody>
+				</Table.Row>
+			</Table.Header>
+			<Table.Body>
 				{#if loading && rows.length === 0}
-					<tr>
-						<td colspan={columns.length} class="p-0">
+					<Table.Row class="border-0 hover:bg-transparent">
+						<Table.Cell colspan={columns.length} class="p-0">
 							<SkeletonRows rows={skeletonRows} label={caption} />
-						</td>
-					</tr>
+						</Table.Cell>
+					</Table.Row>
 				{:else if rows.length === 0}
-					<tr>
-						<td colspan={columns.length}>
+					<Table.Row class="border-0 hover:bg-transparent">
+						<Table.Cell colspan={columns.length} class="p-0">
 							{#if filtered && filteredEmpty}
 								{@render filteredEmpty()}
 							{:else if !filtered && empty}
 								{@render empty()}
 							{/if}
-						</td>
-					</tr>
+						</Table.Cell>
+					</Table.Row>
 				{:else}
 					{#each rows as item, index (rowKey(item))}
-						<tr
+						<Table.Row
 							data-row-index={index}
 							data-row-key={rowKey(item)}
-							data-selected={selectedKey === rowKey(item) ? 'true' : undefined}
-							tabindex="0"
+							data-state={selectedKey === rowKey(item) ? 'selected' : undefined}
+							aria-selected={onactivated ? selectedKey === rowKey(item) : undefined}
+							tabindex={0}
 							class={cn(
-								'bg-background outline-none',
-								'focus-visible:bg-muted focus-visible:-outline-offset-2',
-								'data-[selected=true]:bg-muted',
+								'border-0 outline-none focus-visible:bg-muted focus-visible:-outline-offset-2',
 								onactivated && 'cursor-pointer'
 							)}
 							onclick={() => onRowClick(item)}
@@ -173,10 +184,10 @@
 							{#if row}
 								{@render row(item, index)}
 							{/if}
-						</tr>
+						</Table.Row>
 					{/each}
 				{/if}
-			</tbody>
+			</Table.Body>
 		</table>
 	</ScrollArea>
 </div>

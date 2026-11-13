@@ -24,7 +24,7 @@
 	import { Button } from '../ui/button/index.js';
 	import { Input } from '../ui/input/index.js';
 	import { Select, SelectContent, SelectItem, SelectTrigger } from '../ui/select/index.js';
-	import { Switch } from '../ui/switch/index.js';
+
 	import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group/index.js';
 	import {
 		ALL_DEVICES,
@@ -44,7 +44,6 @@
 		onsubmit,
 		ondevice,
 		onsince,
-		onoverwrite,
 		onclear,
 		class: className
 	}: {
@@ -57,7 +56,6 @@
 		onsubmit: () => void;
 		ondevice: (id: string) => void;
 		onsince: (window: SinceWindow) => void;
-		onoverwrite: (on: boolean) => void;
 		onclear: () => void;
 		class?: string;
 	} = $props();
@@ -172,17 +170,6 @@
 	</ToggleGroup>
 
 	<div class="ml-auto flex items-center gap-2">
-		<label
-			class="flex cursor-pointer items-center gap-1.5 text-label whitespace-nowrap text-muted-foreground"
-		>
-			<Switch
-				checked={filters.overwrite}
-				onCheckedChange={onoverwrite}
-				aria-label="Re-copy existing files"
-			/>
-			Re-copy
-		</label>
-
 		{#if active}
 			<Button
 				type="button"

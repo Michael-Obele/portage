@@ -106,7 +106,7 @@ export function dirEntries(entries: readonly BrowseEntry[]): BrowseEntry[] {
 }
 
 /** A path boundary, so `/sdcard/DCIM` is not read as living inside `/sdcard/DC`. */
-function inside(child: string, parent: string): boolean {
+export function isInside(child: string, parent: string): boolean {
 	return parent === '/' ? child !== '/' : child.startsWith(`${parent}/`);
 }
 
@@ -123,9 +123,45 @@ export function addRoot(roots: string[], path: string): string[] {
 	const clean = normalizePath(path);
 	const covered = roots.some((root) => {
 		const existing = normalizePath(root);
-		return existing === clean || inside(clean, existing) || inside(existing, clean);
+		return existing === clean || isInside(clean, existing) || isInside(existing, clean);
 	});
 	return covered ? roots : [...roots, clean];
+}
+
+/**
+ * What adding `path` would do to the list, in one place.
+ *
+ * Four answers, and the last one is why this exists: picking `/sdcard/Download`
+ * when `/sdcard/Download/Move` is configured is a person saying "all of it",
+ * not a mistake. Refusing it dead-ends the dialog; offering the replacement
+ * keeps the intent and says what changes.
+ */
+export type RootVerdict =
+	| { kind: 'free' }
+	| { kind: 'already' }
+	| { kind: 'covered'; by: string }
+	| { kind: 'replaces'; roots: string[] };
+
+export function rootVerdict(roots: readonly string[], path: string): RootVerdict {
+	const clean = normalizePath(path);
+	if (roots.some((root) => normalizePath(root) === clean)) return { kind: 'already' };
+
+	const wider = roots.find((root) => isInside(clean, normalizePath(root)));
+	if (wider !== undefined) return { kind: 'covered', by: normalizePath(wider) };
+
+	const narrower = roots.filter((root) => isInside(normalizePath(root), clean));
+	if (narrower.length > 0) return { kind: 'replaces', roots: narrower };
+	return { kind: 'free' };
+}
+
+/** Add `path`, dropping the narrower roots it already contains. */
+export function replaceRoot(roots: string[], path: string): string[] {
+	const clean = normalizePath(path);
+	const kept = roots.filter((root) => {
+		const existing = normalizePath(root);
+		return existing !== clean && !isInside(existing, clean);
+	});
+	return [...kept, clean];
 }
 
 /** Remove one folder by the same spelling, keeping the order of the rest. */

@@ -26,7 +26,8 @@
 		| 'kept'
 		| 'failed'
 		| 'skipped'
-		| 'duplicate';
+		| 'duplicate'
+		| 'excluded';
 
 	interface Chip {
 		word: string;
@@ -43,7 +44,8 @@
 		kept: { word: 'kept', icon: Pause, tone: 'neutral' },
 		failed: { word: 'failed', icon: X, tone: 'failed' },
 		skipped: { word: 'skipped', icon: MinusCircle, tone: 'skipped' },
-		duplicate: { word: 'duplicate', icon: Copy, tone: 'skipped' }
+		duplicate: { word: 'duplicate', icon: Copy, tone: 'skipped' },
+		excluded: { word: 'removed', icon: MinusCircle, tone: 'skipped' }
 	};
 
 	const TONES: Record<Chip['tone'], string> = {

@@ -6,7 +6,8 @@
 	 * gets a page that says plainly what it will be and what it will read. This
 	 * is scaffolding, not a design.
 	 */
-	import { EmptyState, PageHeader } from './index.ts';
+	import EmptyState from './empty-state.svelte';
+	import PageHeader from './page-header.svelte';
 
 	let {
 		title,

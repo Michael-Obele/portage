@@ -20,13 +20,14 @@ import type {
 	DeviceInfo,
 	PlanResult,
 	PlannedFile,
-	Verdict,
-} from "../../engine/protocol.ts";
+	Verdict
+} from '../../engine/protocol.ts';
+import { plural } from '../../util/format.ts';
 
 // --- filters ----------------------------------------------------------------
 
 /** The time windows the UI offers. `all` sends no `since` at all. */
-export type SinceWindow = "all" | "1d" | "7d" | "30d";
+export type SinceWindow = 'all' | '1d' | '7d' | '30d';
 
 export interface PlanFilters {
 	/** A device id, or `''` for every ready device. */
@@ -34,79 +35,79 @@ export interface PlanFilters {
 	/** The `--show` text filter. Empty means no filter. */
 	show: string;
 	since: SinceWindow;
-	/** Sent as `overwrite`. The engine refuses it on `plan`; see `planArgs`. */
-	overwrite: boolean;
 }
 
-export const ALL_DEVICES = "";
+export const ALL_DEVICES = '';
 
 export const SINCE_OPTIONS: ReadonlyArray<{ value: SinceWindow; label: string }> = [
-	{ value: "1d", label: "Modified in the last day" },
-	{ value: "7d", label: "Modified in the last week" },
-	{ value: "30d", label: "Modified in the last 30 days" },
-	{ value: "all", label: "Any time" },
+	{ value: '1d', label: 'Modified in the last day' },
+	{ value: '7d', label: 'Modified in the last week' },
+	{ value: '30d', label: 'Modified in the last 30 days' },
+	{ value: 'all', label: 'Any time' }
 ];
 
 export function emptyFilters(): PlanFilters {
-	return { device: ALL_DEVICES, show: "", since: "all", overwrite: false };
+	return { device: ALL_DEVICES, show: '', since: 'all' };
 }
 
 /** True when anything is being filtered out, so "empty" and "filtered" differ. */
 export function filtersActive(filters: PlanFilters): boolean {
-	return (
-		filters.device !== ALL_DEVICES ||
-		filters.show.trim() !== "" ||
-		filters.since !== "all"
-	);
+	return filters.device !== ALL_DEVICES || filters.show.trim() !== '' || filters.since !== 'all';
 }
 
 /** One sentence naming the filters in force, for a table caption or a header. */
 export function filtersSentence(filters: PlanFilters, deviceLabel?: string): string {
 	const parts: string[] = [];
 	if (filters.device !== ALL_DEVICES) parts.push(deviceLabel ?? filters.device);
-	if (filters.show.trim() !== "") parts.push(`matching "${filters.show.trim()}"`);
-	if (filters.since !== "all") {
+	if (filters.show.trim() !== '') parts.push(`matching "${filters.show.trim()}"`);
+	if (filters.since !== 'all') {
 		const option = SINCE_OPTIONS.find((entry) => entry.value === filters.since);
 		parts.push(option ? option.label.toLowerCase() : filters.since);
 	}
-	return parts.length === 0 ? "no filter" : parts.join(", ");
+	return parts.length === 0 ? 'no filter' : parts.join(', ');
 }
 
 /**
  * The filters as the engine's arguments.
  *
- * `overwrite` is passed through verbatim even though `plan` refuses it: the
- * request must fail with the engine's own sentence rather than the app quietly
- * dropping the switch a person just turned on.
+ * `exclude` is not a filter: it is the files a person removed by hand, and the
+ * engine still plans them so the count and the table stay honest.
  */
-export function planArgs(filters: PlanFilters): ArgsFor<"plan"> {
-	const args: ArgsFor<"plan"> = {};
+export function planArgs(filters: PlanFilters, exclude: readonly string[] = []): ArgsFor<'plan'> {
+	const args: ArgsFor<'plan'> = {};
 	if (filters.device !== ALL_DEVICES) args.device = filters.device;
 	const show = filters.show.trim();
-	if (show !== "") args.show = show;
-	if (filters.since !== "all") args.since = filters.since;
-	if (filters.overwrite) args.overwrite = true;
+	if (show !== '') args.show = show;
+	if (filters.since !== 'all') args.since = filters.since;
+	if (exclude.length > 0) args.exclude = [...exclude];
 	return args;
 }
 
 // --- the pull intent --------------------------------------------------------
 
 /** `delete-after-verify` deletes the phone copy; `keep` is copy-only. */
-export type PullMode = "delete-after-verify" | "keep";
+export type PullMode = 'delete-after-verify' | 'keep';
 
 export interface PullIntent {
 	device: string;
 	show: string;
 	since: SinceWindow;
+	/** Source paths removed by hand; the run must not move them. */
+	exclude: string[];
 	mode: PullMode;
 }
 
-export function intentFrom(filters: PlanFilters, mode: PullMode): PullIntent {
+export function intentFrom(
+	filters: PlanFilters,
+	mode: PullMode,
+	exclude: readonly string[] = []
+): PullIntent {
 	return {
 		device: filters.device,
 		show: filters.show.trim(),
 		since: filters.since,
-		mode,
+		exclude: [...exclude],
+		mode
 	};
 }
 
@@ -119,15 +120,16 @@ export function intentFrom(filters: PlanFilters, mode: PullMode): PullIntent {
  */
 export function intentToSearch(intent: PullIntent): string {
 	const params = new URLSearchParams();
-	params.set("mode", intent.mode);
-	if (intent.device !== ALL_DEVICES) params.set("device", intent.device);
-	if (intent.show !== "") params.set("show", intent.show);
-	if (intent.since !== "all") params.set("since", intent.since);
+	params.set('mode', intent.mode);
+	if (intent.device !== ALL_DEVICES) params.set('device', intent.device);
+	if (intent.show !== '') params.set('show', intent.show);
+	if (intent.since !== 'all') params.set('since', intent.since);
+	for (const path of intent.exclude) params.append('exclude', path);
 	return `?${params.toString()}`;
 }
 
 function isSince(value: string | null): value is SinceWindow {
-	return value === "1d" || value === "7d" || value === "30d" || value === "all";
+	return value === '1d' || value === '7d' || value === '30d' || value === 'all';
 }
 
 /**
@@ -138,14 +140,15 @@ function isSince(value: string | null): value is SinceWindow {
  */
 export function parseIntent(search: string): PullIntent | null {
 	const params = new URLSearchParams(search);
-	const mode = params.get("mode");
-	if (mode !== "keep" && mode !== "delete-after-verify") return null;
-	const since = params.get("since");
+	const mode = params.get('mode');
+	if (mode !== 'keep' && mode !== 'delete-after-verify') return null;
+	const since = params.get('since');
 	return {
 		mode,
-		device: params.get("device") ?? ALL_DEVICES,
-		show: params.get("show") ?? "",
-		since: isSince(since) ? since : "all",
+		device: params.get('device') ?? ALL_DEVICES,
+		show: params.get('show') ?? '',
+		since: isSince(since) ? since : 'all',
+		exclude: params.getAll('exclude')
 	};
 }
 
@@ -154,44 +157,50 @@ export function filtersFromIntent(intent: PullIntent): PlanFilters {
 	return {
 		device: intent.device,
 		show: intent.show,
-		since: intent.since,
-		overwrite: false,
+		since: intent.since
 	};
 }
 
 /** The same intent as a `pull.start` envelope. */
-export function pullStartArgs(intent: PullIntent): ArgsFor<"pull.start"> {
-	const args: ArgsFor<"pull.start"> = { mode: intent.mode };
+export function pullStartArgs(intent: PullIntent): ArgsFor<'pull.start'> {
+	const args: ArgsFor<'pull.start'> = { mode: intent.mode };
 	if (intent.device !== ALL_DEVICES) args.device = intent.device;
-	if (intent.show !== "") args.show = intent.show;
-	if (intent.since !== "all") args.since = intent.since;
+	if (intent.show !== '') args.show = intent.show;
+	if (intent.since !== 'all') args.since = intent.since;
+	if (intent.exclude.length > 0) args.exclude = [...intent.exclude];
 	return args;
 }
 
 /** The intent in words, for the Transfer header. */
 export function intentSentence(intent: PullIntent, deviceLabel?: string): string {
 	const parts: string[] = [];
-	parts.push(intent.device === ALL_DEVICES ? "every ready device" : (deviceLabel ?? intent.device));
-	if (intent.show !== "") parts.push(`matching "${intent.show}"`);
-	if (intent.since !== "all") parts.push(SINCE_OPTIONS.find((o) => o.value === intent.since)?.label.toLowerCase() ?? intent.since);
+	parts.push(intent.device === ALL_DEVICES ? 'every ready device' : (deviceLabel ?? intent.device));
+	if (intent.show !== '') parts.push(`matching "${intent.show}"`);
+	if (intent.since !== 'all')
+		parts.push(
+			SINCE_OPTIONS.find((o) => o.value === intent.since)?.label.toLowerCase() ?? intent.since
+		);
+	if (intent.exclude.length > 0) {
+		parts.push(`${plural(intent.exclude.length, 'file')} removed by hand`);
+	}
 	parts.push(
-		intent.mode === "keep"
-			? "copy only, the phone copy is kept"
-			: "delete the phone copy once the copy is verified",
+		intent.mode === 'keep'
+			? 'copy only, the phone copy is kept'
+			: 'delete the phone copy once the copy is verified'
 	);
-	return parts.join(" · ");
+	return parts.join(' · ');
 }
 
 /** The label for a device picker entry: never just a serial if a name exists. */
 export function deviceLabel(device: DeviceInfo): string {
-	const name = device.model.trim() === "" ? device.id : device.model;
-	return device.state === "device" ? name : `${name} (${device.state})`;
+	const name = device.model.trim() === '' ? device.id : device.model;
+	return device.state === 'device' ? name : `${name} (${device.state})`;
 }
 
 // --- the row model ----------------------------------------------------------
 
 /** The app's coarse states, as a subset of `StateChipState`. */
-export type PlanChip = "queued" | "copying" | "skipped" | "duplicate";
+export type PlanChip = 'queued' | 'copying' | 'skipped' | 'duplicate' | 'excluded';
 
 export interface PlanRow {
 	key: string;
@@ -208,10 +217,12 @@ export interface PlanRow {
 	willTransfer: boolean;
 	/** True when a copy of this file is already on the drive. */
 	onDrive: boolean;
+	/** True when a person removed this file from this pull. */
+	excluded: boolean;
 }
 
 export function baseName(path: string): string {
-	const cut = path.lastIndexOf("/");
+	const cut = path.lastIndexOf('/');
 	return cut >= 0 ? path.slice(cut + 1) : path;
 }
 
@@ -225,14 +236,14 @@ export function baseName(path: string): string {
  * being written by something else right now.
  */
 export function chipFor(verdict: Verdict, willTransfer: boolean): PlanChip {
-	if (willTransfer) return "queued";
+	if (willTransfer) return 'queued';
 	switch (verdict) {
-		case "in-flight":
-			return "copying";
-		case "duplicate-candidate":
-			return "duplicate";
+		case 'in-flight':
+			return 'copying';
+		case 'duplicate-candidate':
+			return 'duplicate';
 		default:
-			return "skipped";
+			return 'skipped';
 	}
 }
 
@@ -245,9 +256,7 @@ export function chipFor(verdict: Verdict, willTransfer: boolean): PlanChip {
  */
 export function reasonFor(file: PlannedFile): string {
 	return (
-		file.skipReason?.trim() ||
-		file.matchesArchive?.note.trim() ||
-		file.candidate.reason.trim()
+		file.skipReason?.trim() || file.matchesArchive?.note.trim() || file.candidate.reason.trim()
 	);
 }
 
@@ -259,11 +268,12 @@ export function rowFrom(file: PlannedFile, willTransfer: boolean): PlanRow {
 		srcPath: candidate.srcPath,
 		destPath: file.destPath,
 		size: willTransfer ? file.bytes : candidate.size,
-		chip: chipFor(candidate.verdict, willTransfer),
+		chip: file.excluded ? 'excluded' : chipFor(candidate.verdict, willTransfer),
 		verdict: candidate.verdict,
 		reason: reasonFor(file),
 		willTransfer,
-		onDrive: candidate.verdict === "already-on-drive",
+		onDrive: candidate.verdict === 'already-on-drive',
+		excluded: file.excluded === true
 	};
 }
 
@@ -276,6 +286,6 @@ export function rowFrom(file: PlannedFile, willTransfer: boolean): PlanRow {
 export function planRows(plan: PlanResult): PlanRow[] {
 	return [
 		...plan.toTransfer.map((file) => rowFrom(file, true)),
-		...plan.skipped.map((file) => rowFrom(file, false)),
+		...plan.skipped.map((file) => rowFrom(file, false))
 	];
 }
