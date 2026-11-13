@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.1.12](https://github.com/Michael-Obele/portage/compare/v0.1.11...v0.1.12) (2026-11-13)
+
+
+### Features
+
+* **desktop:** mirror pull excludes in the engine protocol ([70e1341](https://github.com/Michael-Obele/portage/commit/70e1341793bfdf53d86596410226841f3e7fe1d2))
+* **desktop:** rebuild the plan screen around shadcn tables ([1ca946f](https://github.com/Michael-Obele/portage/commit/1ca946f34c5cf9ade4c57e2e4351192d74ba45ef))
+* **desktop:** run the engine as a Tauri sidecar ([5157d25](https://github.com/Michael-Obele/portage/commit/5157d25c46e4b619c9b850be40deae3888f1b2b9))
+* **engine:** trust the drive and accept hand removals ([c537b2c](https://github.com/Michael-Obele/portage/commit/c537b2c86a309e27e013d01389c42c92aa32597c))
+
+
+### Bug Fixes
+
+* **desktop:** make capped scroll areas scroll and pin headers ([4c591d1](https://github.com/Michael-Obele/portage/commit/4c591d1964584023edfc070a300899a95c2c555e))
+* **engine:** read ro as a mount flag, not a substring ([186c31e](https://github.com/Michael-Obele/portage/commit/186c31e4e758868a088588552aea0ea4ec43dc31))
+* **engine:** resume a partial copy at its offset ([5f533c8](https://github.com/Michael-Obele/portage/commit/5f533c8fb15f84284c19fdc9f7f1ce42e1ed2346))
+* **recovery:** skip space reserve for empty plans ([803876e](https://github.com/Michael-Obele/portage/commit/803876e16c074076391cb16432e29314bce92986))
+
+
+### CI
+
+* **desktop:** gate the Rust shell and bundle from one command ([af0a287](https://github.com/Michael-Obele/portage/commit/af0a287f061a1656c8c53961c7ed5dccfdc3ab8e))
+* **desktop:** skip the generated release PR bundle ([6ed9d67](https://github.com/Michael-Obele/portage/commit/6ed9d67bc7b95364af62eddd34b517a602d8d1b0))
+
+
+### Documentation
+
+* **desktop:** document the native app and its dev loop ([253cdb5](https://github.com/Michael-Obele/portage/commit/253cdb59e36a3d84aa8703eadbc638c90ad9a92e))
+
+
+### Refactoring
+
+* **engine:** share device picking and since parsing ([0f96c7b](https://github.com/Michael-Obele/portage/commit/0f96c7b398f5fd3202f9d71baeefc19939d01b87))
+
 ## [0.1.11](https://github.com/Michael-Obele/portage/compare/v0.1.10...v0.1.11) (2026-11-09)
 
 
