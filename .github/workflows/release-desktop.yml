@@ -30,6 +30,12 @@ permissions:
 
 jobs:
   build:
+    # The generated release PR changes only version strings and the changelog,
+    # and GitHub opens it with GITHUB_TOKEN. Workflows do not run for those, so
+    # a pull_request run here would sit in action_required with zero jobs and
+    # show as a red failure. The real bundle is built through workflow_call
+    # after the merge; a normal pull request still runs this job.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     name: bundle (deb, appimage)
     runs-on: ubuntu-22.04
     steps:
