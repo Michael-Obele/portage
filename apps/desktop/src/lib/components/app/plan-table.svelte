@@ -71,6 +71,21 @@
 	);
 
 	/**
+	 * The panel's own scroll box, kept so the field list can be rewound.
+	 *
+	 * The card is not rebuilt when the selection changes — same DOM node, new
+	 * text — so a panel left scrolled on a long row opened the next row part
+	 * way down, with its NAME already clipped off the top. Selecting a row is
+	 * the moment to read from the beginning.
+	 */
+	let detailViewport = $state<HTMLElement | null>(null);
+	$effect(() => {
+		const key = selected?.key;
+		if (key === undefined) return;
+		detailViewport?.scrollTo({ top: 0 });
+	});
+
+	/**
 	 * Escape reaches the panel from wherever focus is.
 	 *
 	 * The handler used to sit on the wrapper, which only sees a key pressed
@@ -167,11 +182,19 @@
 		<!-- `size="sm"` is not decoration. The default card spends 32 px of
 		     padding top and bottom plus a 32 px gap on a panel that is only as
 		     tall as the table beside it — 29 % of its height on chrome, which at
-		     a 700 px window left room for the name and nothing else. -->
+		     a 700 px window left room for the name and nothing else.
+
+		     `lg:min-h-64` is the card's half of the same floor the table column
+		     takes. Without it, a short window (or a screen that also shows an
+		     empty state) squashed the card to a 66 px sliver: the header and the
+		     action row, clipped, with nothing between them and the buttons out of
+		     reach behind the card's `overflow-hidden`. A floor means the panel
+		     stays legible and the page scrolls instead, which is honest about
+		     the height it needs. -->
 		<Card.Root
 			data-row-detail
 			size="sm"
-			class="order-1 w-full shrink-0 gap-2 border border-border text-(length:--text-body) shadow-none ring-0 lg:order-2 lg:min-h-0 lg:w-80"
+			class="order-1 w-full shrink-0 gap-2 border border-border text-(length:--text-body) shadow-none ring-0 lg:order-2 lg:min-h-64 lg:w-80"
 		>
 			<Card.Header class="px-4">
 				<Card.Title
@@ -188,7 +211,11 @@
 				     list gets a height in dvh while stacked — the page scrolls
 				     below lg anyway — and goes back to filling the card beside
 				     the table, where the card's own height is definite. -->
-				<ScrollArea type="auto" class="h-[38dvh] min-h-0 pr-1 lg:h-auto lg:flex-1">
+				<ScrollArea
+					bind:viewportRef={detailViewport}
+					type="auto"
+					class="h-[38dvh] min-h-0 pr-1 lg:h-auto lg:flex-1"
+				>
 					<dl class="flex flex-col gap-3 pb-1">
 						<div class="flex min-w-0 flex-col">
 							<dt class="text-caption text-muted-foreground">Name</dt>
