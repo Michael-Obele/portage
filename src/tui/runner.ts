@@ -31,7 +31,6 @@ import { preconditionError } from "../util/errors.ts";
 import type { Logger } from "../util/log.ts";
 
 import { TransferSink } from "./sink.ts";
-import { view } from "./state.svelte.ts";
 
 /**
  * Pause and stop.
@@ -81,6 +80,8 @@ export interface PullRunOptions {
   jobs?: number;
   keepSource: boolean;
   deleteSource: boolean;
+  /** Source paths removed from this pull by hand; planned, never moved. */
+  exclude?: string[];
   control: TransferControl;
 }
 
@@ -156,6 +157,7 @@ export async function startPull(
     spaceHeadroom: config.space_headroom,
     show: opts.show,
     sinceSeconds: opts.sinceSeconds,
+    exclude: new Set(opts.exclude ?? []),
   });
 
   const space = checkDestination(
@@ -239,19 +241,4 @@ async function gather(
     all.push(...found);
   }
   return eligible(all);
-}
-
-/** A last breath after a run: leave the view in a state that explains itself. */
-export function settle(
-  viewRef: typeof view,
-  summary: EngineSummary,
-  hard: boolean,
-): number {
-  viewRef.overall.paused = false;
-  if (hard) viewRef.notice = "stopped — the journal will resume next run";
-  else if (summary.failed > 0) {
-    viewRef.notice = `${summary.failed} failed — press r to retry, q to quit`;
-  } else
-    viewRef.notice = "done — every transferred file verified against the phone";
-  return summary.failed > 0 ? 3 : 0;
 }

@@ -19,7 +19,11 @@
 import type { ResolvedConfig } from "../config/load.ts";
 import type { Adb } from "../device/adb.ts";
 import type { Logger } from "../util/log.ts";
-import { createControl, startPull, type TransferControl } from "../tui/runner.ts";
+import {
+  createControl,
+  startPull,
+  type TransferControl,
+} from "../tui/runner.ts";
 import { TransferSink } from "../tui/sink.ts";
 import type { EngineSummary } from "../xfer/engine.ts";
 
@@ -38,6 +42,8 @@ export interface PullRunArgs {
   jobs?: number;
   /** Copy only, never delete the phone copy. */
   keepSource: boolean;
+  /** Source paths removed from this pull by hand; planned, never moved. */
+  exclude?: string[];
   /** Copy, then delete the phone copy after verification. */
   deleteSource: boolean;
 }
@@ -59,8 +65,7 @@ export const engineStarter: PullStarter = (args, sink, control) =>
   startPull({ ...args, control }, sink);
 
 export type RunStartResult =
-  | { ok: true; runId: string }
-  | { ok: false; reason: string; fix: string };
+  { ok: true; runId: string } | { ok: false; reason: string; fix: string };
 
 export interface ControlResult {
   ok: boolean;
@@ -159,7 +164,8 @@ export class RunController {
     current.control.pause();
     return {
       ok: true,
-      effect: "pausing between files — the file in flight finishes and verifies first",
+      effect:
+        "pausing between files — the file in flight finishes and verifies first",
     };
   }
 
@@ -183,7 +189,8 @@ export class RunController {
     current.control.stop();
     return {
       ok: true,
-      effect: "finishing the file in flight, then stopping — the journal resumes it next run",
+      effect:
+        "finishing the file in flight, then stopping — the journal resumes it next run",
     };
   }
 
@@ -203,7 +210,11 @@ export class RunController {
   }
 
   /** Terminal path: stop the timer, snapshot once, then the engine's summary. */
-  private finish(id: string, summary: EngineSummary | null, err?: unknown): void {
+  private finish(
+    id: string,
+    summary: EngineSummary | null,
+    err?: unknown,
+  ): void {
     const current = this.active;
     // A late resolution from a run that already ended is ignored here, which is
     // the other half of the run-id guard.

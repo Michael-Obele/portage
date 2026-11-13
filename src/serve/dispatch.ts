@@ -18,7 +18,7 @@
 import { join } from "node:path";
 import * as v from "valibot";
 
-import { Adb, type DeviceInfo } from "../device/adb.ts";
+import { Adb, selectReady, type DeviceInfo } from "../device/adb.ts";
 import { listVolumes } from "../device/volumes.ts";
 import {
   coerceConfigValue,
@@ -45,7 +45,12 @@ import {
   usageError,
 } from "../util/errors.ts";
 
-import { BROWSE_LIMIT, browseLevel, browseTree, refuseMountPath } from "./browse.ts";
+import {
+  BROWSE_LIMIT,
+  browseLevel,
+  browseTree,
+  refuseMountPath,
+} from "./browse.ts";
 import type { Frames } from "./frames.ts";
 import { PendingRegister } from "./pending.ts";
 import { RunController, type PullRunArgs } from "./run.ts";
@@ -156,35 +161,6 @@ export function captureOutput(): Capture {
   return { output, payloads, lines };
 }
 
-/** The devices a command may act on, honouring an optional filter. */
-async function selectReady(adb: Adb, filter?: string): Promise<DeviceInfo[]> {
-  const all = await adb.devices();
-  const ready = all.filter((d) => d.state === "device");
-  if (ready.length === 0) {
-    throw preconditionError(
-      "no device is attached and authorised",
-      "plug in a phone, enable USB debugging, and accept the RSA prompt",
-    );
-  }
-  if (!filter) return ready;
-  const matched = ready.filter(
-    (d) =>
-      d.id.startsWith(filter) ||
-      d.serial === filter ||
-      d.model.toLowerCase().includes(filter.toLowerCase()),
-  );
-  if (matched.length === 0) {
-    const available = ready
-      .map((d) => `${d.id.slice(0, 12)}…  ${d.model || d.serial}`)
-      .join("; ");
-    throw preconditionError(
-      `no attached device matches "${filter}"`,
-      `attached devices: ${available}`,
-    );
-  }
-  return matched;
-}
-
 /** One device, for a command that only needs a shell (browsing). */
 async function pickDevice(adb: Adb, filter?: string): Promise<DeviceInfo> {
   const ready = await selectReady(adb, filter);
@@ -261,8 +237,7 @@ function parseSince(raw: string | undefined): number | undefined {
   }
   const amount = Number(match[1]);
   const unit = match[2] ?? "s";
-  const multiplier =
-    { s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[unit] ?? 1;
+  const multiplier = { s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[unit] ?? 1;
   return amount * multiplier;
 }
 
@@ -285,7 +260,10 @@ function applyWindow(
     if (needle && !candidate.srcPath.toLowerCase().includes(needle)) {
       return false;
     }
-    if (sinceSeconds !== undefined && nowSeconds - candidate.mtime > sinceSeconds) {
+    if (
+      sinceSeconds !== undefined &&
+      nowSeconds - candidate.mtime > sinceSeconds
+    ) {
       return false;
     }
     return true;
@@ -373,10 +351,7 @@ const handlerTable = {
     return { count: devices.length, adbFound: adb !== null };
   },
 
-  "config.get": async (
-    args: ArgsFor<"config.get">,
-    ctx: ServeContext,
-  ) => {
+  "config.get": async (args: ArgsFor<"config.get">, ctx: ServeContext) => {
     const resolved = await ctx.resolveConfig();
     if (args.key !== undefined) {
       // `Object.hasOwn`, not a lookup: `__proto__` and `toString` are on every
@@ -404,10 +379,7 @@ const handlerTable = {
     };
   },
 
-  "config.set": async (
-    args: ArgsFor<"config.set">,
-    ctx: ServeContext,
-  ) => {
+  "config.set": async (args: ArgsFor<"config.set">, ctx: ServeContext) => {
     const resolved = await ctx.resolveConfig();
     const value = validateConfigValue(args.key, args.value);
     await writeConfigFile(resolved.sources.userPath, { [args.key]: value });
@@ -425,10 +397,7 @@ const handlerTable = {
     return { key: args.key, value, path: resolved.sources.userPath };
   },
 
-  "status.get": async (
-    args: ArgsFor<"status.get">,
-    ctx: ServeContext,
-  ) => {
+  "status.get": async (args: ArgsFor<"status.get">, ctx: ServeContext) => {
     const resolved = await ctx.resolveConfig();
     const destRoot = requireDestRoot(resolved.config);
     const journal = Journal.open(destRoot, ctx.logger);
@@ -488,10 +457,7 @@ const handlerTable = {
     };
   },
 
-  "db.export": async (
-    args: ArgsFor<"db.export">,
-    ctx: ServeContext,
-  ) => {
+  "db.export": async (args: ArgsFor<"db.export">, ctx: ServeContext) => {
     const resolved = await ctx.resolveConfig();
     const capture = captureOutput();
     await dbCommand({
@@ -567,6 +533,7 @@ const handlerTable = {
         spaceHeadroom: resolved.config.space_headroom,
         show: args.show,
         sinceSeconds: parseSince(args.since),
+        exclude: new Set(args.exclude ?? []),
       });
       // `buildPlan` only ever sees the candidates it was handed, so a device
       // that contributed none is invisible to it. The gather warnings are the
@@ -593,10 +560,7 @@ const handlerTable = {
     }
   },
 
-  "pull.start": async (
-    args: ArgsFor<"pull.start">,
-    ctx: ServeContext,
-  ) => {
+  "pull.start": async (args: ArgsFor<"pull.start">, ctx: ServeContext) => {
     const adb = await requireAdb(ctx);
     const resolved = await ctx.resolveConfig();
     // A config check — no scan, no journal, no run. A device with no source
@@ -623,6 +587,7 @@ const handlerTable = {
       show: args.show,
       sinceSeconds: parseSince(args.since),
       jobs: args.jobs,
+      exclude: args.exclude,
       keepSource: mode === "keep",
       deleteSource: mode === "delete-after-verify",
     };
@@ -748,10 +713,7 @@ const handlerTable = {
     };
   },
 
-  "dupes.apply": async (
-    args: ArgsFor<"dupes.apply">,
-    ctx: ServeContext,
-  ) => {
+  "dupes.apply": async (args: ArgsFor<"dupes.apply">, ctx: ServeContext) => {
     const entry = ctx.pending.get(args.scanId);
     if (!entry || entry.kind !== "dupes" || !entry.report) {
       throw preconditionError(
@@ -816,10 +778,7 @@ const handlerTable = {
     };
   },
 
-  "purge.plan": async (
-    args: ArgsFor<"purge.plan">,
-    ctx: ServeContext,
-  ) => {
+  "purge.plan": async (args: ArgsFor<"purge.plan">, ctx: ServeContext) => {
     const adb = await requireAdb(ctx);
     const resolved = await ctx.resolveConfig();
     const destRoot = requireDestRoot(resolved.config);
@@ -874,10 +833,7 @@ const handlerTable = {
     }
   },
 
-  "purge.apply": async (
-    args: ArgsFor<"purge.apply">,
-    ctx: ServeContext,
-  ) => {
+  "purge.apply": async (args: ArgsFor<"purge.apply">, ctx: ServeContext) => {
     const entry = ctx.pending.get(args.planId);
     if (!entry || entry.kind !== "purge" || !entry.plan) {
       throw preconditionError(
@@ -911,7 +867,12 @@ const handlerTable = {
         bytes,
         trashDir: null,
       });
-      return { needsConfirm: true, actionId: entry.id, count: eligible.length, bytes };
+      return {
+        needsConfirm: true,
+        actionId: entry.id,
+        count: eligible.length,
+        bytes,
+      };
     }
 
     // Everything above is a gate. The transport does not exist until all of
@@ -1004,11 +965,7 @@ export async function dispatch(
   try {
     payload = JSON.parse(raw);
   } catch {
-    answerError(
-      ctx,
-      id,
-      usageError("that line is not JSON", COMMAND_HINT),
-    );
+    answerError(ctx, id, usageError("that line is not JSON", COMMAND_HINT));
     return { stop: false };
   }
 

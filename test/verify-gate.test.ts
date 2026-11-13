@@ -121,6 +121,7 @@ function planOf(files: PlannedFile[]): PlanResult {
     skipped: [],
     bytesTotal: files.reduce((s, f) => s + f.bytes, 0),
     bytesSkipped: 0,
+    bytesExcluded: 0,
     fileCount: files.length,
     etaSeconds: null,
     space: { ok: true, freeBytes: 1e12, totalBytes: 1e12, usedFraction: 0.1 },

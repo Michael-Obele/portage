@@ -92,6 +92,7 @@ function planOf(files: PlannedFile[]): PlanResult {
     skipped: [],
     bytesTotal: files.reduce((n, f) => n + f.bytes, 0),
     bytesSkipped: 0,
+    bytesExcluded: 0,
     fileCount: files.length,
     etaSeconds: null, // the engine's own ETA is dead code; ours is derived
     space: { ok: true, freeBytes: 1e12, totalBytes: 2e12, usedFraction: 0.5 },

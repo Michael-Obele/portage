@@ -80,7 +80,9 @@ function collector(): Collector {
 }
 
 function answers(frames: WireFrame[]): AnswerFrame[] {
-  return frames.filter((frame): frame is AnswerFrame => frame.type === "answer");
+  return frames.filter(
+    (frame): frame is AnswerFrame => frame.type === "answer",
+  );
 }
 
 function one<T extends WireFrame["type"]>(
@@ -95,12 +97,18 @@ function one<T extends WireFrame["type"]>(
 function answerFor(frames: WireFrame[], id: string): AnswerFrame {
   const found = answers(frames).filter((frame) => frame.id === id);
   if (found.length !== 1) {
-    throw new Error(`expected exactly one answer for ${id}, got ${found.length}`);
+    throw new Error(
+      `expected exactly one answer for ${id}, got ${found.length}`,
+    );
   }
   return found[0]!;
 }
 
-function cmd(id: string, type: string, args: Record<string, unknown> = {}): string {
+function cmd(
+  id: string,
+  type: string,
+  args: Record<string, unknown> = {},
+): string {
   return JSON.stringify({ v: PROTOCOL_VERSION, id, type, args });
 }
 
@@ -184,13 +192,15 @@ describe("the envelope", () => {
   });
 
   test("rejects a missing or empty id, and a missing type", () => {
-    expect(v.safeParse(EnvelopeSchema, { v: 1, type: "x", args: {} }).success).toBe(
+    expect(
+      v.safeParse(EnvelopeSchema, { v: 1, type: "x", args: {} }).success,
+    ).toBe(false);
+    expect(v.safeParse(EnvelopeSchema, { ...good, id: "" }).success).toBe(
       false,
     );
-    expect(v.safeParse(EnvelopeSchema, { ...good, id: "" }).success).toBe(false);
-    expect(v.safeParse(EnvelopeSchema, { v: 1, id: "1", args: {} }).success).toBe(
-      false,
-    );
+    expect(
+      v.safeParse(EnvelopeSchema, { v: 1, id: "1", args: {} }).success,
+    ).toBe(false);
   });
 
   test("rejects an unknown key inside a command's args", async () => {
@@ -211,7 +221,10 @@ describe("the envelope", () => {
         "progress 5/10 /sdcard/Movies/a.mkv",
       ],
       [{ type: "verified", file, hash: "ab" }, "verified /drive/Anime/a.mkv"],
-      [{ type: "deleted", file }, "deleted the phone copy of /sdcard/Movies/a.mkv"],
+      [
+        { type: "deleted", file },
+        "deleted the phone copy of /sdcard/Movies/a.mkv",
+      ],
       [
         { type: "failed", file, reason: "content mismatch" },
         "failed /sdcard/Movies/a.mkv: content mismatch",
@@ -271,7 +284,8 @@ describe("the one-answer rule", () => {
       }
       // Every failure carries a fix, never a bare message.
       for (const answer of answers(frames)) {
-        if (!answer.ok) expect((answer.error?.fix ?? "").length).toBeGreaterThan(0);
+        if (!answer.ok)
+          expect((answer.error?.fix ?? "").length).toBeGreaterThan(0);
       }
     } finally {
       await rm(scratch, { recursive: true, force: true });
@@ -388,7 +402,11 @@ describe("pull.start, once", () => {
           runs,
           adb: async () => fakeAdb(fakeDevice()),
           resolveConfig: async () =>
-            resolvedFor("/tmp/portage-not-a-drive", undefined, configuredDevice()),
+            resolvedFor(
+              "/tmp/portage-not-a-drive",
+              undefined,
+              configuredDevice(),
+            ),
         },
       );
 
@@ -428,7 +446,11 @@ describe("pull.start, once", () => {
           runs,
           adb: async () => fakeAdb(fakeDevice()),
           resolveConfig: async () =>
-            resolvedFor("/tmp/portage-not-a-drive", undefined, configuredDevice()),
+            resolvedFor(
+              "/tmp/portage-not-a-drive",
+              undefined,
+              configuredDevice(),
+            ),
         },
       );
       const all = c.frames();
@@ -684,7 +706,11 @@ function dupeMember(path: string, relative: string) {
 
 /** A register that only this test can reach: no scan, no engine, fixed ids. */
 function fixtureRegister(): PendingRegister {
-  return new PendingRegister(60_000, () => 1_000_000, () => "scan-fixed");
+  return new PendingRegister(
+    60_000,
+    () => 1_000_000,
+    () => "scan-fixed",
+  );
 }
 
 describe("dupes.apply refuses without refusing the wrong thing", () => {
@@ -860,7 +886,9 @@ describe("dupes.apply refuses without refusing the wrong thing", () => {
       expect(answer.ok).toBe(true);
       expect(await Bun.file(victim).exists()).toBe(false);
       expect(await Bun.file(keeper).exists()).toBe(true);
-      expect(await Bun.file(join(trashDir, "Anime", "a.mkv")).exists()).toBe(true);
+      expect(await Bun.file(join(trashDir, "Anime", "a.mkv")).exists()).toBe(
+        true,
+      );
       expect(one(frames, "notice").message).toContain("moved 1 file");
     } finally {
       await drive.cleanup();
@@ -869,7 +897,11 @@ describe("dupes.apply refuses without refusing the wrong thing", () => {
 
   test("a record expires, and an expired id is refused", async () => {
     let clock = 5_000;
-    const pending = new PendingRegister(1_000, () => clock, () => "expiring");
+    const pending = new PendingRegister(
+      1_000,
+      () => clock,
+      () => "expiring",
+    );
     pending.insert({
       kind: "dupes",
       paths: new Map([["k0", "/tmp/x"]]),
@@ -911,11 +943,19 @@ describe("purge.apply refuses without reaching the phone", () => {
   };
 
   function purgeRegister(): PendingRegister {
-    return new PendingRegister(60_000, () => Date.now(), () => "plan-fixed");
+    return new PendingRegister(
+      60_000,
+      () => Date.now(),
+      () => "plan-fixed",
+    );
   }
 
   function planFor(): PurgePlan {
-    return { eligible: [candidate], refused: [], bytesReclaimed: candidate.size };
+    return {
+      eligible: [candidate],
+      refused: [],
+      bytesReclaimed: candidate.size,
+    };
   }
 
   test("a forged key, a stale planId and a wrong confirm delete NOTHING", async () => {
@@ -985,8 +1025,14 @@ describe("the read-only commands do real work", () => {
     const drive = await makeTempDrive("portage-serve-scan-");
     try {
       await mkdir(join(drive.root, "Anime"), { recursive: true });
-      await Bun.write(join(drive.root, "Anime", "a.mkv"), new Uint8Array(4096).fill(0x41));
-      await Bun.write(join(drive.root, "Anime", "b.mkv"), new Uint8Array(4096).fill(0x41));
+      await Bun.write(
+        join(drive.root, "Anime", "a.mkv"),
+        new Uint8Array(4096).fill(0x41),
+      );
+      await Bun.write(
+        join(drive.root, "Anime", "b.mkv"),
+        new Uint8Array(4096).fill(0x41),
+      );
 
       const c = collector();
       const frames = connect(c.sink);
@@ -1043,9 +1089,12 @@ describe("the read-only commands do real work", () => {
     const drive = await makeTempDrive("portage-serve-export-");
     try {
       const target = join(drive.root, "export.jsonl");
-      const { frames } = await runServe([cmd("e1", "db.export", { path: target })], {
-        resolveConfig: async () => resolvedFor(drive.root),
-      });
+      const { frames } = await runServe(
+        [cmd("e1", "db.export", { path: target })],
+        {
+          resolveConfig: async () => resolvedFor(drive.root),
+        },
+      );
       expect(answerFor(frames, "e1").ok).toBe(true);
       const written = await readFile(target, "utf8");
       // A journal with nothing in it exports a valid, non-empty payload.
@@ -1103,13 +1152,16 @@ describe("browse", () => {
 
   test("browse quoting matches the apull script's sq()", async () => {
     const { quoteShellArg } = await import("../src/serve/browse.ts");
-    expect(quoteShellArg("/sdcard/Download/Move")).toBe("'/sdcard/Download/Move'");
+    expect(quoteShellArg("/sdcard/Download/Move")).toBe(
+      "'/sdcard/Download/Move'",
+    );
     expect(quoteShellArg("/sdcard/It's here")).toBe("'/sdcard/It'\\''s here'");
     expect(quoteShellArg("/sdcard/a b/c[1]")).toBe("'/sdcard/a b/c[1]'");
   });
 
   test("a level lists directories then files, quotes the path, and says when it truncated", async () => {
-    const { browseLevel, BROWSE_LIMIT } = await import("../src/serve/browse.ts");
+    const { browseLevel, BROWSE_LIMIT } =
+      await import("../src/serve/browse.ts");
     const commands: string[] = [];
     const spawn: SpawnFn = async (command) => {
       const shell = command[command.length - 1] ?? "";
@@ -1138,9 +1190,11 @@ describe("browse", () => {
     expect(level.entries[3]?.path).toBe("/sdcard/Download/Move/a.mkv");
     // The path reaches the device single-quoted and with `-H`, exactly as apull
     // does it, because /sdcard is a symlink.
-    expect(commands.every((shell) => shell.includes("find -H '/sdcard/Download/Move'"))).toBe(
-      true,
-    );
+    expect(
+      commands.every((shell) =>
+        shell.includes("find -H '/sdcard/Download/Move'"),
+      ),
+    ).toBe(true);
 
     const capped = await browseLevel(adb, "serial", "/sdcard/Download/Move", 2);
     expect(capped.entries.length).toBe(2);
@@ -1196,6 +1250,7 @@ function planOf(files: PlannedFile[]): PlanResult {
     skipped: [],
     bytesTotal: files.reduce((total, file) => total + file.bytes, 0),
     bytesSkipped: 0,
+    bytesExcluded: 0,
     fileCount: files.length,
     etaSeconds: null,
     space: { ok: true, freeBytes: 1e12, totalBytes: 2e12, usedFraction: 0.5 },

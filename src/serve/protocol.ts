@@ -73,7 +73,6 @@ export const EnvelopeSchema = v.strictObject({
   type: v.pipe(v.string(), v.minLength(1, "every command needs a type")),
   args: v.optional(v.unknown(), {}),
 });
-export type Envelope = v.InferOutput<typeof EnvelopeSchema>;
 
 /** `{}` for the commands that take nothing. Still strict: `{}` or nothing. */
 const EmptyArgs = v.strictObject({});
@@ -133,6 +132,8 @@ export const ArgsSchemas = {
     since: sinceSchema,
     jobs: jobsSchema,
     overwrite: v.optional(v.boolean(), false),
+    // Source paths a person removed from this pull. Still planned, never moved.
+    exclude: v.optional(v.array(v.string()), []),
   }),
 
   "pull.start": v.strictObject({
@@ -140,6 +141,7 @@ export const ArgsSchemas = {
     show: v.optional(v.string()),
     since: sinceSchema,
     jobs: jobsSchema,
+    exclude: v.optional(v.array(v.string()), []),
     // The mode names the deletion decision, which is the only thing that
     // differs between "copy and keep" and "copy then delete after proof".
     mode: v.optional(
@@ -339,9 +341,7 @@ export const WirePurgeCandidateSchema = v.strictObject({
   proof: v.picklist(["journal-hash", "recomputed-hash"]),
   hash: v.string(),
 });
-export type WirePurgeCandidate = v.InferOutput<
-  typeof WirePurgeCandidateSchema
->;
+export type WirePurgeCandidate = v.InferOutput<typeof WirePurgeCandidateSchema>;
 
 /** Compile-time drift guard: the wire candidate must still BE a PurgeCandidate. */
 type Extends<A extends B, B> = true;

@@ -8,7 +8,8 @@
  * turns that from a surprise into a fact.
  */
 
-import { join, dirname } from "node:path";
+import { statSync } from "node:fs";
+import { join } from "node:path";
 
 import type { Journal } from "../index/journal.ts";
 import type { Candidate } from "../scan/scan.ts";
@@ -26,6 +27,8 @@ export interface PlannedFile {
   alreadyTransferred: boolean;
   /** Why this file is not being transferred, when it is not. */
   skipReason?: string;
+  /** True when a person removed this file from the pull by hand. */
+  excluded?: boolean;
   /** Bytes this file would add (0 when it is a skip). */
   bytes: number;
 }
@@ -48,6 +51,8 @@ export interface PlanResult {
   skipped: PlannedFile[];
   bytesTotal: number;
   bytesSkipped: number;
+  /** The part of `bytesSkipped` removed by hand, so the count stays honest. */
+  bytesExcluded: number;
   fileCount: number;
   /** Null when there is not enough throughput history to be honest about it. */
   etaSeconds: number | null;
@@ -65,6 +70,8 @@ export interface PlanOptions {
   show?: string;
   /** Only files whose relative path is newer than this many seconds. */
   sinceSeconds?: number;
+  /** Source paths a person removed from this pull; still shown, never moved. */
+  exclude?: ReadonlySet<string>;
 }
 
 /**
@@ -99,6 +106,22 @@ export function buildPlan(
     const destPath = join(opts.destRoot, candidate.relative);
     const destNorm = normPath(destPath);
 
+    // A hand-removed file is still shown, with the reason, so the decision is
+    // visible and can be put back. It must never be queued: the whole point of
+    // removing it was that this pull should not touch it.
+    if (opts.exclude?.has(candidate.srcPath)) {
+      files.push({
+        candidate,
+        destPath,
+        destNorm,
+        alreadyTransferred: false,
+        excluded: true,
+        skipReason: "you removed this from the pull by hand",
+        bytes: 0,
+      });
+      continue;
+    }
+
     // An ineligible file is still *shown* — "why was this skipped?" is the
     // question `plan` exists to answer — but it must never be queued.
     if (
@@ -131,9 +154,41 @@ export function buildPlan(
     const archiveHit = matchArchive(opts.journal, destNorm, candidate.size);
     if (archiveHit) warnings.push(archiveHit.note);
 
+    // The journal is not the drive. A file already sitting at the destination —
+    // copied by an older run, by hand, or from another machine — must not be
+    // copied again just because this journal has never heard of it. Size alone
+    // cannot prove the content, but it answers the only question that matters
+    // here: leave it alone.
+    //
+    // Two exceptions. A row recorded as `failed` is known-bad, so its size must
+    // not launder it into "already on the drive" — that file is retried. And a
+    // file of a *different* size that no run of ours claims is a collision:
+    // `adb pull` would delete it first, which is the one thing this tool never
+    // does to something it did not write.
+    const onDisk = statSync(destPath, { throwIfNoEntry: false });
+    const diskSize = onDisk?.isFile() === true ? onDisk.size : null;
+    const priorFailed = priorTransfer?.state === "failed";
+    const alreadyOnDisk = !priorFailed && diskSize === candidate.size;
+    const collision =
+      !priorFailed &&
+      priorTransfer === null &&
+      diskSize !== null &&
+      diskSize !== candidate.size;
+
+    if (collision) {
+      warnings.push(
+        `collision: ${destPath} already exists with a different size ` +
+          `(${diskSize} on the drive, ${candidate.size} on the phone) — will not overwrite`,
+      );
+    }
+
     // A file is only worth transferring bytes for when we do not already have
     // it. Everything else is free to skip — and skipping is the feature.
-    const skip = alreadyTransferred || archiveHit?.relation === "identical";
+    const skip =
+      alreadyTransferred ||
+      archiveHit?.relation === "identical" ||
+      alreadyOnDisk ||
+      collision;
 
     files.push({
       candidate,
@@ -144,7 +199,11 @@ export function buildPlan(
       skipReason: skip
         ? alreadyTransferred
           ? "already transferred and verified in an earlier run"
-          : "identical content is already on the drive"
+          : archiveHit?.relation === "identical"
+            ? "identical content is already on the drive"
+            : collision
+              ? `collision: ${diskSize} on the drive, ${candidate.size} on the phone — will not overwrite`
+              : "already on the drive (same size)"
         : undefined,
       bytes: skip ? 0 : candidate.size,
     });
@@ -155,6 +214,10 @@ export function buildPlan(
 
   const bytesTotal = toTransfer.reduce((sum, f) => sum + f.bytes, 0);
   const bytesSkipped = skipped.reduce((sum, f) => sum + f.candidate.size, 0);
+  const bytesExcluded = skipped.reduce(
+    (sum, f) => sum + (f.excluded ? f.candidate.size : 0),
+    0,
+  );
 
   // An ETA built on one sample is a lie told with confidence. Say nothing
   // instead of saying something wrong.
@@ -172,6 +235,7 @@ export function buildPlan(
     skipped,
     bytesTotal,
     bytesSkipped,
+    bytesExcluded,
     fileCount: toTransfer.length,
     etaSeconds,
     space,
@@ -246,9 +310,4 @@ export function planSummary(plan: PlanResult): string {
     );
   }
   return parts.join(" · ");
-}
-
-/** Destination directory for a file — used to create the tree before pulling. */
-export function destDirFor(destPath: string): string {
-  return dirname(destPath);
 }
