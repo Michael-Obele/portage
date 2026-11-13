@@ -76,12 +76,10 @@ jobs:
         working-directory: apps/desktop
         run: bun install --frozen-lockfile
 
-      # Builds dist/portage, then copies it to src-tauri/binaries with the
-      # target triple Tauri appends at bundle time.
-      - name: Stage the engine sidecar
-        working-directory: apps/desktop
-        run: bun run sidecar
-
+      # `beforeBuildCommand` builds the SPA and stages the engine sidecar
+      # (`bun run build && bun run sidecar`), so `tauri build` is self-contained
+      # and this job needs no separate staging step.
+      #
       # `-v` keeps linuxdeploy's own output in the log. Without it a failure
       # arrives as the four words "failed to run linuxdeploy" and nothing else.
       #

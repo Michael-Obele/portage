@@ -127,3 +127,58 @@ jobs:
 
       - name: Build the SPA
         run: bun run build
+
+  rust:
+    # Skip the generated release PR: it only changes version
+    # strings and the changelog. GitHub does not run workflows for
+    # pull requests opened by GITHUB_TOKEN, so these runs land in
+    # action_required and then show as a red failure with zero jobs.
+    # The real check happens on the push to master after the merge.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
+    name: rust (fmt, clippy, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/desktop/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      # tauri-build and the tauri crate link against webkit2gtk-4.1, and clippy
+      # and the tests both compile the crate, so the same libraries the bundle
+      # job installs are needed here.
+      - name: System libraries for Tauri
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      # tauri-build copies the sidecar named in `externalBin` at compile time and
+      # fails if it is missing. This job only compiles and unit-tests the shell,
+      # so a placeholder is enough; the real binary is built by `bun run sidecar`
+      # in the bundle job.
+      - name: Provide the sidecar placeholder
+        working-directory: .
+        run: |
+          mkdir -p apps/desktop/src-tauri/binaries
+          touch "apps/desktop/src-tauri/binaries/portage-$(rustc --print host-tuple)"
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
