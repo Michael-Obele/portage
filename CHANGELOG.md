@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.13](https://github.com/Michael-Obele/portage/compare/v0.1.12...v0.1.13) (2026-11-13)
+
+
+### Bug Fixes
+
+* **desktop:** make the plan table the plan screen's only scroll region ([7121a07](https://github.com/Michael-Obele/portage/commit/7121a07569e9ec02e8db01276393879949bf7e5d))
+* **desktop:** stop the selected-row panel collapsing into an empty band ([9d76481](https://github.com/Michael-Obele/portage/commit/9d76481a8bf839330ecacee59f093d92da8a326f))
+
 ## [0.1.12](https://github.com/Michael-Obele/portage/compare/v0.1.11...v0.1.12) (2026-11-13)
 
 
