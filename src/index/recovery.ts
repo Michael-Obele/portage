@@ -143,6 +143,17 @@ export interface DestinationCheck {
   usedFraction: number;
 }
 
+/**
+ * True when a mount's option list carries the `ro` flag.
+ *
+ * Matching `ro` as a substring is wrong: `errors=remount-ro` is an option on
+ * ordinary read-write ext4 mounts, and it made every destination on such a
+ * filesystem look read-only. Split on commas and compare whole tokens.
+ */
+export function isReadOnlyMount(options: string): boolean {
+  return options.split(",").some((option) => option.trim() === "ro");
+}
+
 export function checkDestination(
   destRoot: string,
   plannedBytes: number,
@@ -167,7 +178,7 @@ export function checkDestination(
     };
   }
 
-  if (options.includes("ro,") || options === "ro") {
+  if (isReadOnlyMount(options)) {
     return {
       ok: false,
       reason: `destination is mounted read-only (NTFS dirty bit?): ${destRoot}`,

@@ -10,7 +10,11 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 
 import { Journal } from "../src/index/journal.ts";
-import { checkDestination, reconcile } from "../src/index/recovery.ts";
+import {
+  checkDestination,
+  isReadOnlyMount,
+  reconcile,
+} from "../src/index/recovery.ts";
 import { runTransfer, type EngineOptions } from "../src/xfer/engine.ts";
 import type {
   CopyOutcome,
@@ -433,6 +437,20 @@ describe("crash recovery", () => {
 });
 
 describe("destination pre-flight", () => {
+  // Mount options are a comma-separated list. `errors=remount-ro` is how a
+  // read-write ext4 mount says "remount me read-only after an error", and a
+  // substring test for `ro,` reads that as a read-only mount. GitHub's
+  // runners use exactly that option on /tmp.
+  test("remount-ro is not a read-only mount", () => {
+    expect(isReadOnlyMount("rw,relatime,errors=remount-ro")).toBe(false);
+  });
+
+  test("an ro token is read-only", () => {
+    expect(isReadOnlyMount("ro,relatime")).toBe(true);
+    expect(isReadOnlyMount("rw,ro")).toBe(true);
+    expect(isReadOnlyMount("ro")).toBe(true);
+  });
+
   // The headroom is a margin for the bytes a run will write. A plan that
   // copies nothing writes nothing, so the reserve must not apply to it: at the
   // maximum allowed headroom (0.9) the old arithmetic answered "need 0 bytes,
