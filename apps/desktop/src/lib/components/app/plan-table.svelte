@@ -70,23 +70,48 @@
 		selected === null ? null : (rows.find((row) => row.key === selected.key) ?? selected)
 	);
 
-	function onKeyDown(event: KeyboardEvent): void {
-		if (event.key !== 'Escape') return;
+	/**
+	 * Escape reaches the panel from wherever focus is.
+	 *
+	 * The handler used to sit on the wrapper, which only sees a key pressed
+	 * inside it — and after a pointer click the focus is on the row, then on
+	 * `body` as soon as anything else is clicked, so the one key the panel
+	 * advertises did nothing. A dialog still wins: bits-ui traps focus inside
+	 * it, so a focused element inside `[role="dialog"]` means an overlay owns
+	 * Escape, and a field keeps its own.
+	 */
+	function onWindowKeyDown(event: KeyboardEvent): void {
+		if (event.key !== 'Escape' || event.defaultPrevented) return;
+		if (current === null) return;
+		const target = event.target;
+		if (target instanceof HTMLElement) {
+			const tag = target.tagName;
+			if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
+				return;
+			}
+		}
+		if (document.activeElement?.closest('[role="dialog"], [role="alertdialog"]')) return;
+		event.preventDefault();
 		onactivate(null);
 	}
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-	class={cn('flex min-h-0 flex-col gap-2 lg:flex-row lg:items-start', className)}
-	onkeydown={onKeyDown}
->
-	<!-- A bounded height is what makes the sticky header stick and keeps 500 rows
-	     from pushing the action bar off the screen. dvh, not px, so 200 % zoom
-	     still gets a scrollable table rather than a clipped one. -->
-	<div class="order-2 flex min-h-0 min-w-0 flex-1 flex-col lg:order-1">
+<svelte:window onkeydown={onWindowKeyDown} />
+
+<div class={cn('flex min-h-0 flex-1 flex-col gap-2 lg:flex-row', className)}>
+	<!-- The table IS the scroll region on this screen. It grows into whatever
+	     height the page has left, rather than taking a 62dvh cap and pushing
+	     its own bottom past the window — which used to leave two nested
+	     scrollers and a page that scrolled when the table ran out.
+
+	     The `min-h-48` floor sits on the TABLE column, not on this wrapper:
+	     stacked (below lg) the detail card comes first and would otherwise eat
+	     the whole column, leaving a table with a 0 px viewport. A floor on the
+	     column keeps about six rows on screen and lets the page scroll instead
+	     when the window is genuinely too short for every band. -->
+	<div class="order-2 flex min-h-48 min-w-0 flex-1 flex-col lg:order-1">
 		<DataTable
-			class="max-h-[62dvh]"
+			fill
 			columns={COLUMNS}
 			{rows}
 			rowKey={(row) => row.key}
@@ -101,8 +126,16 @@
 				<Table.Cell role="gridcell">
 					<StateChip state={item.chip} />
 				</Table.Cell>
-				<Table.Cell role="gridcell">
-					<span class={ROW_NAME} title={item.srcPath}>{truncateMiddle(item.name, 48)}</span>
+				<!-- `w-full max-w-0` is what keeps the table inside its box. A
+				     `nowrap` string has a min-content width equal to the whole
+				     string, so without a zero maximum the longest name sets the
+				     column width and pushes Size off the right edge — measured at
+				     a 1024 px window: 658 px of table in a 424 px viewport, a
+				     horizontal scrollbar, and every size hidden behind it. -->
+				<Table.Cell role="gridcell" class="w-full max-w-0">
+					<span class={cn(ROW_NAME, 'block')} title={item.srcPath}
+						>{truncateMiddle(item.name, 48)}</span
+					>
 					<span class="sr-only">{item.srcPath}</span>
 				</Table.Cell>
 				<Table.Cell role="gridcell" class={NUMERIC}>{formatBytes(item.size)}</Table.Cell>
@@ -131,20 +164,31 @@
 
 	{#if current}
 		{@const row = current}
+		<!-- `size="sm"` is not decoration. The default card spends 32 px of
+		     padding top and bottom plus a 32 px gap on a panel that is only as
+		     tall as the table beside it — 29 % of its height on chrome, which at
+		     a 700 px window left room for the name and nothing else. -->
 		<Card.Root
 			data-row-detail
-			class="order-1 w-full gap-2 border border-border text-[length:var(--text-body)] shadow-none ring-0 lg:order-2 lg:max-h-[62dvh] lg:w-80 lg:shrink-0"
+			size="sm"
+			class="order-1 w-full shrink-0 gap-2 border border-border text-(length:--text-body) shadow-none ring-0 lg:order-2 lg:min-h-0 lg:w-80"
 		>
 			<Card.Header class="px-4">
 				<Card.Title
-					class="text-[length:var(--text-label)] font-medium tracking-normal text-muted-foreground normal-case"
+					class="text-(length:--text-label) font-medium tracking-normal text-muted-foreground normal-case"
 				>
 					Selected row
 				</Card.Title>
 			</Card.Header>
 
 			<Card.Content class="flex min-h-0 flex-1 flex-col">
-				<ScrollArea type="auto" class="min-h-0 flex-1 pr-1">
+				<!-- Stacked, this card has no height of its own: a `flex-1` child
+				     of an auto-height column collapses to nothing, and the whole
+				     panel read as a title with a sliver under it. So the field
+				     list gets a height in dvh while stacked — the page scrolls
+				     below lg anyway — and goes back to filling the card beside
+				     the table, where the card's own height is definite. -->
+				<ScrollArea type="auto" class="h-[38dvh] min-h-0 pr-1 lg:h-auto lg:flex-1">
 					<dl class="flex flex-col gap-3 pb-1">
 						<div class="flex min-w-0 flex-col">
 							<dt class="text-caption text-muted-foreground">Name</dt>

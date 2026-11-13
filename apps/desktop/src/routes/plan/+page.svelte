@@ -268,7 +268,14 @@
 
 <PageHeader title="Plan" {summary} />
 
-<div class="flex flex-col gap-4 px-6 pb-8">
+<!-- One scroll region, and it is the table.
+     `min-h-0` lets this column be exactly as tall as the window, so the bands
+     above and the action bar below stay put and the table takes the rest. The
+     screen used to be a plain block inside a scrolling `main` and the table
+     carried its own 62dvh cap: the table's last rows sat below the fold, a
+     wheel near the bottom scrolled the page instead, and the header slid away
+     while rows were still under the pointer. -->
+<div class="flex min-h-0 flex-1 flex-col gap-4 px-6 pb-4">
 	{#if plan}
 		<p class="flex flex-wrap items-center gap-2 text-label">
 			<span class="text-muted-foreground">Destination</span>
@@ -317,7 +324,7 @@
 		{/if}
 	{:else}
 		<footer
-			class="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--radius-surface)] border border-border bg-card px-4 py-3"
+			class="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-surface border border-border bg-card px-4 py-3"
 		>
 			<div class="flex flex-wrap items-center gap-2">
 				<Button
@@ -380,9 +387,7 @@
 		</footer>
 
 		{#if plan.warnings.length > 0}
-			<ul
-				class="flex flex-col gap-1 rounded-[var(--radius-surface)] border border-border bg-muted px-4 py-3"
-			>
+			<ul class="flex flex-col gap-1 rounded-surface border border-border bg-muted px-4 py-3">
 				{#each plan.warnings as warning, index (index)}
 					<li class="measure text-body text-foreground">{warning}</li>
 				{/each}

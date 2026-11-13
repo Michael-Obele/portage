@@ -31,10 +31,22 @@
 	     `height: 100%` resolves to auto and the content spills out clipped but
 	     unscrollable. Inheriting the cap clamps the viewport itself, which is
 	     what makes the scrollbar and a sticky header inside it work. -->
+	<!-- `overscroll-contain` is load-bearing too. Without it, a wheel that
+	     reaches the end of this box scroll-chains into the page behind it, so
+	     the document lurches just as the list runs out — a nested scroll area
+	     that reads as a bug in the table.
+
+	     `relative` is the less obvious half. Absolutely positioned descendants
+	     (every `sr-only` full path in a table row) resolve against their nearest
+	     POSITIONED ancestor. Leave this static and that ancestor is the scroll
+	     box above the viewport, so the hidden text is clipped by a box that does
+	     not move with the scroll, lands at the content's real height, and the
+	     page behind grows a phantom scrollbar. Measured: a 15-row plan table made
+	     `main` scroll 130 px with nothing to scroll to. -->
 	<ScrollAreaPrimitive.Viewport
 		bind:ref={viewportRef}
 		data-slot="scroll-area-viewport"
-		class="size-full max-h-[inherit] rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+		class="relative size-full max-h-[inherit] overscroll-contain rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
 	>
 		{@render children?.()}
 	</ScrollAreaPrimitive.Viewport>

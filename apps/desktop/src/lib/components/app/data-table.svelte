@@ -37,6 +37,12 @@
 		filtered = false,
 		loading = false,
 		skeletonRows = 3,
+		/**
+		 * Take the height the parent gives it, instead of a cap passed through
+		 * `class`. A screen whose table is the only thing that scrolls sets this,
+		 * so the table ends where the window does and the page never scrolls too.
+		 */
+		fill = false,
 		empty,
 		filteredEmpty,
 		row,
@@ -51,6 +57,7 @@
 		filtered?: boolean;
 		loading?: boolean;
 		skeletonRows?: number;
+		fill?: boolean;
 		empty?: Snippet;
 		filteredEmpty?: Snippet;
 		row?: Snippet<[T, number]>;
@@ -106,7 +113,7 @@
 	}
 </script>
 
-<div class="relative flex min-h-0 flex-col">
+<div class={cn('relative flex min-h-0 flex-col', fill && 'flex-1')}>
 	<!-- shadcn's ScrollArea, not `overflow-auto`. A native scrollbar on a desktop
 	     shell is a grey slab that reads as a browser, and this table is the one
 	     surface a person stares at for minutes at a time.
@@ -114,11 +121,15 @@
 	 `className` lands on the SCROLL BOX, not on this wrapper: callers use it
 	 for the height cap (`max-h-[62dvh]`), and the viewport inherits that cap.
 	 A cap on this wrapper would size nothing, because the wrapper is a flex
-	 column whose child only fills a definite height. -->
+	 column whose child only fills a definite height.
+
+	 With `fill` the wrapper grows into its parent instead, and the scroll box
+	 takes that whole height — the same rule, read the other way round: the
+	 box is only scrollable because the height above it is definite. -->
 	<ScrollArea
 		orientation="both"
 		type="auto"
-		class={cn('min-h-0', className)}
+		class={cn('min-h-0', fill && 'h-full', className)}
 		scrollbarYClasses="w-2"
 	>
 		<!-- Header, rows and cells are shadcn's Table primitives. `Table.Root` is
@@ -130,7 +141,7 @@
 			role="grid"
 			aria-rowcount={rows.length + 1}
 			aria-colcount={columns.length}
-			class="w-full border-separate border-spacing-0 text-body [&_tbody>tr]:h-[var(--row-h)] [&_tbody>tr:last-child>td]:border-b-0 [&_td]:border-b [&_td]:border-border [&_td]:px-3 [&_td]:py-0"
+			class="w-full border-separate border-spacing-0 text-body [&_tbody>tr]:h-(--row-h) [&_tbody>tr:last-child>td]:border-b-0 [&_td]:border-b [&_td]:border-border [&_td]:px-3 [&_td]:py-0"
 			onkeydown={onKeyDown}
 		>
 			<Table.Caption class="sr-only">{caption}</Table.Caption>
