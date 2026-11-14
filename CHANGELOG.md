@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.14](https://github.com/Michael-Obele/portage/compare/v0.1.13...v0.1.14) (2026-11-14)
+
+
+### Features
+
+* **desktop:** add shadcn UI components for alert-dialog, alert, empty, ([d271d10](https://github.com/Michael-Obele/portage/commit/d271d1031397ee55243c45bad896644ca968da80))
+* **desktop:** add the Purge and Doctor screens ([dc554ef](https://github.com/Michael-Obele/portage/commit/dc554efaf6a8ab07657ce39b76c2411b3ddbcf85))
+
+
+### Bug Fixes
+
+* **desktop:** fill the window, pin actions, refuse unsafe drives ([5e74bf4](https://github.com/Michael-Obele/portage/commit/5e74bf40ae32b13f2ef06e392fa29e490811b8d8))
+* **desktop:** sync Cargo.lock with the 0.1.13 bump ([5849b93](https://github.com/Michael-Obele/portage/commit/5849b9331d70d8b0ab7e09948d215da8bdb1b743))
+* **engine:** skip folder markers and revalidate purge plans ([5e066bb](https://github.com/Michael-Obele/portage/commit/5e066bb27e6de64671b46728024044f9a7e7fb2e))
+
+
+### Refactoring
+
+* **desktop:** build shared components on shadcn primitives ([b715b99](https://github.com/Michael-Obele/portage/commit/b715b9976c22a142a8421a46ea7bd2002fdb2b35))
+
 ## [0.1.13](https://github.com/Michael-Obele/portage/compare/v0.1.12...v0.1.13) (2026-11-13)
 
 
