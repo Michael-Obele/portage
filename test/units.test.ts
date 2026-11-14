@@ -24,6 +24,7 @@ import {
   formatBytes,
   formatDuration,
   truncateMiddle,
+  isMarkerFile,
 } from "../src/util/paths.ts";
 import { parseArgs, bool, int, str } from "../src/cli/args.ts";
 import { loadConfig, coerceConfigValue } from "../src/config/load.ts";
@@ -420,5 +421,35 @@ describe("resolveAdbBinary", () => {
     expect(found.tried.length).toBeGreaterThan(0);
 
     await rm(home, { recursive: true, force: true });
+  });
+});
+
+describe("folder markers", () => {
+  // The rule both the Plan frame and the run pipeline consult. `.nomedia` is a
+  // 0-byte marker on Android meaning "do not index this folder".
+  test("recognises the marker files, in any case, at any depth", () => {
+    for (const path of [
+      "/sdcard/Movies/.nomedia",
+      "/sdcard/Movies/DCIM/.NOMEDIA",
+      "/sdcard/Movies/.DS_Store",
+      "/sdcard/Movies/Thumbs.db",
+      "/sdcard/Movies/desktop.ini",
+      "/sdcard/Movies/sub/.directory",
+    ]) {
+      expect(isMarkerFile(path), path).toBe(true);
+    }
+  });
+
+  test("does not mistake media for a marker", () => {
+    for (const path of [
+      "/sdcard/Movies/Frieren 07.mkv",
+      "/sdcard/Movies/not-a-nomedia-file.mkv",
+      "/sdcard/Movies/nomedia.mkv",
+      "/sdcard/Movies/.nomedia.mkv",
+      "/sdcard/Movies",
+      "/sdcard/.nomedia/inside.mkv",
+    ]) {
+      expect(isMarkerFile(path), path).toBe(false);
+    }
   });
 });

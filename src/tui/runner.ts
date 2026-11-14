@@ -24,6 +24,7 @@ import { checkDestination, reconcile } from "../index/recovery.ts";
 import { Journal } from "../index/journal.ts";
 import { buildPlan, type PlanResult } from "../plan/plan.ts";
 import { eligible, scanDevice, type Candidate } from "../scan/scan.ts";
+import { isMarkerFile } from "../util/paths.ts";
 import { AdbTransport } from "../xfer/adb.ts";
 import { runTransfer, type EngineSummary } from "../xfer/engine.ts";
 import type { DeleteSource } from "../config/schema.ts";
@@ -238,7 +239,23 @@ async function gather(
       quietSeconds: config.quiet_seconds,
       deviceConfig,
     });
-    all.push(...found);
+    // The serve seam re-labels markers for the Plan frame; the RUN reaches the
+    // engine directly and would otherwise copy them. One predicate, both
+    // paths — a plan that says "skipped" and a run that copies is the exact
+    // divergence this guards against. A marker is excluded rather than dropped
+    // so the transfer's own totals still explain themselves.
+    all.push(
+      ...found.map((candidate) =>
+        isMarkerFile(candidate.srcPath) &&
+        candidate.verdict !== "excluded"
+          ? {
+              ...candidate,
+              verdict: "excluded" as const,
+              reason: "a folder marker, not media",
+            }
+          : candidate,
+      ),
+    );
   }
   return eligible(all);
 }

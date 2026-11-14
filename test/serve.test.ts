@@ -18,13 +18,13 @@ import * as v from "valibot";
 
 import { DEFAULT_CONFIG, type DeviceConfig } from "../src/config/schema.ts";
 import type { ResolvedConfig } from "../src/config/load.ts";
-import { Adb, type DeviceInfo } from "../src/device/adb.ts";
+import { Adb, type DeviceFile, type DeviceInfo } from "../src/device/adb.ts";
 import type { DupeReport } from "../src/dedupe/types.ts";
 import type { EngineSummary } from "../src/xfer/engine.ts";
 import type { PlanResult, PlannedFile } from "../src/plan/plan.ts";
 import type { PurgePlan } from "../src/xfer/purge.ts";
 import type { SpawnFn } from "../src/util/spawn.ts";
-import { createContext, dispatch } from "../src/serve/dispatch.ts";
+import { createContext, dispatch, withFreshDriveCopies } from "../src/serve/dispatch.ts";
 import { connect, snapshot, type Sink } from "../src/serve/frames.ts";
 import { serve, type ServeOptions } from "../src/serve/index.ts";
 import { PendingRegister } from "../src/serve/pending.ts";
@@ -1313,4 +1313,175 @@ describe("the serve process", () => {
     expect(written).toContain('"type":"bye"');
     expect(code).toBe(0);
   }, 30_000);
+});
+
+// --- marker files -----------------------------------------------------------
+
+describe("a folder marker is never copied", () => {
+  /**
+   * `scan` classifies a file from its name and size. `.nomedia` is a 0-byte
+   * marker on Android that means "do not index this folder"; it is not media,
+   * and copying it to the archive is pure noise.
+   *
+   * `src/scan/classify()` has a branch for it, but the branch tests
+   * `extname(path) === ".nomedia"` — and `extname(".nomedia")` is `""`, because
+   * a leading dot marks a hidden file rather than an extension. The branch is
+   * unreachable. `src/scan` is frozen by the acceptance gate, so `dispatch.ts`
+   * re-labels markers before a plan can see them, and this test holds that.
+   */
+  async function planWith(files: DeviceFile[]) {
+    const drive = await makeTempDrive("portage-serve-markers-");
+    const device = fakeDevice();
+    const adb = {
+      devices: async () => [device],
+      walk: async () => files,
+    } as unknown as Adb;
+    const { frames } = await runServe([cmd("mk", "plan", {})], {
+      adb: async () => adb,
+      resolveConfig: async () =>
+        resolvedFor(drive.root, undefined, {
+          [device.id]: { label: "", roots: ["/sdcard/Movies"], exclude: [] },
+        }),
+    });
+    return { plan: one(frames, "plan").plan, drive };
+  }
+
+  /** Old enough that `quiet_seconds` cannot be the reason it was skipped. */
+  function file(path: string, size: number): DeviceFile {
+    return { path, size, mtime: Math.floor(Date.now() / 1000) - 86_400 };
+  }
+
+  test("the marker is reported as skipped, not silently dropped", async () => {
+    const { plan, drive } = await planWith([
+      file("/sdcard/Movies/.nomedia", 0),
+      file("/sdcard/Movies/a.mkv", 1024),
+    ]);
+    try {
+      expect(plan.toTransfer.map((entry) => entry.candidate.srcPath)).toEqual([
+        "/sdcard/Movies/a.mkv",
+      ]);
+      const marker = plan.skipped.find(
+        (entry) => entry.candidate.srcPath === "/sdcard/Movies/.nomedia",
+      );
+      // Reported, with a reason a person can act on. Silence would make the
+      // plan's counts disagree with the phone.
+      expect(marker?.skipReason ?? marker?.candidate.reason).toContain(
+        "marker",
+      );
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
+  test("a non-empty marker and a stray Thumbs.db are skipped too", async () => {
+    const { plan, drive } = await planWith([
+      file("/sdcard/Movies/.nomedia", 37),
+      file("/sdcard/Movies/Thumbs.db", 8192),
+      file("/sdcard/Movies/b.mkv", 2048),
+    ]);
+    try {
+      expect(
+        plan.toTransfer.map((entry) => entry.candidate.srcPath).sort(),
+      ).toEqual(["/sdcard/Movies/b.mkv"]);
+      expect(plan.fileCount).toBe(1);
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
+  test("a file whose name merely contains the word is still copied", async () => {
+    const { plan, drive } = await planWith([
+      file("/sdcard/Movies/not-a-nomedia-file.mkv", 4096),
+    ]);
+    try {
+      expect(plan.toTransfer).toHaveLength(1);
+    } finally {
+      await drive.cleanup();
+    }
+  });
+});
+
+// --- purge freshness --------------------------------------------------------
+
+describe("a purge plan is checked against the drive before it is offered", () => {
+  /**
+   * `planPurge` trusts the journal's stored hash unless `verifyHash` is set, so
+   * a drive copy deleted by hand since the transfer would still be offered for
+   * deletion — the plan would describe a file that is not there and claim it is
+   * covered. `withFreshDriveCopies` closes that, locally, on the serve seam.
+   */
+  function candidate(destPath: string, size: number) {
+    return {
+      deviceId: "dev",
+      serial: "serial",
+      srcPath: `/sdcard/Download/${destPath.split("/").pop()}`,
+      destPath,
+      size,
+      proof: "journal-hash" as const,
+      hash: "deadbeef",
+    };
+  }
+
+  test("a candidate whose drive copy exists survives", async () => {
+    const drive = await makeTempDrive("portage-purge-fresh-");
+    try {
+      const present = join(drive.root, "here.mkv");
+      await Bun.write(present, "bytes");
+      const plan = await withFreshDriveCopies({
+        eligible: [candidate(present, 5)],
+        refused: [],
+        bytesReclaimed: 5,
+      });
+      expect(plan.eligible).toHaveLength(1);
+      expect(plan.refused).toHaveLength(0);
+      expect(plan.bytesReclaimed).toBe(5);
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
+  test("a candidate whose drive copy is gone is refused, with a reason", async () => {
+    const drive = await makeTempDrive("portage-purge-stale-");
+    try {
+      const present = join(drive.root, "here.mkv");
+      const missing = join(drive.root, "gone.mkv");
+      await Bun.write(present, "bytes");
+      const plan = await withFreshDriveCopies({
+        eligible: [candidate(present, 5), candidate(missing, 700)],
+        refused: [{ srcPath: "/sdcard/Download/other.mkv", reason: "no stored hash" }],
+        bytesReclaimed: 705,
+      });
+
+      expect(plan.eligible.map((entry) => entry.destPath)).toEqual([present]);
+      // Refused rather than dropped: silently removing it would make the counts
+      // disagree with what the person is looking at.
+      expect(plan.refused.map((entry) => entry.srcPath)).toContain(
+        "/sdcard/Download/gone.mkv",
+      );
+      expect(plan.refused.find((e) => e.srcPath.endsWith("gone.mkv"))?.reason).toContain(
+        "drive copy is gone",
+      );
+      // The existing refusal is kept, and the byte total follows the survivors.
+      expect(plan.refused).toHaveLength(2);
+      expect(plan.bytesReclaimed).toBe(5);
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
+  test("a plan with nothing left reports zero bytes, not the stale total", async () => {
+    const drive = await makeTempDrive("portage-purge-all-gone-");
+    try {
+      const plan = await withFreshDriveCopies({
+        eligible: [candidate(join(drive.root, "a.mkv"), 100)],
+        refused: [],
+        bytesReclaimed: 100,
+      });
+      expect(plan.eligible).toHaveLength(0);
+      expect(plan.bytesReclaimed).toBe(0);
+      expect(plan.refused).toHaveLength(1);
+    } finally {
+      await drive.cleanup();
+    }
+  });
 });

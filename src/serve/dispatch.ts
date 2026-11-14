@@ -29,10 +29,11 @@ import {
 } from "../config/load.ts";
 import { CONFIG_KEYS, FIELD_SCHEMAS, STATE_DIR } from "../config/schema.ts";
 import { Journal } from "../index/journal.ts";
+import { isMarkerFile } from "../util/paths.ts";
 import { buildPlan, type PlanResult } from "../plan/plan.ts";
 import { scanDevice, summarise, type Candidate } from "../scan/scan.ts";
 import { AdbTransport } from "../xfer/adb.ts";
-import { applyPurge, planPurge } from "../xfer/purge.ts";
+import { applyPurge, planPurge, type PurgePlan } from "../xfer/purge.ts";
 import { applySelection, scanDuplicates } from "../dedupe/index.ts";
 import type { Output } from "../output/output.ts";
 import { doctor as doctorCommand } from "../cli/commands/doctor.ts";
@@ -220,9 +221,61 @@ async function gatherCandidates(
       quietSeconds: config.quiet_seconds,
       deviceConfig,
     });
-    candidates.push(...found);
+    candidates.push(...found.map(withoutMarkers));
   }
   return { candidates, warnings };
+}
+
+/**
+ * Re-label a marker file so it is REPORTED as skipped rather than silently
+ * dropped. Silence would make the plan's counts disagree with the phone.
+ */
+function withoutMarkers(candidate: Candidate): Candidate {
+  if (!isMarkerFile(candidate.srcPath)) return candidate;
+  if (candidate.verdict === "excluded") return candidate;
+  return {
+    ...candidate,
+    verdict: "excluded",
+    reason: "a folder marker, not media",
+  };
+}
+
+/**
+ * A plan is only as fresh as the filesystem it describes.
+ *
+ * `planPurge` trusts the journal's stored hash unless `verifyHash` is set, so a
+ * drive copy deleted by hand since the transfer would still be offered for
+ * deletion — the plan would be describing a file that no longer exists and
+ * claiming it is covered. `src/xfer` is a frozen acceptance surface, so the
+ * check lands here: one local `exists()` per candidate, which costs microseconds
+ * and cannot lie about the local disk.
+ *
+ * Anything whose drive copy is gone is REFUSED, not dropped. A silent removal
+ * would make the plan's counts disagree with what the person is looking at, and
+ * "why is this file not in the list?" deserves an answer.
+ *
+ * The phone side is not checked here: `adb` has no cheap batch stat on this
+ * path, and a file that has genuinely gone from the phone fails harmlessly at
+ * `applyPurge`. `verifyHash: true` does check it, by re-reading both ends.
+ */
+export async function withFreshDriveCopies(plan: PurgePlan): Promise<PurgePlan> {
+  const eligible: PurgePlan["eligible"] = [];
+  const refused = [...plan.refused];
+  for (const candidate of plan.eligible) {
+    if (await Bun.file(candidate.destPath).exists()) {
+      eligible.push(candidate);
+    } else {
+      refused.push({
+        srcPath: candidate.srcPath,
+        reason: "the drive copy is gone — nothing was deleted",
+      });
+    }
+  }
+  return {
+    eligible,
+    refused,
+    bytesReclaimed: eligible.reduce((sum, candidate) => sum + candidate.size, 0),
+  };
 }
 
 /** `7d` / `36h` / `900`. Mirrors `src/cli/index.ts` (and the TUI's copy). */
@@ -796,6 +849,11 @@ const handlerTable = {
           apply: false,
         },
       );
+
+      const fresh = await withFreshDriveCopies(plan);
+      plan.eligible = fresh.eligible;
+      plan.refused = fresh.refused;
+      plan.bytesReclaimed = fresh.bytesReclaimed;
 
       const paths = new Map<string, string>();
       const sizes = new Map<string, number>();

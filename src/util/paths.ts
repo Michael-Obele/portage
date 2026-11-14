@@ -30,6 +30,33 @@ export function dirname(p: string): string {
   return bunDirname(p);
 }
 
+/**
+ * File names that exist to tell Android "this folder is not media".
+ *
+ * `.nomedia` is a 0-byte marker; `.DS_Store`, `Thumbs.db`, `desktop.ini` and
+ * `.directory` are the same class of thing on other platforms. None of them is
+ * content, and none of them belongs on the archive.
+ *
+ * `src/scan/classify()` has a `.nomedia` branch, but it tests
+ * `extname(path) === ".nomedia"` — and `extname(".nomedia")` is `""`, because a
+ * leading dot marks a hidden file rather than an extension. That branch is
+ * unreachable, so the predicate lives here instead, where both the serve seam
+ * and the run pipeline can share one answer. `src/scan` is a frozen acceptance
+ * surface, which is why the fix is not there.
+ */
+const MARKER_FILES = [
+  ".nomedia",
+  ".ds_store",
+  "thumbs.db",
+  "desktop.ini",
+  ".directory",
+];
+
+/** True when this path is a folder marker rather than media. */
+export function isMarkerFile(p: string): boolean {
+  return MARKER_FILES.includes(basename(p).toLowerCase());
+}
+
 /** The extension including the dot, lowercased (`.MKV`). */
 export function extname(p: string): string {
   return bunExtname(p).toLowerCase();
