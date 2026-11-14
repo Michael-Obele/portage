@@ -40,11 +40,13 @@ function asFailure(error: unknown): FailureLike | null {
 }
 
 /** Which screen is asking, so the same failure never reads the same way twice. */
-export type BandContext = 'plan' | 'transfer' | 'dupes';
+export type BandContext = 'plan' | 'transfer' | 'dupes' | 'purge' | 'doctor';
 
 function whereFor(context: BandContext): string {
 	if (context === 'plan') return 'the phone was never read';
 	if (context === 'dupes') return 'nothing was moved to the trash';
+	if (context === 'purge') return 'nothing was deleted from the phone';
+	if (context === 'doctor') return 'nothing was checked';
 	return 'the run was not started';
 }
 
@@ -54,6 +56,12 @@ function meaningFor(kind: string, context: BandContext): string {
 		case 'timeout':
 			if (context === 'dupes') {
 				return 'The engine did not answer in time. Nothing was moved, and a scan it was still walking cannot be counted from here.';
+			}
+			if (context === 'purge') {
+				return 'The engine did not answer in time. Nothing was deleted, and a plan it was still checking cannot be acted on from here.';
+			}
+			if (context === 'doctor') {
+				return 'The engine did not answer in time. A check that was still running is reported as unknown, never as passing.';
 			}
 			return context === 'plan'
 				? 'The engine did not answer in time. The phone walk may still be running, and nothing was copied.'
@@ -65,6 +73,12 @@ function meaningFor(kind: string, context: BandContext): string {
 		default:
 			if (context === 'dupes') {
 				return 'The engine refused the whole call, so not one file moved. A selection is either entirely acceptable to it or it does nothing.';
+			}
+			if (context === 'purge') {
+				return 'The engine refused the whole call, so not one file left the phone. A selection is either entirely acceptable to it or it does nothing.';
+			}
+			if (context === 'doctor') {
+				return 'The engine refused the request, so no check ran and nothing on this screen is a verdict about this machine.';
 			}
 			return context === 'plan'
 				? 'The engine refused the request. Nothing was copied and nothing on the phone changed.'
@@ -79,6 +93,12 @@ function todoFor(kind: string, fix: string, context: BandContext): string {
 	}
 	if (context === 'dupes') {
 		return 'Scan again, then select again — a refused call is never retried with the same keys.';
+	}
+	if (context === 'purge') {
+		return 'Check the phone again, then select again — a refused call is never retried with the same keys.';
+	}
+	if (context === 'doctor') {
+		return 'Run the checks again. If it fails the same way, the engine itself is the problem, and restarting it is the first thing to try.';
 	}
 	return context === 'plan'
 		? 'Request the plan again. If it fails the same way, the reason is in Doctor.'
