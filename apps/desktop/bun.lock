@@ -7,7 +7,7 @@
       "dependencies": {
         "@fontsource-variable/inter": "^5.3.0",
         "@fontsource/ibm-plex-mono": "^5.3.0",
-        "@lucide/svelte": "^1.70.0",
+        "@lucide/svelte": "^1.73.0",
         "@tauri-apps/api": "^2.12.4",
         "@tauri-apps/plugin-dialog": "^2.8.4",
         "@tauri-apps/plugin-opener": "^2.7.2",
@@ -19,6 +19,7 @@
         "tailwind-variants": "^3.3.0",
       },
       "devDependencies": {
+        "@internationalized/date": "^3.12.0",
         "@sveltejs/adapter-static": "^4.0.0",
         "@sveltejs/kit": "^3.0.0",
         "@sveltejs/vite-plugin-svelte": "^7.2.0",
@@ -73,7 +74,7 @@
 
     "@layerstack/utils": ["@layerstack/utils@2.0.0-next.19", "", { "dependencies": { "d3-array": "^3.2.4", "d3-time": "^3.1.0", "d3-time-format": "^4.1.0" } }, "sha512-HyXCEz9pge4rFWklrSgFr3YIwdE1gP8WM6GPetmnKPDfYLF1/oetRFKI9FqiE+dw4brnULGPKJsVhjM3vQfD4A=="],
 
-    "@lucide/svelte": ["@lucide/svelte@1.70.0", "", { "peerDependencies": { "svelte": "^5" } }, "sha512-zvx7K/WLxo82c4ZYqbsfcYUPDVFrq4561xH0NHfSHJJbajj0AONTQ14EO095/WnfI4XUEl1tyS/nbjQNNiNxdQ=="],
+    "@lucide/svelte": ["@lucide/svelte@1.73.0", "", { "peerDependencies": { "svelte": "^5" } }, "sha512-Rz1uA9aTJ7HA/j2Hf9Dm2OVM8NtkzHnNeIQvVWoUkpf1ZD/7dR9cB4ftjbOiWAeJrKkEAVvTDrcVtITFdx6KAA=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.156.0", "", {}, "sha512-1Duyg48TdJNdyhEB8Xn1L36bT9Pv6GUtlKjHxOys8xkaF/rQq3XJE+bAurSK/AgIz5mGFsb77cn9Pb20+WCScw=="],
 

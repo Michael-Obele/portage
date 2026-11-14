@@ -13,6 +13,7 @@
 	 */
 	import type { Overall } from '../../engine/protocol.ts';
 	import { etaWords, formatBytes, formatDuration, formatRate } from '../../util/format.ts';
+	import { Progress } from '../ui/progress/index.js';
 	import { cn } from '../../utils.ts';
 	import { pct, rates, type ProofCounts } from '../../state/run.ts';
 	import ProofStrip from './proof-strip.svelte';
@@ -49,7 +50,7 @@
 
 <section
 	class={cn(
-		'flex flex-col gap-4 rounded-[var(--radius-surface)] border border-border bg-card px-4 py-4',
+		'flex flex-col gap-4 rounded-surface border border-border bg-card px-4 py-4',
 		className
 	)}
 	aria-labelledby="transfer-hero-heading"
@@ -86,16 +87,15 @@
 	</div>
 
 	<!-- The bar repeats the percent above it, so it carries no text of its own. -->
-	<div
-		role="progressbar"
-		aria-valuemin={0}
-		aria-valuemax={100}
-		aria-valuenow={percent}
-		aria-valuetext="{percent}% of {formatBytes(overall.bytesTotal)}"
-		class="h-2 w-full overflow-hidden rounded-full bg-muted"
-	>
-		<div class="h-full rounded-full bg-primary" style="width: {percent}%"></div>
-	</div>
+		<!-- shadcn's `Progress`, not a hand-built bar. It owns the ARIA contract
+		     and the indicator transition, so a paused run and a stalled one look the
+		     same on every screen that shows a bar. The percent above already says the
+		     number, so this carries only the accessible text. -->
+		<Progress
+			value={percent}
+			aria-valuetext="{percent}% of {formatBytes(overall.bytesTotal)}"
+			class="h-2 w-full rounded-full"
+		/>
 
 	<dl class="grid grid-cols-2 gap-4 sm:grid-cols-4" data-numeric>
 		{#each readings as reading (reading.key)}

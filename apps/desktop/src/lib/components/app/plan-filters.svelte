@@ -28,6 +28,7 @@
 	import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group/index.js';
 	import {
 		ALL_DEVICES,
+		SINCE_OPTIONS,
 		deviceLabel,
 		filtersActive,
 		type PlanFilters,
@@ -62,7 +63,7 @@
 
 	const TRIGGER = cn(
 		CONTROL,
-		'h-8 w-full justify-between rounded-[var(--radius-control)] border border-input bg-transparent px-2.5'
+		'h-8 w-full justify-between rounded-control border border-input bg-transparent px-2.5'
 	);
 
 	const ready = $derived(devices.filter((device) => device.state === 'device'));
@@ -81,30 +82,30 @@
 		return device === undefined ? filters.device : deviceLabel(device);
 	});
 
-	/** Short labels: a segmented control has no room for prose. */
-	const WINDOWS: ReadonlyArray<{ value: SinceWindow; label: string; title: string }> = [
-		{ value: 'all', label: 'All', title: 'Any time' },
-		{ value: '1d', label: '1d', title: 'Modified in the last day' },
-		{ value: '7d', label: '7d', title: 'Modified in the last week' },
-		{ value: '30d', label: '30d', title: 'Modified in the last 30 days' }
+	/** Short labels: a segmented control has no room for prose. The order is the
+	 * segmented control's, so `All` leads; the prose sentences read
+	 * `SINCE_OPTIONS` and name a window a person can picture. */
+	const WINDOWS = [
+		...SINCE_OPTIONS.filter((option) => option.value === 'all'),
+		...SINCE_OPTIONS.filter((option) => option.value !== 'all')
 	];
 </script>
 
 <form
-	class={cn('flex flex-wrap items-center gap-2 border-b border-border px-6 py-2', className)}
+	class={cn('flex flex-wrap items-center gap-2 py-2', className)}
 	aria-label="Plan filters"
 	onsubmit={(event) => {
 		event.preventDefault();
 		onsubmit();
 	}}
 >
-	<div class="relative">
+	<div class="relative w-44 max-w-full">
 		<Search
 			class="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground"
 			aria-hidden="true"
 		/>
 		<Input
-			class={cn(CONTROL, 'h-8 w-44 border-input pr-7 pl-7')}
+			class={cn(CONTROL, 'h-8 w-full border-input pr-7 pl-7')}
 			placeholder="Filter names"
 			aria-label="Filter files by name, then press Enter"
 			title="Press Enter to apply"
@@ -114,7 +115,7 @@
 		{#if showDraft.length > 0}
 			<button
 				type="button"
-				class="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded-[var(--radius-control)] p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+				class="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded-control p-0.5 text-muted-foreground transition-colors hover:text-foreground"
 				aria-label="Clear the name filter"
 				onclick={() => {
 					onshowdraft('');
@@ -133,7 +134,7 @@
 		value={filters.device}
 		onValueChange={(value) => ondevice(value ?? ALL_DEVICES)}
 	>
-		<SelectTrigger class={cn(TRIGGER, 'w-36')} aria-label="Device">
+		<SelectTrigger class={cn(TRIGGER, 'w-36 max-w-full')} aria-label="Device">
 			<span class="truncate">{deviceText}</span>
 		</SelectTrigger>
 		<SelectContent>
@@ -153,7 +154,7 @@
 		value={filters.since}
 		spacing={0}
 		aria-label="Modified window"
-		class="h-8 gap-0 rounded-[var(--radius-control)] bg-muted p-0.5"
+		class="h-8 gap-0 rounded-control bg-muted p-0.5"
 		onValueChange={(value) => {
 			if (value) onsince(value as SinceWindow);
 		}}
@@ -162,9 +163,9 @@
 			<ToggleGroupItem
 				value={option.value}
 				class="h-7 min-w-0 rounded-[calc(var(--radius-control)-2px)] px-2 text-label tracking-normal normal-case data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-none"
-				title={option.title}
+				title={option.label}
 			>
-				{option.label}
+				{option.short}
 			</ToggleGroupItem>
 		{/each}
 	</ToggleGroup>

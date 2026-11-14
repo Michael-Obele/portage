@@ -32,16 +32,20 @@
 </script>
 
 {#if items.length > 0}
-	<dl class={cn('grid grid-cols-2 gap-y-3 sm:grid-cols-4', className)}>
+	<!-- `xl`, not `sm`. `sm:grid-cols-4` fires at 640 px of WINDOW, so a 700 px
+	     window at 200 % UI scale got four columns of ~13 px each and "Already on
+	     the drive" printed one word per line. Two columns hold up at any scale;
+	     four only earn their place once the window is genuinely wide. -->
+	<dl class={cn('grid grid-cols-2 gap-y-3 xl:grid-cols-4', className)}>
 		{#each items as item, index (item.label)}
 			<div
 				class={cn(
 					'flex min-w-0 flex-col gap-0.5',
 					// A divider is the group boundary; there is no box to draw.
-					index > 0 && 'border-l border-border pl-4',
+					index > 0 && 'border-l border-border pl-3',
 					// On a two-column wrap the left cell of each row starts flush.
-					index % 2 === 0 && 'pl-0 sm:border-l sm:pl-4',
-					index === 0 && 'sm:border-l-0 sm:pl-0'
+					index % 2 === 0 && 'border-l-0 pl-0 xl:border-l xl:pl-3',
+					index === 0 && 'xl:border-l-0 xl:pl-0'
 				)}
 			>
 				<dt class="text-caption text-muted-foreground">{item.label}</dt>

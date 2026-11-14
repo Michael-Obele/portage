@@ -4,22 +4,24 @@
 	 * that floats: it names every path, the trash directory, and the total, and
 	 * it will not run until the person types the button's own word.
 	 *
+	 * Built on shadcn's `AlertDialog`, not `Dialog`. An alert dialog is
+	 * role="alertdialog", it does not close on an outside click, and its initial
+	 * focus lands on Cancel — all three are what "this deletes files" means, and
+	 * all three would have to be re-earned by hand on a plain dialog.
+	 *
 	 * The paths here are the engine's own strings from its `needsConfirm`
 	 * payload, so what the sheet shows and what moves are the same list.
-	 *
-	 * Focus trapping, Escape, the dialog role and focus returning to the trigger
-	 * all come from the shadcn Dialog primitives (bits-ui), not from hand-rolled
-	 * key handling.
 	 */
-	import { Button } from '../ui/button/index.js';
 	import {
-		Dialog,
-		DialogContent,
-		DialogDescription,
-		DialogFooter,
-		DialogHeader,
-		DialogTitle
-	} from '../ui/dialog/index.js';
+		AlertDialog,
+		AlertDialogContent,
+		AlertDialogDescription,
+		AlertDialogFooter,
+		AlertDialogHeader,
+		AlertDialogTitle
+	} from '../ui/alert-dialog/index.js';
+	import { Button } from '../ui/button/index.js';
+	import { Input } from '../ui/input/index.js';
 	import { formatBytes, plural, truncateFront } from '../../util/format.ts';
 	import { CONTROL } from './tokens.ts';
 
@@ -59,7 +61,7 @@
 	const sentence = $derived(
 		action === 'dupes.apply'
 			? `${plural(count, 'file')} · ${formatBytes(bytes)} move to ${trashDir ?? 'the trash folder'}.`
-			: `${plural(count, 'file')} · ${formatBytes(bytes)} are deleted from the phone. The drive copies are untouched.`
+			: `${plural(count, 'file')} · ${formatBytes(bytes)} leave the phone. The drive copies are untouched.`
 	);
 
 	function handleOpenChange(next: boolean): void {
@@ -73,25 +75,22 @@
 	}
 </script>
 
-<Dialog bind:open onOpenChange={handleOpenChange}>
-	<DialogContent
-		showCloseButton={false}
-		class="rounded-[var(--radius-surface)] shadow-lg sm:max-w-xl"
-	>
-		<DialogHeader class="gap-2">
-			<DialogTitle class="text-title font-medium tracking-normal normal-case">{title}</DialogTitle>
-			<DialogDescription class="measure text-body text-muted-foreground">
+<AlertDialog bind:open onOpenChange={handleOpenChange}>
+	<AlertDialogContent class="gap-4 rounded-surface p-6 shadow-lg sm:max-w-xl">
+		<AlertDialogHeader class="gap-2">
+			<AlertDialogTitle class="text-title font-medium tracking-normal text-foreground normal-case">
+				{title}
+			</AlertDialogTitle>
+			<AlertDialogDescription class="measure text-body text-muted-foreground">
 				{sentence}
-			</DialogDescription>
-		</DialogHeader>
+			</AlertDialogDescription>
+		</AlertDialogHeader>
 
 		<div class="flex flex-col gap-1">
 			<p class="text-label text-muted-foreground">
 				{paths.length === count ? 'Every path' : `Showing ${paths.length} of ${count}`}
 			</p>
-			<ul
-				class="max-h-[38vh] overflow-y-auto rounded-[var(--radius-control)] border border-border bg-muted/40 p-2"
-			>
+			<ul class="max-h-[38vh] overflow-y-auto rounded-control border border-border bg-muted/40 p-2">
 				{#each paths as path (path)}
 					<li class="font-mono text-label break-all text-foreground" title={path}>
 						{truncateFront(path, 96)}
@@ -111,17 +110,18 @@
 				<span class="text-label text-muted-foreground">
 					Type <span class="font-mono text-foreground">{word}</span> to continue
 				</span>
-				<input
+				<Input
 					id="confirm-word"
 					name="confirm-word"
-					class="h-8 w-48 rounded-[var(--radius-control)] border border-input bg-background px-2 font-mono text-body text-foreground outline-none focus-visible:border-ring"
+					class="h-8 w-48 rounded-control border border-input bg-background font-mono text-body"
 					autocomplete="off"
 					spellcheck="false"
+					aria-invalid={typed.trim() !== '' && !matches}
 					bind:value={typed}
 				/>
 			</label>
 
-			<DialogFooter class="mt-1 gap-2 sm:justify-end">
+			<AlertDialogFooter class="mt-1 gap-2 sm:justify-end">
 				<Button
 					variant="outline"
 					class={CONTROL}
@@ -140,7 +140,7 @@
 				>
 					{busy ? 'Working' : confirmWord}
 				</Button>
-			</DialogFooter>
+			</AlertDialogFooter>
 		</form>
-	</DialogContent>
-</Dialog>
+	</AlertDialogContent>
+</AlertDialog>

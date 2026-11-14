@@ -71,6 +71,22 @@
 	 * to the ends. Enter and Space activate, and only when the screen gave the
 	 * table something to activate.
 	 */
+	/**
+	 * Arrow keys move between rows without leaving the table, Home and End jump
+	 * to the ends, and Enter or Space activate. All of it moves FOCUS, not this
+	 * component's own idea of a cursor: the browser's focus is the state, so a
+	 * screen reader and the visual caret never disagree.
+	 *
+	 * One row is tabbable, and it is the selected one — a 2 000-file plan would
+	 * otherwise cost 2 000 presses of Tab to walk past. `tabindex="-1"` rows still
+	 * take programmatic focus, so the arrows work the moment the table is entered.
+	 */
+	const rovingIndex = $derived.by(() => {
+		if (selectedKey === null) return 0;
+		const found = rows.findIndex((item) => rowKey(item) === selectedKey);
+		return found === -1 ? 0 : found;
+	});
+
 	function onKeyDown(event: KeyboardEvent): void {
 		const target = event.target;
 		if (!(target instanceof HTMLElement)) return;
@@ -185,9 +201,12 @@
 							data-row-key={rowKey(item)}
 							data-state={selectedKey === rowKey(item) ? 'selected' : undefined}
 							aria-selected={onactivated ? selectedKey === rowKey(item) : undefined}
-							tabindex={0}
+							tabindex={index === rovingIndex ? 0 : -1}
 							class={cn(
-								'border-0 outline-none focus-visible:bg-muted focus-visible:-outline-offset-2',
+								// A ring, not a fill: `Table.Row` already paints `bg-muted` for the
+								// SELECTED row, so reusing that fill would make focus invisible on the
+								// one row a keyboard user is standing on.
+								'border-0 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
 								onactivated && 'cursor-pointer'
 							)}
 							onclick={() => onRowClick(item)}

@@ -17,11 +17,11 @@
  * that is near-white on near-white. Size now lives in the Button base, which
  * merges before the variant and therefore cannot win.
  */
-export const CONTROL = 'rounded-[var(--radius-control)] normal-case tracking-normal font-medium';
+export const CONTROL = 'rounded-control normal-case tracking-normal font-medium';
 
 /** A raised surface: the ladder's second step, drawn with a border. */
 export const SURFACE =
-	'rounded-[var(--radius-surface)] border border-border bg-card text-card-foreground';
+	'rounded-surface border border-border bg-card text-card-foreground';
 
 /** Numbers that can change get their alignment from CSS, never from padding. */
 export const NUMERIC = 'text-right tabular-nums font-mono';
