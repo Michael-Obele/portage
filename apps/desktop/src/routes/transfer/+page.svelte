@@ -39,9 +39,7 @@
 		type PullIntent
 	} from '../../lib/components/app/plan-filters.ts';
 	import {
-		MAX_SAMPLES,
 		SAMPLE_INTERVAL_MS,
-		appendSample,
 		nextFirstVerify,
 		rowViews,
 		sampleOf,
@@ -58,7 +56,8 @@
 	let nothingToMove = $state(false);
 	/** Real filenames from the plan, so the starting skeleton is not anonymous. */
 	let startingNames = $state<string[]>([]);
-	let series = $state<RateSample[]>([]);
+	/** The samples live in `run` so the summary can draw the finished run too. */
+	const series: RateSample[] = $derived(run.series);
 	let firstVerifyAt = $state<number | null>(null);
 	let now = $state(Date.now());
 	let busy = $state(false);
@@ -167,7 +166,7 @@
 			now = Date.now();
 			const sample = sampleOf(run.view.overall);
 			if (sample !== null) {
-				series = appendSample(series, sample, MAX_SAMPLES);
+				run.pushSample(sample);
 				firstVerifyAt = nextFirstVerify(firstVerifyAt, run.view.proof.verified, sample.t);
 			}
 			run.refreshAnnouncement(now);
@@ -202,7 +201,6 @@
 		// precede answers, so clearing after `pull.start` resolves wipes the new
 		// run's first frames.
 		run.beginRun();
-		series = [];
 		firstVerifyAt = null;
 		void begin(intent);
 	});
@@ -284,7 +282,7 @@
 
 		{#if starting && view.rows.length === 0}
 			<div
-				class="rounded-[var(--radius-surface)] border border-border"
+				class="rounded-surface border border-border"
 				role="status"
 				aria-label="Starting the run"
 			>

@@ -138,7 +138,11 @@
 			onactivated={(row) => onactivate(selected?.key === row.key ? null : row)}
 		>
 			{#snippet row(item)}
-				<Table.Cell role="gridcell">
+				<!-- The reason rides on the cell as a tooltip. A plan is mostly
+				     skips, and the reason used to live only in the detail panel, so
+				     learning why 165 rows were passed over meant 165 clicks. The
+				     panel still carries it in full. -->
+				<Table.Cell role="gridcell" title={item.reason}>
 					<StateChip state={item.chip} />
 				</Table.Cell>
 				<!-- `w-full max-w-0` is what keeps the table inside its box. A
@@ -194,7 +198,7 @@
 		<Card.Root
 			data-row-detail
 			size="sm"
-			class="order-1 w-full shrink-0 gap-2 border border-border text-(length:--text-body) shadow-none ring-0 lg:order-2 lg:min-h-64 lg:w-80"
+			class="order-1 w-full shrink-0 gap-2 border border-border text-(length:--text-body) shadow-none ring-0 lg:order-2 lg:min-h-64 lg:w-[min(20rem,38%)]"
 		>
 			<Card.Header class="px-4">
 				<Card.Title

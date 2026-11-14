@@ -317,7 +317,7 @@
 			{#each [{ label: 'Light', dark: false }, { label: 'Dark', dark: true }] as theme (theme.label)}
 				<div
 					class={cn(
-						'rounded-[var(--radius-surface)] border border-border p-3',
+						'rounded-surface border border-border p-3',
 						theme.dark && 'dark bg-background text-foreground'
 					)}
 				>
@@ -326,7 +326,7 @@
 						{#each ROLES as role (role)}
 							<div class="flex flex-col gap-1">
 								<div
-									class="h-8 rounded-[var(--radius-control)] border border-border"
+									class="h-8 rounded-control border border-border"
 									style="background: var(--{role})"
 								></div>
 								<span class="truncate font-mono text-caption text-muted-foreground">
@@ -340,7 +340,7 @@
 						{#each STATE_ROLES as role (role.name)}
 							<div class="flex flex-col gap-1">
 								<div
-									class="flex h-8 items-center justify-center rounded-[var(--radius-control)] font-mono text-caption"
+									class="flex h-8 items-center justify-center rounded-control font-mono text-caption"
 									style="background: var(--{role.name}); color: var(--{role.fg})"
 								>
 									{role.name} on {role.fg}
@@ -509,7 +509,7 @@
 	<section class="flex flex-col gap-3">
 		<h2 class="text-lead font-medium">Surfaces</h2>
 		<div class="grid gap-4 lg:grid-cols-3">
-			<Card class="rounded-[var(--radius-surface)] shadow-none">
+			<Card class="rounded-surface shadow-none">
 				<CardHeader>
 					<CardTitle class="text-body font-medium">A card</CardTitle>
 				</CardHeader>
@@ -517,7 +517,7 @@
 					Cards exist for a device summary, a duplicate group and a doctor check. Nothing else.
 				</CardContent>
 			</Card>
-			<Card class={cn('rounded-[var(--radius-surface)] shadow-none', 'bg-muted')}>
+			<Card class={cn('rounded-surface shadow-none', 'bg-muted')}>
 				<CardHeader>
 					<CardTitle class="text-body font-medium">Sunken</CardTitle>
 				</CardHeader>
@@ -527,8 +527,8 @@
 			</Card>
 			<div class="flex flex-col gap-3">
 				<Progress value={62} max={100} />
-				<Skeleton class="h-3 w-40 rounded-[var(--radius-control)]" />
-				<ScrollArea class="h-20 rounded-[var(--radius-control)] border border-border p-2">
+				<Skeleton class="h-3 w-40 rounded-control" />
+				<ScrollArea class="h-20 rounded-control border border-border p-2">
 					<p class="text-body text-muted-foreground">
 						A scroll area with enough text to make the scrollbar appear, so its contrast can be
 						measured in both themes.
@@ -548,7 +548,7 @@
 						<Button {...props} class={CONTROL} size="sm" variant="outline">Dialog</Button>
 					{/snippet}
 				</DialogTrigger>
-				<DialogContent class="rounded-[var(--radius-surface)]">
+				<DialogContent class="rounded-surface">
 					<DialogHeader>
 						<DialogTitle class="text-title font-medium tracking-normal normal-case">
 							A dialog

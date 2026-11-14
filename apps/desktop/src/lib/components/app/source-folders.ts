@@ -12,6 +12,7 @@
  */
 import type { BrowseEntry } from '../../engine/protocol.ts';
 import { plural } from '../../util/format.ts';
+import { isInsideMount } from '../../util/mount.ts';
 
 /**
  * As high as the browser goes.
@@ -105,11 +106,6 @@ export function dirEntries(entries: readonly BrowseEntry[]): BrowseEntry[] {
 	return entries.filter((entry) => entry.kind === 'dir').sort(byName);
 }
 
-/** A path boundary, so `/sdcard/DCIM` is not read as living inside `/sdcard/DC`. */
-export function isInside(child: string, parent: string): boolean {
-	return parent === '/' ? child !== '/' : child.startsWith(`${parent}/`);
-}
-
 /**
  * Add one folder, or hand back the SAME array.
  *
@@ -123,7 +119,7 @@ export function addRoot(roots: string[], path: string): string[] {
 	const clean = normalizePath(path);
 	const covered = roots.some((root) => {
 		const existing = normalizePath(root);
-		return existing === clean || isInside(clean, existing) || isInside(existing, clean);
+		return existing === clean || isInsideMount(clean, existing) || isInsideMount(existing, clean);
 	});
 	return covered ? roots : [...roots, clean];
 }
@@ -146,10 +142,10 @@ export function rootVerdict(roots: readonly string[], path: string): RootVerdict
 	const clean = normalizePath(path);
 	if (roots.some((root) => normalizePath(root) === clean)) return { kind: 'already' };
 
-	const wider = roots.find((root) => isInside(clean, normalizePath(root)));
+	const wider = roots.find((root) => isInsideMount(clean, normalizePath(root)));
 	if (wider !== undefined) return { kind: 'covered', by: normalizePath(wider) };
 
-	const narrower = roots.filter((root) => isInside(normalizePath(root), clean));
+	const narrower = roots.filter((root) => isInsideMount(normalizePath(root), clean));
 	if (narrower.length > 0) return { kind: 'replaces', roots: narrower };
 	return { kind: 'free' };
 }
@@ -159,7 +155,7 @@ export function replaceRoot(roots: string[], path: string): string[] {
 	const clean = normalizePath(path);
 	const kept = roots.filter((root) => {
 		const existing = normalizePath(root);
-		return existing !== clean && !isInside(existing, clean);
+		return existing !== clean && !isInsideMount(existing, clean);
 	});
 	return [...kept, clean];
 }

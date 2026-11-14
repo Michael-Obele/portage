@@ -250,7 +250,7 @@
 </PageHeader>
 
 <div class="flex flex-col gap-4 px-6 pb-8">
-	<StatStrip items={stats} class="px-2" />
+	<StatStrip items={stats} />
 
 	{#if band}
 		<ErrorBand what={band.what} means={band.means} todo={band.todo} code={band.code}>
@@ -296,7 +296,7 @@
 				These paths were read but never put in a group, so a duplicate could still be hiding among
 				them. They are in no selection and nothing here will move them.
 			</p>
-			<ul class="divide-y divide-border rounded-[var(--radius-surface)] border border-border">
+			<ul class="divide-y divide-border rounded-surface border border-border">
 				{#each caveats as entry (`${entry.note}:${entry.path}`)}
 					<li class="flex items-center gap-3 px-3 py-2">
 						<span class="min-w-0 font-mono text-label break-all text-foreground" title={entry.path}>
@@ -310,8 +310,10 @@
 	{/if}
 
 	{#if scan !== null && scan.groups.length > 0}
+		<!-- Sticky for the same reason as Purge: a scan can report dozens of
+		     groups, and the move-to-trash action must not be below all of them. -->
 		<footer
-			class="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--radius-surface)] border border-border bg-card px-4 py-3"
+			class="sticky bottom-0 z-10 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-surface border border-border bg-card px-4 py-3 shadow-sm"
 		>
 			<Button
 				class={CONTROL}

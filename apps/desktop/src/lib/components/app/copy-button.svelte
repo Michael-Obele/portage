@@ -39,7 +39,7 @@
 	aria-label={`${label}: ${value}`}
 	title={`${label}: ${value}`}
 	class={cn(
-		'inline-flex size-5 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-muted-foreground transition-colors duration-100 hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+		'inline-flex size-5 shrink-0 items-center justify-center rounded-control text-muted-foreground transition-colors duration-100 hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
 		className
 	)}
 	onclick={() => void copy()}

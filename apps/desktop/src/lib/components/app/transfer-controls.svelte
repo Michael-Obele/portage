@@ -44,7 +44,7 @@
 
 <section
 	class={cn(
-		'flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--radius-surface)] border px-4 py-3',
+		'flex flex-wrap items-center gap-x-4 gap-y-2 rounded-surface border px-4 py-3',
 		// A paused run is marked as a whole band, not only on the button: the
 		// state belongs to the run.
 		paused

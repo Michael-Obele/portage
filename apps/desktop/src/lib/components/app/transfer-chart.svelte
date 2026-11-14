@@ -119,7 +119,7 @@
 		<summary class="cursor-pointer text-label text-muted-foreground">
 			Show the samples as a table
 		</summary>
-		<div class="mt-2 max-h-56 overflow-auto rounded-[var(--radius-control)] border border-border">
+		<div class="mt-2 max-h-56 overflow-auto rounded-control border border-border">
 			<table class="w-full text-label">
 				<caption class="sr-only">Rate samples, {caption}</caption>
 				<thead class="sticky top-0 bg-card">

@@ -10,6 +10,7 @@
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleDot from '@lucide/svelte/icons/circle-dot';
 	import Lock from '@lucide/svelte/icons/lock';
+	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import Unplug from '@lucide/svelte/icons/unplug';
 
 	import {
@@ -22,10 +23,13 @@
 		SURFACE
 	} from '../lib/components/app/index.ts';
 	import { Button } from '../lib/components/ui/button/index.js';
+	import { Spinner } from '../lib/components/ui/spinner/index.js';
 	import { EngineFailure } from '../lib/engine/client.ts';
 	import type { DeviceInfo, DeviceState, Volume } from '../lib/engine/protocol.ts';
 	import { app } from '../lib/state/app.svelte.ts';
 	import { formatBytes, plural } from '../lib/util/format.ts';
+	import { destinationRefusal } from '../lib/components/app/destinations.ts';
+	import { isInsideMount } from '../lib/util/mount.ts';
 	import { cn } from '../lib/utils.ts';
 
 	/** The layers the config can come from, in words rather than config vocabulary. */
@@ -81,6 +85,19 @@
 	 * The engine sends 0 when `df` could not read a volume, so a zero here means
 	 * "unknown", never "empty". `0 B` would be a number nobody measured.
 	 */
+	/**
+	 * The volume label, unless it only repeats the folder it is mounted at.
+	 *
+	 * `OLD BACKUP` on `/media/node/OLD BACKUP` is the same word twice, and a row
+	 * that says it twice reads as two facts that disagree.
+	 */
+	function labelSuffix(volume: Volume): string {
+		const label = volume.label?.trim() ?? '';
+		if (label === '') return '';
+		const basename = volume.mountPoint.replace(/\/+$/, '').split('/').pop() ?? '';
+		return label.toLowerCase() === basename.toLowerCase() ? '' : ` · ${label}`;
+	}
+
 	function freeWords(bytes: number): string {
 		return Number.isFinite(bytes) && bytes > 0
 			? `${formatBytes(bytes)} free`
@@ -283,7 +300,7 @@
 			{:else}
 				<div class="flex flex-col items-start gap-3">
 					<EmptyState
-						class="px-0 py-0"
+						class="py-0"
 						title="No destination yet"
 						body="Pick the folder new files land in. Any mounted drive works; a folder on your home disk works too."
 					/>
@@ -303,8 +320,25 @@
 
 	<div class="flex flex-wrap items-center gap-2">
 		<Button href="/plan" variant="default" size="sm" class={CONTROL}>Plan a pull</Button>
-		<Button variant="ghost" size="sm" class={CONTROL} disabled={busy} onclick={refreshLists}>
-			{reading ? 'Reading drives and phones' : 'Read drives and phones'}
+		<!-- `outline`, not `ghost`. As a ghost button this read as a caption
+		     beside the primary action: a borderless button next to a filled one
+		     has no affordance at all. It re-reads the machine, so it also gets a
+		     refresh glyph and a busy state. -->
+		<Button
+			variant="outline"
+			size="sm"
+			class={CONTROL}
+			disabled={busy}
+			aria-busy={reading}
+			onclick={refreshLists}
+		>
+			{#if reading}
+				<Spinner class="size-3.5" />
+				Reading
+			{:else}
+				<RefreshCw class="size-3.5" aria-hidden="true" />
+				Read drives and phones
+			{/if}
 		</Button>
 	</div>
 
@@ -326,45 +360,39 @@
 				body="Plug the archive drive in. This list refreshes when you read drives again."
 			/>
 		{:else}
-			<ul class="divide-y divide-border rounded-[var(--radius-surface)] border border-border">
+			<ul class="divide-y divide-border rounded-surface border border-border">
 				{#each app.volumes as volume (volume.device)}
+					{@const refusal = destinationRefusal(volume)}
 					<li class="flex items-center gap-3 px-3 py-2">
-						<span
-							class="min-w-0 truncate font-mono text-body text-foreground"
-							title={volume.mountPoint}
-						>
-							{volume.mountPoint}
-						</span>
-						{#if volume.label !== null && volume.label !== ''}
-							<span class="shrink-0 text-label text-muted-foreground">{volume.label}</span>
-						{/if}
-						<span class="shrink-0 font-mono text-label text-foreground tabular-nums">
-							{freeWords(volume.freeBytes)}
-						</span>
-						{#if totalWords(volume.totalBytes) !== ''}
-							<span class="shrink-0 font-mono text-label text-muted-foreground tabular-nums">
-								{totalWords(volume.totalBytes)}
+						<!-- Identity on the left, capacity on the right. The old row ran five
+						     facts together on one line, so "2TB" (the volume label) sat beside
+						     "of 1.8 TB" (the real size) and read as a contradiction. -->
+						<div class="flex min-w-0 flex-col">
+							<span class="truncate font-mono text-body text-foreground" title={volume.mountPoint}>
+								{volume.mountPoint}
 							</span>
-						{/if}
-						<span class="shrink-0 text-label text-muted-foreground">{volume.fsType}</span>
+							<span class="text-caption text-muted-foreground">
+								{volume.fsType}{labelSuffix(volume)}
+							</span>
+						</div>
 
-						<div class="ms-auto flex shrink-0 items-center gap-3">
+						<span class="ms-auto shrink-0 font-mono text-label text-foreground tabular-nums">
+							{freeWords(volume.freeBytes)}{totalWords(volume.totalBytes) === ''
+								? ''
+								: ` ${totalWords(volume.totalBytes)}`}
+						</span>
+
+						<div class="flex shrink-0 items-center gap-3">
 							{#if volume.isPortageDrive}
 								<span class="text-label text-state-verified">portage drive</span>
 							{/if}
-							{#if volume.readOnly === true}
-								<span class="text-label text-state-failed">read-only</span>
-								<Button
-									variant="outline"
-									size="sm"
-									class={CONTROL}
-									disabled
-									aria-label={`Use ${volume.mountPoint} as the destination`}
+							{#if refusal !== null}
+								<span
+									class={cn(
+										'text-label',
+										refusal === 'read-only' ? 'text-state-failed' : 'text-muted-foreground'
+									)}>{refusal}</span
 								>
-									Use
-								</Button>
-							{:else if volume.readOnly === null}
-								<span class="text-label text-muted-foreground">access unknown</span>
 							{:else}
 								<Button
 									variant="outline"
@@ -418,7 +446,7 @@
 				body="Plug in a phone, enable USB debugging, and accept the RSA prompt on the device."
 			/>
 		{:else}
-			<ul class="divide-y divide-border rounded-[var(--radius-surface)] border border-border">
+			<ul class="divide-y divide-border rounded-surface border border-border">
 				{#each app.devices as device (device.id)}
 					{@const state = phoneState(device)}
 					<li class="flex items-start gap-3 px-3 py-2">

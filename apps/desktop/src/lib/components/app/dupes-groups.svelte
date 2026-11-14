@@ -72,7 +72,7 @@
 
 			<p class="measure text-label text-muted-foreground">{group.reason}</p>
 
-			<ul class="divide-y divide-border rounded-[var(--radius-surface)] border border-border">
+			<ul class="divide-y divide-border rounded-surface border border-border">
 				{#each group.members as member (member.key)}
 					{@const tone = memberTone(member)}
 					<li class="flex items-center gap-3 px-3 py-2">

@@ -59,8 +59,11 @@
 	--state-failed-foreground: oklch(0.99 0 0);
 	--state-skipped: oklch(0.44 0.021 43.1);
 	--state-skipped-foreground: oklch(0.99 0 0);
-
-	/* --- app roles: motion -------------------------------------------------- */
+		/* Between passing and failing. Doctor is the first surface with three
+		   levels of severity, and "worth a look" reads as neither green nor
+		   red. The word is still printed beside it. */
+		--state-warning: oklch(0.55 0.115 70);
+		--state-warning-foreground: oklch(0.99 0 0);
 	/* Three durations and one curve. Nothing in the app is slower than 240 ms. */
 	--motion-fast: 120ms;
 	--motion-base: 180ms;
@@ -73,6 +76,11 @@
 	--row-h-compact: 1.75rem; /* 28 px */
 	/* Prose stops at 68 characters; tables may use the full width. */
 	--measure: 68ch;
+	/* The rail is window chrome, not content. In rem alone it doubles with
+	   the UI scale, so at 200 % it would take 384 px of a 700 px window and
+	   leave the Plan filters nowhere to go. `30vw` caps it on a narrow
+	   window; `12rem` gives it the room it needs on a wide one. */
+	--rail-w: min(12rem, 30vw);
 
 	/* --- app roles: radii --------------------------------------------------- */
 	/* Two radii by element kind. Pills are for state chips only. */
@@ -125,6 +133,8 @@
 	--state-failed-foreground: oklch(0.19 0.02 27);
 	--state-skipped: oklch(0.735 0.012 41.2);
 	--state-skipped-foreground: oklch(0.19 0.004 49.3);
+	--state-warning: oklch(0.79 0.13 75);
+	--state-warning-foreground: oklch(0.19 0.02 70);
 }
 
 @theme inline {
@@ -173,6 +183,8 @@
 	--color-state-failed-foreground: var(--state-failed-foreground);
 	--color-state-skipped: var(--state-skipped);
 	--color-state-skipped-foreground: var(--state-skipped-foreground);
+	--color-state-warning: var(--state-warning);
+	--color-state-warning-foreground: var(--state-warning-foreground);
 
 	--color-sidebar-ring: var(--sidebar-ring);
 	--color-sidebar-border: var(--sidebar-border);
@@ -215,19 +227,39 @@
 	--radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* A toast must never sit on top of a modal.
+   sonner ships a z-index far above everything, so the "Use this folder" button
+   in the folder picker was covered by a notice the moment the dialog opened —
+   the one action the dialog exists for, hidden by the furniture. The dialog
+   layer is z-50, so anything below that loses to it and the toast reappears the
+   moment the dialog closes. `!important` because sonner's value wins on source
+   order, and this is the only rule in the file that needs it. */
+[data-sonner-toaster] {
+	z-index: 40 !important;
+}
+
 @layer base {
 	* {
 		@apply border-border outline-ring/50;
 	}
+	html {
+		@apply font-sans;
+		/* THE size control. Every token and every Tailwind spacing step is in
+		   rem, so this one value scales text, rows, padding, radii and icons
+		   together. `Appearance` writes `--ui-scale` on this element. */
+		font-size: calc(16px * var(--ui-scale, 1));
+	}
 	body {
-			@apply bg-background text-foreground text-body;
-		}
-		html {
-			@apply font-sans;
-			/* THE size control. Every token and every Tailwind spacing step is in
-			   rem, so this one value scales text, rows, padding, radii and icons
-			   together. `Appearance` writes `--ui-scale` on this element. */
-			font-size: calc(16px * var(--ui-scale, 1));
+		@apply bg-background text-foreground text-body;
+	}
+
+	/* THE focus floor. Every element that does not paint a ring of its own —
+	   nav links, `<summary>`, table rows, plain anchors — gets a visible
+	   outline here. The `html ` prefix keeps the rule off the root element,
+	   which is not focusable and must not carry a stray outline. Components
+	   that already own a `focus-visible:` ring keep it; this is the floor,
+	   not a replacement. */
+	html :focus-visible {
 		outline: 2px solid var(--ring);
 		outline-offset: 2px;
 		border-radius: 2px;

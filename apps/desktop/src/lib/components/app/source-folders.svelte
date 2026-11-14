@@ -180,8 +180,23 @@
 </div>
 
 <Dialog bind:open>
-	<DialogContent class="max-h-[85dvh] overflow-y-auto rounded-surface shadow-lg sm:max-w-xl">
-		<DialogHeader class="gap-2">
+		<!-- A bounded column, not a scrolling document. `overflow-y-auto` here made
+	     the DIALOG the scroll region, so the title and the footer scrolled away
+	     with the list and both were left clipped by the dialog's own edge. Now
+	     the header and footer hold still and the folder list is the one thing
+	     that scrolls, which is what a list is for. -->
+	<!-- `!flex` is load-bearing, and so is the cap on the list.
+
+	     `cn` here is a class JOINER, not tailwind-merge, so the `display: grid`
+	     that `DialogContent` ships is not removed by adding `flex` — both classes
+	     land and CSS order decides, which meant the dialog stayed a GRID. In a
+	     grid every row is content-sized, so the folder list grew to all 18 rows,
+	     `flex-1` did nothing, and the list painted straight over the footer while
+	     the dialog clipped the rest. The `!` is what makes this column a column. -->
+	<DialogContent
+		class="!flex max-h-[85dvh] flex-col gap-4 overflow-hidden rounded-surface shadow-lg sm:max-w-2xl"
+	>
+		<DialogHeader class="shrink-0 gap-2">
 			<DialogTitle class="text-title font-medium tracking-normal normal-case">
 				Add a folder
 			</DialogTitle>
@@ -208,7 +223,7 @@
 				code={failure.code}
 			/>
 		{:else}
-			<div class="flex flex-col gap-2">
+			<div class="flex min-h-0 flex-1 flex-col gap-2">
 				{#if loading}
 					<SkeletonRows rows={4} label="Reading folders" />
 				{:else if folders.length === 0}
@@ -218,11 +233,19 @@
 						body="There is nothing underneath this folder to pick. Go up, or use this folder itself."
 					/>
 				{:else}
-					<ScrollArea
-						type="auto"
-						orientation="horizontal"
-						class="max-h-[42vh] rounded-surface border border-border"
-					>
+					<!-- Vertical only. With `orientation="both"` the box also allowed
+					     horizontal overflow, so a long folder name set the row's width
+					     instead of being cut and every row ran off the dialog's edge. -->
+					<!-- A plain overflow container, not shadcn's `ScrollArea`.
+					     `scroll-area.svelte` hands `max-h-[inherit]` to a bits-ui viewport
+					     that decides its own `overflow` from a scrollbar measurement, and
+					     when that measurement says "no scrollbar" the rows were painted
+					     straight over the footer — reproduced at 900x560 with 18 folders.
+					     An element with `overflow-y: auto` and a cap cannot fail that way:
+					     it clips at the cap and scrolls, at every size. The cost is a native
+					     scrollbar inside a modal, which is a fair trade for a list that
+					     stays inside its box. -->
+					<div class="max-h-[38vh] overflow-y-auto rounded-surface border border-border">
 						<ul class="divide-y divide-border">
 							{#each folders as folder (folder.path)}
 								<li>
@@ -230,17 +253,21 @@
 										type="button"
 										class={cn(
 											CONTROL,
-											'flex w-full items-center gap-2 px-3 py-2 text-left text-body text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none'
+											'flex w-full items-center gap-2 px-3 py-2 text-left text-body text-foreground hover:bg-muted focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring'
 										)}
 										onclick={() => void load(folder.path)}
 									>
 										<Folder class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-										<span class="truncate font-mono">{folder.name}</span>
+										<!-- `min-w-0 flex-1` is what makes `truncate` work: without it the
+									     span keeps its max-content width and nothing is ever cut. -->
+									<span class="min-w-0 flex-1 truncate font-mono" title={folder.path}>
+										{folder.name}
+									</span>
 									</button>
 								</li>
 							{/each}
 						</ul>
-					</ScrollArea>
+					</div>
 				{/if}
 
 				{#if folders.length > 0 || truncated}
@@ -253,7 +280,7 @@
 			</div>
 		{/if}
 
-		<DialogFooter class="mt-1 gap-2 sm:justify-between">
+		<DialogFooter class="mt-1 shrink-0 gap-2 sm:justify-between">
 			<div class="flex items-center gap-2">
 				{#if up !== path}
 					<Button

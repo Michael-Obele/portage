@@ -23,6 +23,7 @@
 	import PlanTable from '../../lib/components/app/plan-table.svelte';
 	import StatStrip from '../../lib/components/app/stat-strip.svelte';
 	import CopyButton from '../../lib/components/app/copy-button.svelte';
+	import { isInsideMount } from '../../lib/util/mount.ts';
 	import {
 		deviceLabel,
 		emptyFilters,
@@ -98,19 +99,6 @@
 	});
 
 	/**
-	 * True when `path` is `mount`, or sits under it.
-	 *
-	 * `startsWith` alone is not containment: `/media/x/2TB2` starts with
-	 * `/media/x/2TB`, so a drive would take its neighbour's access as its own
-	 * and a read-only mount could pass for writable. A mount point is a
-	 * directory, and a sibling sharing its prefix is a different volume.
-	 */
-	function insideMount(path: string, mount: string): boolean {
-		const root = mount.endsWith('/') ? mount.slice(0, -1) : mount;
-		return path === root || path.startsWith(`${root}/`);
-	}
-
-	/**
 	 * What stops a pull, in the words the person needs. `null` means nothing
 	 * does.
 	 *
@@ -137,7 +125,7 @@
 		// Captured before the callback: `plan` is reactive state, so TypeScript
 		// does not keep the null check above across a closure boundary.
 		const destRoot = plan.destRoot;
-		const volume = app.volumes.find((entry) => insideMount(destRoot, entry.mountPoint));
+		const volume = app.volumes.find((entry) => isInsideMount(destRoot, entry.mountPoint));
 		if (volume && volume.readOnly !== false) {
 			return {
 				what:
@@ -287,7 +275,7 @@
 		</p>
 	{/if}
 
-	<StatStrip items={stats} class="px-2" />
+	<StatStrip items={stats} />
 
 	<PlanFilters
 		{filters}

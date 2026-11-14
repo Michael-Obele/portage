@@ -39,11 +39,11 @@ export interface PlanFilters {
 
 export const ALL_DEVICES = '';
 
-export const SINCE_OPTIONS: ReadonlyArray<{ value: SinceWindow; label: string }> = [
-	{ value: '1d', label: 'Modified in the last day' },
-	{ value: '7d', label: 'Modified in the last week' },
-	{ value: '30d', label: 'Modified in the last 30 days' },
-	{ value: 'all', label: 'Any time' }
+export const SINCE_OPTIONS: ReadonlyArray<{ value: SinceWindow; label: string; short: string }> = [
+	{ value: '1d', label: 'Modified in the last day', short: '1d' },
+	{ value: '7d', label: 'Modified in the last week', short: '7d' },
+	{ value: '30d', label: 'Modified in the last 30 days', short: '30d' },
+	{ value: 'all', label: 'Any time', short: 'All' }
 ];
 
 export function emptyFilters(): PlanFilters {

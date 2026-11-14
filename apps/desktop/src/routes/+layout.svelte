@@ -178,12 +178,20 @@
 
 <a
 	href="#main-content"
-	class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-[var(--radius-control)] focus:border focus:border-border focus:bg-card focus:px-3 focus:py-1.5 focus:text-body focus:text-foreground"
+	class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-control focus:border focus:border-border focus:bg-card focus:px-3 focus:py-1.5 focus:text-body focus:text-foreground"
 >
 	Skip to content
 </a>
 
-<div class="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+<!-- `h-full`, not `h-dvh`. `dvh` is a DYNAMIC unit: it is resolved from the
+     last viewport-resize calculation WebKit ran. When the window is resized
+     (especially maximised) that recalculation can lag or not arrive, and the
+     shell then keeps the old height — the app rendered at 1060x510 inside a
+     1132x752 window, with the rest unpainted and the rail clipped to one row.
+     `height: 100%` walks the definite chain (`html` and `body` are both
+     `height: 100%` in layout.css), so it is correct the moment WebKit lays the
+     document out again. -->
+<div class="flex h-full flex-col overflow-hidden bg-background text-foreground">
 	<!-- The drag strip. Controls inside it opt out through the `[data-drag-region]`
 	     rule in layout.css, so no control is ever swallowed by the window drag. -->
 	<header data-drag-region class="flex h-9 shrink-0 items-center gap-3 border-b border-border px-3">
@@ -200,7 +208,7 @@
 			<div
 				role="group"
 				aria-label="Theme"
-				class="flex items-center gap-0.5 rounded-[var(--radius-control)] border border-border p-0.5"
+				class="flex items-center gap-0.5 rounded-control border border-border p-0.5"
 			>
 				{#each THEMES as option (option.value)}
 					<button
@@ -208,7 +216,7 @@
 						aria-label={option.label}
 						aria-pressed={app.theme === option.value}
 						class={cn(
-							'flex size-6 items-center justify-center rounded-[var(--radius-control)] text-muted-foreground hover:bg-muted hover:text-foreground',
+							'flex size-6 items-center justify-center rounded-control text-muted-foreground hover:bg-muted hover:text-foreground',
 							app.theme === option.value && 'bg-muted text-foreground'
 						)}
 						onclick={() => app.setTheme(option.value)}
@@ -221,7 +229,7 @@
 			<button
 				type="button"
 				aria-label="Keyboard map"
-				class="flex size-6 items-center justify-center rounded-[var(--radius-control)] text-muted-foreground hover:bg-muted hover:text-foreground"
+				class="flex size-6 items-center justify-center rounded-control text-muted-foreground hover:bg-muted hover:text-foreground"
 				onclick={() => (helpOpen = true)}
 			>
 				<Keyboard class="size-4" aria-hidden="true" />
@@ -230,7 +238,10 @@
 	</header>
 
 	<div class="flex min-h-0 flex-1">
-		<nav aria-label="Screens" class="flex w-48 shrink-0 flex-col border-r border-border bg-sidebar">
+		<nav
+			aria-label="Screens"
+			class="flex w-[var(--rail-w)] shrink-0 flex-col border-r border-border bg-sidebar"
+		>
 			<!-- Full-bleed rows, not rounded pills with a left accent bar.
 				     The bar was the tell: in dark mode `--primary` is near-white, so it
 				     drew a bright stripe inside a rounded box, which is the shape every
@@ -238,7 +249,7 @@
 				     as the tables below: filled surface plus full-strength text, and a
 				     change of weight. No hue, because this app's hues mean transfer
 				     state and nothing else. -->
-			<ul class="flex flex-col py-1.5">
+			<ul class="flex min-h-0 flex-col overflow-y-auto py-1.5">
 				{#each NAV as item (item.href)}
 					{@const active = isActive(item.href)}
 					{@const badged = item.href === '/duplicates' && app.dupesGroups > 0}
@@ -246,6 +257,7 @@
 						<a
 							href={item.href}
 							aria-current={active ? 'page' : undefined}
+							title={item.label}
 							class={cn(
 								'flex h-8 items-center gap-2.5 px-3 text-body transition-colors duration-100',
 								active
@@ -310,7 +322,7 @@
 				</ErrorBand>
 				{#if app.stderrTail.length > 0}
 					<pre
-						class="mx-6 mt-2 overflow-x-auto rounded-[var(--radius-control)] border border-border bg-muted p-2 font-mono text-caption text-muted-foreground">{app.stderrTail.join(
+						class="mx-6 mt-2 overflow-x-auto rounded-control border border-border bg-muted p-2 font-mono text-caption text-muted-foreground">{app.stderrTail.join(
 							'\n'
 						)}</pre>
 				{/if}
@@ -328,7 +340,7 @@
 <ToastHost notices={app.notices} ondismiss={(id) => app.dismissNotice(id)} theme={app.theme} />
 
 <Dialog bind:open={helpOpen}>
-	<DialogContent class="rounded-[var(--radius-surface)] sm:max-w-md">
+	<DialogContent class="rounded-surface sm:max-w-md">
 		<DialogHeader class="gap-2">
 			<DialogTitle class="text-title font-medium tracking-normal normal-case">
 				Keyboard map

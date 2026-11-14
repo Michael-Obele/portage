@@ -30,7 +30,7 @@
 
 	/** A segmented control's button: two choices that sit side by side. */
 	const SEGMENT =
-		'rounded-[var(--radius-control)] border border-border px-2.5 py-1 text-label text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-pressed:border-input aria-pressed:bg-muted aria-pressed:text-foreground';
+		'rounded-control border border-border px-2.5 py-1 text-label text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-pressed:border-input aria-pressed:bg-muted aria-pressed:text-foreground';
 
 	const SOURCE_WORDS: Record<string, string> = {
 		config: 'from adb_path',
@@ -170,7 +170,7 @@
 			</Label>
 			<Input
 				id="adb-path"
-				class="h-8 rounded-[var(--radius-control)] border border-input bg-background px-2 font-mono text-label md:text-label"
+				class="h-8 rounded-control border border-input bg-background px-2 font-mono text-label md:text-label"
 				placeholder="Leave empty to search PATH and the SDK folders"
 				bind:value={() => value, (next) => (draft = next)}
 				disabled={!canSave || saving}
@@ -273,7 +273,7 @@
 			</p>
 		</div>
 
-		<div class="rounded-[var(--radius-control)] border border-border bg-muted px-3 py-2">
+		<div class="rounded-control border border-border bg-muted px-3 py-2">
 			<p class="text-body text-foreground">
 				The quick brown fox jumps over the lazy dog while a transfer runs.
 			</p>

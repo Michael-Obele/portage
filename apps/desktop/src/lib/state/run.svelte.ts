@@ -8,6 +8,7 @@
 import { browser } from "$app/env";
 
 import type { Frame, RunFrame, StateFrame } from "../engine/protocol.ts";
+import { appendSample, type RateSample } from "../components/app/transfer-series.ts";
 import {
 	emptyRunView,
 	reduceRun,
@@ -20,10 +21,23 @@ import {
 /** The a11y floor: at most one announcement every five seconds. */
 export const ANNOUNCE_INTERVAL_MS = 5_000;
 
+/** How many rate samples are kept. Two minutes at the 1 s cadence, capped so a
+ * long run cannot grow the array without bound. */
+export const MAX_SAMPLES = 600;
+
 class RunStore {
 	view = $state<RunView>(emptyRunView());
 	/** What the `aria-live="polite"` region currently says. */
 	announcement = $state("");
+	/**
+	 * The throughput samples for THIS run.
+	 *
+	 * Here rather than in the Transfer page's own state because the chart is
+	 * worth as much after the run as during it: the summary is the receipt, and
+	 * a receipt that drops the shape of the transfer the moment you navigate
+	 * away is a receipt with a hole in it. One owner, two readers.
+	 */
+	series = $state<RateSample[]>([]);
 
 	#lastAnnouncedAt = 0;
 	#lastAnnouncement = "";
@@ -44,12 +58,19 @@ class RunStore {
 	 */
 	beginRun(): void {
 		this.view = startRun(this.view);
+		this.series = [];
 		this.#lastAnnouncement = "";
 		this.announcement = "";
 	}
 
+	/** Record one rate sample. Replaced, not mutated, so the chart reacts. */
+	pushSample(sample: RateSample): void {
+		this.series = appendSample(this.series, sample, MAX_SAMPLES);
+	}
+
 	reset(): void {
 		this.view = emptyRunView();
+		this.series = [];
 		this.announcement = "";
 	}
 

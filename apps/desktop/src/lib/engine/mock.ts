@@ -29,6 +29,7 @@ import {
 	type Verdict,
 	type Volume
 } from './protocol.ts';
+import type { BrowseEntry } from './protocol.ts';
 import {
 	type EngineHandlers,
 	type EnginePort,
@@ -84,7 +85,153 @@ export function describeScenario(scenario: MockScenario): string {
 const SERIAL = 'fakeserial';
 const DEVICE_ID = 'pixel-10-pro-xl';
 const DRIVE = '/media/node/2TB';
-const DEST_ROOT = `${DRIVE}/Videos/$Anime`;
+/**
+ * What the folder picker lists.
+ *
+ * Deliberately the awkward lengths a real phone has: a release-group folder, a
+ * name with brackets and dots, and one long enough to need truncation. A
+ * fixture that only sends short names cannot show a layout bug in a name the
+ * person will actually meet.
+ */
+/**
+ * What the folder picker lists.
+ *
+ * The real thing, in the awkward shapes it really has: a hashed cache folder, a
+ * bracket-soup release name, and a name long enough to need truncation. The
+ * count matters as much as the names — eighteen rows is where the list stops
+ * fitting and starts having to scroll, and a six-row fixture can never show a
+ * bug that only exists once it overflows.
+ */
+const BROWSER_FOLDERS: BrowseEntry[] = [
+	{
+		name: '.7934039b',
+		path: '/sdcard/Download/.7934039b',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: '.td70d19_130511A1D704CD859FA91C17D972BFEE49211AFA272C623CEA3A6705935F846C9499986D5B1F16C3E',
+		path: '/sdcard/Download/.td70d19_130511A1D704CD859FA91C17D972BFEE49211AFA272C623CEA3A6705935F846C9499986D5B1F16C3E',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: '2 5296402624017382806',
+		path: '/sdcard/Download/2 5296402624017382806',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: '[Hentai] Ingoku Danchi (WEB 1080p AAC2.0 H.264) (Uncensored) (Batch)',
+		path: '/sdcard/Download/[Hentai] Ingoku Danchi (WEB 1080p AAC2.0 H.264) (Uncensored) (Batch)',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: '[Judas] Ishuzoku Reviewers (Interspecies Reviewers) - (Season 1) [UNCENSORED 1080p][HEVC x265 10bit][Dual-Audio]',
+		path: '/sdcard/Download/[Judas] Ishuzoku Reviewers (Interspecies Reviewers) - (Season 1) [UNCENSORED 1080p][HEVC x265 10bit][Dual-Audio]',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'Apk',
+		path: '/sdcard/Download/Apk',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'Apkaua',
+		path: '/sdcard/Download/Apkaua',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'Foxit',
+		path: '/sdcard/Download/Foxit',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'Interspecies Reviewers (Digital)',
+		path: '/sdcard/Download/Interspecies Reviewers (Digital)',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'Move',
+		path: '/sdcard/Download/Move',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'Piko',
+		path: '/sdcard/Download/Piko',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'Quick Share',
+		path: '/sdcard/Download/Quick Share',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'OwenDownloads',
+		path: '/sdcard/Download/OwenDownloads',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'Fire Force S03 2B',
+		path: '/sdcard/Download/Fire Force S03 2B',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'Seal',
+		path: '/sdcard/Download/Seal',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'Iruma Kun Welcome To Demon School S04 - Dual 1080p @Index_Station',
+		path: '/sdcard/Download/Iruma Kun Welcome To Demon School S04 - Dual 1080p @Index_Station',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'Rick and Morty - Season 7 [1080p] [Dual Audio] [WEB-DL] [x265] [HEVC] [HE-AAC 2.0]',
+		path: '/sdcard/Download/Rick and Morty - Season 7 [1080p] [Dual Audio] [WEB-DL] [x265] [HEVC] [HE-AAC 2.0]',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+	{
+		name: 'The Apothecary Diaries',
+		path: '/sdcard/Download/The Apothecary Diaries',
+		kind: 'dir',
+		size: null,
+		depth: 1
+	},
+];
+
+const DEST_ROOT = `${DRIVE}/Videos/Anime`;
 const PHONE_ROOT = '/sdcard/Download/Anime';
 const CONNECT_AT = Date.now();
 
@@ -352,10 +499,12 @@ const SKIPPED: Array<{
 		reason: 'still downloading (.part)'
 	},
 	{
+		// Matches what `dispatch.ts` now does with a marker, so the fixture cannot
+		// teach a screen a reason the engine never produces.
 		name: '.nomedia',
 		size: 0,
 		verdict: 'excluded',
-		reason: 'matched the exclude list'
+		reason: 'a folder marker, not media'
 	},
 	{
 		name: '[SubsPlease] Frieren - 03 (1080p) [B2C3D4E5].mkv',
@@ -794,8 +943,26 @@ class MockEngine implements EnginePort {
 				return { path: String(args?.path ?? '') };
 			case 'browse': {
 				const path = String(args?.path ?? PHONE_ROOT);
-				this.emit(frame('browse', { path, depth: 1, entries: [], total: 0, truncated: false }));
-				return { device: DEVICE_ID, path, entries: 0, total: 0, truncated: false };
+				// Real folder names are long: a season folder under a release group, with
+				// an episode range in it. The empty list this used to send meant the folder
+				// picker's truncation and scroll behaviour were never exercised at all.
+				const entries = BROWSER_FOLDERS;
+				this.emit(
+					frame('browse', {
+						path,
+						depth: 1,
+						entries,
+						total: entries.length,
+						truncated: false
+					})
+				);
+				return {
+					device: DEVICE_ID,
+					path,
+					entries: entries.length,
+					total: entries.length,
+					truncated: false
+				};
 			}
 			case 'pull.start':
 				this.startRun();
