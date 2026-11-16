@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.15](https://github.com/Michael-Obele/portage/compare/v0.1.14...v0.1.15) (2026-11-16)
+
+
+### Features
+
+* read real archive filenames, survive a wedged drive, and keep screen state ([#20](https://github.com/Michael-Obele/portage/issues/20)) ([1e2f07b](https://github.com/Michael-Obele/portage/commit/1e2f07b03569299867016943a0d806615160176d))
+
 ## [0.1.14](https://github.com/Michael-Obele/portage/compare/v0.1.13...v0.1.14) (2026-11-14)
 
 
