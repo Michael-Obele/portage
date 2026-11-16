@@ -200,7 +200,7 @@ export function deviceLabel(device: DeviceInfo): string {
 // --- the row model ----------------------------------------------------------
 
 /** The app's coarse states, as a subset of `StateChipState`. */
-export type PlanChip = 'queued' | 'copying' | 'skipped' | 'duplicate' | 'excluded';
+export type PlanChip = 'will-copy' | 'copying' | 'skipped' | 'duplicate' | 'excluded';
 
 export interface PlanRow {
 	key: string;
@@ -229,14 +229,17 @@ export function baseName(path: string): string {
 /**
  * The chip a verdict earns.
  *
- * `skipped` is the app's word for "the plan declined this file" and is true of
- * `excluded`, `too-recent`, `empty` and `already-on-drive` alike — which is why
- * the verdict column carries the engine's precise word next to it. `copying` is
- * used only for `in-flight`, which is what it literally means: the file is
- * being written by something else right now.
+ * `will-copy` is the plan's word, not the run's: nothing on this screen is
+ * queued yet, so calling a prospective file "queued" claimed the engine had
+ * started work it had only been asked to consider. `skipped` is the app's word
+ * for "the plan declined this file" and is true of `excluded`, `too-recent`,
+ * `empty` and `already-on-drive` alike — which is why the verdict column carries
+ * the engine's precise word next to it. `copying` is used only for `in-flight`,
+ * which is what it literally means: the file is being written by something else
+ * right now.
  */
 export function chipFor(verdict: Verdict, willTransfer: boolean): PlanChip {
-	if (willTransfer) return 'queued';
+	if (willTransfer) return 'will-copy';
 	switch (verdict) {
 		case 'in-flight':
 			return 'copying';

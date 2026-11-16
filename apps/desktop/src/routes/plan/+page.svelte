@@ -11,9 +11,9 @@
 	 * the header is the engine's count and the table cannot disagree with it.
 	 */
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
 
 	import {
+		ConfirmSheet,
 		EmptyState,
 		ErrorBand,
 		PageHeader,
@@ -23,6 +23,11 @@
 	import PlanTable from '../../lib/components/app/plan-table.svelte';
 	import StatStrip from '../../lib/components/app/stat-strip.svelte';
 	import CopyButton from '../../lib/components/app/copy-button.svelte';
+	import {
+		browserStore,
+		consentGiven,
+		recordConsent
+	} from '../../lib/components/app/pull-consent.ts';
 	import { isInsideMount } from '../../lib/util/mount.ts';
 	import {
 		deviceLabel,
@@ -40,20 +45,30 @@
 	import { CONTROL } from '../../lib/components/app/tokens.ts';
 	import { Button } from '../../lib/components/ui/button/index.js';
 	import { failureBand, type Band } from '../../lib/components/app/transfer-band.ts';
-	import type { PlanResult } from '../../lib/engine/protocol.ts';
 	import { app } from '../../lib/state/app.svelte.ts';
+	import { screens } from '../../lib/state/screens.svelte.ts';
 	import { formatBytes, plural } from '../../lib/util/format.ts';
 
-	let filters = $state<Filters>(emptyFilters());
-	let showDraft = $state('');
-	let plan = $state<PlanResult | null>(null);
-	let loading = $state(false);
-	let refetching = $state(false);
-	let failure = $state<Band | null>(null);
-	let selected = $state<PlanRow | null>(null);
-	let dryRunNote = $state<string | null>(null);
-	/** Source paths removed from this pull. The plan is re-read after each one. */
-	let excluded = $state<string[]>([]);
+	/**
+	 * The screen's state lives in a module store, not here — see
+	 * `lib/state/screens.svelte.ts`. A tab click destroys this component, and the
+	 * plan, the filters and the hand-removed rows were going with it.
+	 *
+	 * Reads are aliases; WRITES go through `screen.` because a `$derived` cannot
+	 * be assigned to.
+	 */
+	const screen = screens.plan;
+	const filters = $derived(screen.filters);
+	const showDraft = $derived(screen.showDraft);
+	const plan = $derived(screen.plan);
+	const loading = $derived(screen.loading);
+	const refetching = $derived(screen.refetching);
+	const failure = $derived(screen.failure);
+	const selected = $derived(screen.selected);
+	const dryRunNote = $derived(screen.dryRunNote);
+	const confirming = $derived(screen.confirming);
+	/** Source paths removed from this pull. Kept across tabs — it is intent. */
+	const excluded = $derived(screen.excluded);
 
 	const rows = $derived(plan === null ? [] : planRows(plan));
 	const removedCount = $derived(
@@ -63,7 +78,9 @@
 		if (plan === null) return [];
 		const items = [
 			{ label: 'To move', value: plural(plan.toTransfer.length, 'file') },
-			{ label: 'Bytes', value: formatBytes(plan.bytesTotal) },
+			// "Bytes" as a label over a GB value reads as a unit mismatch; the
+			// number people care about is the total size of the pull.
+			{ label: 'Total size', value: formatBytes(plan.bytesTotal) },
 			{ label: 'Skipped', value: plural(plan.skipped.length, 'file') },
 			{
 				// Excluded bytes are skipped too, but they are not "already on the
@@ -134,7 +151,7 @@
 						: `${volume.mountPoint} is mounted read-only.`,
 				means:
 					'A pull writes to the destination, so a destination that cannot be written to stops it.',
-				todo: 'Remount the drive read-write, or choose another destination in Settings, then request the plan again.',
+				todo: 'Remount the drive read-write, or choose another destination on Home, then request the plan again.',
 				code: null
 			};
 		}
@@ -147,74 +164,95 @@
 		return failureBand(error, 'plan');
 	}
 
-	function setPlan(next: PlanResult): void {
-		plan = next;
-		failure = null;
-	}
-
 	async function request(): Promise<boolean> {
 		const first = plan === null;
-		if (first) loading = true;
-		else refetching = true;
-		failure = null;
+		if (first) screen.loading = true;
+		else screen.refetching = true;
+		screen.failure = null;
 		try {
 			// The plan itself arrives as the `plan` FRAME — the engine writes it
-			// before it answers — and the observer below stores it. The answer is
+			// before it answers — and the module router stores it. The answer is
 			// a tally, so reading the plan out of it is exactly the mistake that
 			// crashed the destination picker.
 			await app.port.send('plan', planArgs(filters, excluded));
 			return true;
 		} catch (error) {
-			failure = bandFrom(error);
+			screen.failure = bandFrom(error);
 			return false;
 		} finally {
-			loading = false;
-			refetching = false;
+			screen.loading = false;
+			screen.refetching = false;
 		}
 	}
 
 	function apply(next: Partial<Filters>): void {
-		filters = { ...filters, ...next };
-		selected = null;
-		dryRunNote = null;
+		screen.setFilters({ ...filters, ...next });
+		screen.selected = null;
+		screen.dryRunNote = null;
 		void request();
 	}
 
 	function clear(): void {
-		filters = emptyFilters();
-		showDraft = '';
-		selected = null;
-		dryRunNote = null;
+		screen.setFilters(emptyFilters());
+		screen.showDraft = '';
+		screen.selected = null;
+		screen.dryRunNote = null;
 		void request();
 	}
 
 	function startPull(mode: PullMode): void {
-		void goto(`/transfer${intentToSearch(intentFrom(filters, mode, excluded))}`);
+		// A pull deletes the phone copy once the drive copy verifies. That is the
+		// whole point of the tool, so it must not be surprising — and it must not
+		// be a typed word every week either. Explain it once, in full, remember
+		// the answer, then stay out of the way.
+		if (mode === 'delete-after-verify' && !consentGiven(browserStore())) {
+			screen.confirming = true;
+			return;
+		}
+		goToTransfer(mode);
+	}
+
+	/** The acknowledged pull: remember, then leave for the run. */
+	function confirmPull(): void {
+		recordConsent(browserStore());
+		screen.confirming = false;
+		goToTransfer('delete-after-verify');
+	}
+
+	function goToTransfer(mode: PullMode): void {
+		// A person just asked for this pull. Clearing the marker is what tells the
+		// Transfer screen that this visit is a request, not a back-navigation to a
+		// URL whose pull has already run.
+		const search = intentToSearch(intentFrom(filters, mode, excluded));
+		// A person just asked for this pull. The token is what tells the Transfer
+		// screen the difference between a click and a link.
+		screens.transfer.request(search);
+		void goto(`/transfer${search}`);
 	}
 
 	function remove(row: PlanRow): void {
 		if (excluded.includes(row.srcPath)) return;
-		excluded = [...excluded, row.srcPath];
+		screen.excluded = [...excluded, row.srcPath];
 		void request();
 	}
 
 	function restore(row: PlanRow): void {
-		excluded = excluded.filter((path) => path !== row.srcPath);
+		screen.excluded = excluded.filter((path) => path !== row.srcPath);
 		void request();
 	}
 
 	function restoreAll(): void {
 		if (excluded.length === 0) return;
-		excluded = [];
+		screen.excluded = [];
 		void request();
 	}
 
 	async function dryRun(): Promise<void> {
-		dryRunNote = null;
+		screen.dryRunNote = null;
 		// The failure band is the one place a refused request is explained. A
 		// "finished" note under it would claim the opposite of what it says.
 		if (!(await request())) return;
-		dryRunNote =
+		screen.dryRunNote =
 			'Dry run finished. The plan was rebuilt from the phone and the drive; nothing was copied and nothing was deleted.';
 	}
 
@@ -224,12 +262,6 @@
 		});
 	}
 
-	onMount(() => {
-		return app.observeFrame((frame) => {
-			if (frame.type === 'plan') setPlan(frame.plan);
-		});
-	});
-
 	/**
 	 * Ask for the plan once, and only once the port is chosen.
 	 *
@@ -238,18 +270,24 @@
 	 * `onMount` leaves before there is anything to send it to, and the screen
 	 * opens on a failure band it has not earned. Waiting on the connection is
 	 * what makes the first frame honest.
+	 *
+	 * `screen.requested` is the flag, not a local: coming back to this tab must
+	 * show the plan that already exists instead of re-walking the phone, and it
+	 * must not overwrite a plan the module router captured while you were away.
 	 */
-	let requested = $state(false);
 	$effect(() => {
-		if (requested) return;
+		if (screen.requested) return;
 		if (app.connection === 'connecting') return;
-		requested = true;
+		screen.requested = true;
 		// The read-only check reads the volume list, and only Home ever asks for
 		// one — the engine emits no `volumes` frame at startup, so a direct load
 		// of this screen checked an empty list and called every mount writable. A
 		// list that cannot be read stays empty on purpose: the check then says
 		// access is unknown, which still stops a pull.
 		void app.loadVolumes().catch(() => {});
+		// The device filter is persisted, so a restored id must resolve to a name
+		// rather than leaking a raw hash into the header.
+		void app.loadDevices().catch(() => {});
 		void request();
 	});
 </script>
@@ -270,7 +308,9 @@
 			<span class="font-mono break-all text-foreground">{plan.destRoot}</span>
 			<CopyButton value={plan.destRoot} label="Copy the destination path" />
 			<span class="text-muted-foreground" data-numeric>
-				{formatBytes(plan.space.freeBytes)} free
+				{plan.space.freeBytes > 0
+					? `${formatBytes(plan.space.freeBytes)} free`
+					: 'free space unknown'}
 			</span>
 		</p>
 	{/if}
@@ -282,7 +322,7 @@
 		devices={app.devices}
 		{showDraft}
 		busy={loading || refetching}
-		onshowdraft={(value) => (showDraft = value)}
+		onshowdraft={(value) => (screen.showDraft = value)}
 		onsubmit={() => apply({ show: showDraft })}
 		ondevice={(id) => apply({ device: id })}
 		onsince={(window) => apply({ since: window })}
@@ -311,6 +351,23 @@
 			/>
 		{/if}
 	{:else}
+		<!-- The table comes first, the actions after it. The bar used to sit above
+		     the rows, so Tab reached "Pull" before a single row could be read —
+		     review-then-act in reading order, act-then-review in the tab order. -->
+		{#if rows.length > 0 || active}
+			<PlanTable
+				{rows}
+				loading={loading && plan === null}
+				filtersSentence={inForce}
+				{selected}
+				onactivate={(row) => (screen.selected = row)}
+				onclear={clear}
+				onreveal={reveal}
+				onremove={remove}
+				onrestore={restore}
+			/>
+		{/if}
+
 		<footer
 			class="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-surface border border-border bg-card px-4 py-3"
 		>
@@ -321,7 +378,7 @@
 					disabled={pullDisabled}
 					onclick={() => startPull('delete-after-verify')}
 				>
-					Pull
+					Pull and free the phone
 				</Button>
 				<Button
 					class={CONTROL}
@@ -344,8 +401,9 @@
 			</div>
 
 			<p class="measure text-caption text-muted-foreground">
-				Pull copies, verifies, then deletes the phone copy. Copy only keeps it. Dry run rebuilds the
-				plan and moves nothing.
+				<b class="font-medium text-foreground">Pull and free the phone</b> copies, verifies, then
+				deletes the phone copy. <b class="font-medium text-foreground">Copy only</b> keeps it. Dry run
+				rebuilds the plan and moves nothing.
 			</p>
 
 			{#if removedCount > 0}
@@ -393,19 +451,21 @@
 				busy={refetching}
 			/>
 		{/if}
-
-		{#if rows.length > 0 || active}
-			<PlanTable
-				{rows}
-				loading={loading && plan === null}
-				filtersSentence={inForce}
-				{selected}
-				onactivate={(row) => (selected = row)}
-				onclear={clear}
-				onreveal={reveal}
-				onremove={remove}
-				onrestore={restore}
-			/>
-		{/if}
 	{/if}
 </div>
+
+<!-- The one gate in front of an irreversible action. It reuses the sheet the
+     other two destructive screens use, so "this deletes files" looks the same
+     wherever it appears, including the typed word. It is shown ONCE: repeating
+     it every week would train the word out of the person's attention. -->
+<ConfirmSheet
+	bind:open={() => screen.confirming, (next) => (screen.confirming = next)}
+	title="Pull and free the phone"
+	action="pull.start"
+	paths={plan === null ? [] : plan.toTransfer.map((file) => file.candidate.srcPath)}
+	count={plan === null ? 0 : plan.toTransfer.length}
+	bytes={plan === null ? 0 : plan.bytesTotal}
+	confirmWord="pull"
+	onconfirm={confirmPull}
+	oncancel={() => (screen.confirming = false)}
+/>

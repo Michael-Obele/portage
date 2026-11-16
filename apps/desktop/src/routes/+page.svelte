@@ -68,6 +68,81 @@
 	const drivesWaiting = $derived(app.volumes.length === 0 && (app.ready === null || reading));
 	const phonesWaiting = $derived(app.devices.length === 0 && (app.ready === null || reading));
 	const readyDevices = $derived(app.devices.filter((device) => phoneState(device) === 'device'));
+	const devicesWithRoots = $derived(
+		readyDevices.filter((device) => (app.config?.devices?.[device.id]?.roots ?? []).length > 0)
+	);
+
+	/**
+	 * The one thing that can actually be done next.
+	 *
+	 * This screen used to lead with "Plan a pull" in the accent slot no matter
+	 * what — but with no destination, or no folder chosen, that pull cannot run:
+	 * the engine refuses it and the person is sent to another screen to read a
+	 * command line they have to type. The loudest control on the first screen was
+	 * the one guaranteed to fail. Now the accent slot names the next step that
+	 * will succeed, and every branch of it is a real action, not a scroll.
+	 */
+	const nextStep = $derived.by(
+		(): {
+			kind: 'wait' | 'destination' | 'read' | 'folders' | 'plan';
+			label: string;
+			hint: string;
+		} => {
+			if (app.config === null && app.ready?.destinationConfigured !== false) {
+				return {
+					kind: 'wait',
+					label: 'Reading settings',
+					hint: 'The engine has not sent its config yet.'
+				};
+			}
+			if (destRoot === '') {
+				return {
+					kind: 'destination',
+					label: 'Choose a destination',
+					hint: 'Nothing has been archived yet — a pull needs a folder to land in.'
+				};
+			}
+			if (readyDevices.length === 0) {
+				return {
+					kind: 'read',
+					label: 'Read drives and phones',
+					hint:
+						app.devices.length === 0
+							? 'Plug the phone in and accept the USB debugging prompt, then read again.'
+							: 'The phone is attached but not ready yet.'
+				};
+			}
+			if (devicesWithRoots.length === 0) {
+				return {
+					kind: 'folders',
+					label: 'Choose phone folders',
+					hint: 'A pull copies nothing until at least one folder is chosen.'
+				};
+			}
+			const folders = devicesWithRoots.reduce(
+				(sum, device) => sum + (app.config?.devices?.[device.id]?.roots.length ?? 0),
+				0
+			);
+			return {
+				kind: 'plan',
+				label: 'Plan a pull',
+				hint: `${plural(folders, 'folder')} on ${devicesWithRoots
+					.map((device) => (device.model.trim() !== '' ? device.model : device.serial))
+					.join(', ')}.`
+			};
+		}
+	);
+
+	/** Move focus to a section, so a keyboard user lands where the button promised. */
+	function focusSection(id: string): void {
+		const section = document.getElementById(id);
+		if (section === null) return;
+		section.scrollIntoView({ block: 'start', behavior: 'smooth' });
+		// The id is on the SECTION, not on its heading: focusing the section is
+		// what lands a keyboard user where the button promised, and it needs the
+		// `tabindex="-1"` the section carries.
+		section.focus({ preventScroll: true });
+	}
 
 	/** A path boundary, so `/media/one` is not treated as living inside `/media/on`. */
 	function holds(path: string, mount: string): boolean {
@@ -318,28 +393,66 @@
 		</div>
 	</section>
 
-	<div class="flex flex-wrap items-center gap-2">
-		<Button href="/plan" variant="default" size="sm" class={CONTROL}>Plan a pull</Button>
-		<!-- `outline`, not `ghost`. As a ghost button this read as a caption
-		     beside the primary action: a borderless button next to a filled one
-		     has no affordance at all. It re-reads the machine, so it also gets a
-		     refresh glyph and a busy state. -->
-		<Button
-			variant="outline"
-			size="sm"
-			class={CONTROL}
-			disabled={busy}
-			aria-busy={reading}
-			onclick={refreshLists}
-		>
-			{#if reading}
-				<Spinner class="size-3.5" />
-				Reading
-			{:else}
-				<RefreshCw class="size-3.5" aria-hidden="true" />
-				Read drives and phones
-			{/if}
-		</Button>
+	<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+		{#if nextStep.kind === 'plan'}
+			<Button href="/plan" variant="default" size="sm" class={CONTROL}>Plan a pull</Button>
+		{:else if nextStep.kind === 'destination'}
+			<Button
+				variant="default"
+				size="sm"
+				class={CONTROL}
+				disabled={busy}
+				onclick={() => void chooseFolder()}
+			>
+				{picking ? 'Choosing a folder' : nextStep.label}
+			</Button>
+		{:else if nextStep.kind === 'read'}
+			<Button
+				variant="default"
+				size="sm"
+				class={CONTROL}
+				disabled={busy}
+				aria-busy={reading}
+				onclick={refreshLists}
+			>
+				{#if reading}<Spinner class="size-3.5" />{/if}
+				{reading ? 'Reading' : nextStep.label}
+			</Button>
+		{:else if nextStep.kind === 'folders'}
+			<Button
+				variant="default"
+				size="sm"
+				class={CONTROL}
+				onclick={() => focusSection('phone-folders')}
+			>
+				{nextStep.label}
+			</Button>
+		{:else}
+			<Button variant="default" size="sm" class={CONTROL} disabled>Reading settings</Button>
+		{/if}
+
+		<!-- One refresh control, never two. When the next step IS a read, the
+		     accent button above already does it. -->
+		{#if nextStep.kind !== 'read'}
+			<Button
+				variant="outline"
+				size="sm"
+				class={CONTROL}
+				disabled={busy}
+				aria-busy={reading}
+				onclick={refreshLists}
+			>
+				{#if reading}
+					<Spinner class="size-3.5" />
+					Reading
+				{:else}
+					<RefreshCw class="size-3.5" aria-hidden="true" />
+					Read drives and phones
+				{/if}
+			</Button>
+		{/if}
+
+		<p class="text-caption text-muted-foreground">{nextStep.hint}</p>
 	</div>
 
 	<section class="flex flex-col gap-3" aria-labelledby="drives">
@@ -449,7 +562,7 @@
 			<ul class="divide-y divide-border rounded-surface border border-border">
 				{#each app.devices as device (device.id)}
 					{@const state = phoneState(device)}
-					<li class="flex items-start gap-3 px-3 py-2">
+					<li class="flex items-start gap-3 px-3 py-2" title={device.id}>
 						<div class="flex min-w-0 flex-1 flex-col gap-0.5">
 							<div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
 								<span class="truncate text-body text-foreground">
@@ -458,8 +571,11 @@
 								{#if device.android.trim() !== ''}
 									<span class="text-label text-muted-foreground">Android {device.android}</span>
 								{/if}
+								<!-- The serial is what is printed on the phone and on its box;
+								     the config key is a sha1 of it, which no person can
+								     recognise and which read as a second, conflicting name. -->
 								<span class="font-mono text-caption text-muted-foreground">
-									{device.id.slice(0, 12)}
+									{device.serial}
 								</span>
 							</div>
 							{#if state === 'unauthorized'}
@@ -496,8 +612,13 @@
 		{/if}
 	</section>
 
-	<section class="flex flex-col gap-3" aria-labelledby="phone-folders">
-		<h2 id="phone-folders" class="text-lead font-medium text-foreground">Phone folders</h2>
+	<section
+		id="phone-folders"
+		tabindex="-1"
+		class="flex flex-col gap-3 outline-none"
+		aria-labelledby="phone-folders-heading"
+	>
+		<h2 id="phone-folders-heading" class="text-lead font-medium text-foreground">Phone folders</h2>
 
 		{#if readyDevices.length === 0}
 			<p class="measure text-body text-muted-foreground">
@@ -513,9 +634,7 @@
 						<span class="min-w-0 truncate text-body text-foreground">
 							{device.model.trim() !== '' ? device.model : device.serial}
 						</span>
-						<span class="font-mono text-caption text-muted-foreground">
-							{device.id.slice(0, 12)}
-						</span>
+						<span class="font-mono text-caption text-muted-foreground">{device.serial}</span>
 					</div>
 					<SourceFolders
 						{device}

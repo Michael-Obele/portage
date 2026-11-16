@@ -25,6 +25,7 @@ import {
 	groupKeys,
 	groupSelectionState,
 	groupTotals,
+	groupUnparsed,
 	memberTone,
 	scanSentence,
 	selectKeys,
@@ -106,8 +107,20 @@ function dupesFrame(patch: Partial<DupesFrame> = {}): DupesFrame {
 }
 
 describe('selectionFor', () => {
-	test('selects every copy the engine did not keep', () => {
-		expect([...selectionFor(groups())].sort()).toEqual(['k1', 'k3']);
+	test('selects the redundant copies of byte-identical (tier 1) groups', () => {
+		expect([...selectionFor(groups())].sort()).toEqual(['k1']);
+	});
+
+	test('leaves tier 2 unticked — a name match is a guess, not a duplicate', () => {
+		// Tier 2 is "same episode, different release": those copies can differ in
+		// subtitles, audio and resolution, so pre-ticking one is how a person
+		// loses the only copy carrying their language.
+		const selected = selectionFor(groups());
+		const tier2 = groups().find((entry) => entry.tier === 2);
+		expect(tier2).toBeDefined();
+		for (const entry of tier2?.members ?? []) {
+			expect(selected.has(entry.key)).toBe(false);
+		}
 	});
 
 	test('leaves a keeper out but does not remove it from the group', () => {
@@ -123,6 +136,55 @@ describe('selectionFor', () => {
 
 	test('is empty for an empty report', () => {
 		expect(selectionFor([]).size).toBe(0);
+	});
+});
+
+describe('groupUnparsed', () => {
+	test('groups lines by their reason, biggest first', () => {
+		const groups = groupUnparsed([
+			'a.mkv — no episode number in the filename',
+			'b.mkv — no episode number in the filename',
+			'c.mkv — "01-12" is a range of episodes, not one episode',
+			'd.mkv — no episode number in the filename'
+		]);
+		expect(groups).toHaveLength(2);
+		expect(groups[0]?.reason).toBe('no episode number in the filename');
+		expect(groups[0]?.count).toBe(3);
+		expect(groups[0]?.examples).toEqual(['a.mkv', 'b.mkv', 'd.mkv']);
+		expect(groups[1]?.count).toBe(1);
+	});
+
+	test('keeps only a few examples per reason', () => {
+		const many = Array.from({ length: 9 }, (_, i) => `f${i}.mkv — no episode number in the filename`);
+		const [only] = groupUnparsed(many);
+		expect(only?.count).toBe(9);
+		expect(only?.examples).toHaveLength(3);
+	});
+
+	test('splits at the LAST separator, so a real filename may contain one', () => {
+		// This exact shape is on the archive: the path carries an em dash, the
+		// reason never does. Splitting on the first cut the filename in half.
+		const [only] = groupUnparsed([
+			'Audio/Master your camera — My 5 tips! [id].webm — no episode number in the filename'
+		]);
+		expect(only?.examples).toEqual(['Audio/Master your camera — My 5 tips! [id].webm']);
+		expect(only?.reason).toBe('no episode number in the filename');
+	});
+
+	test('a reason that contains a separator is still readable', () => {
+		// The residual risk, pinned so it is a known shape rather than a surprise.
+		const [only] = groupUnparsed(['x.mkv — modified 42s ago — wait 78s']);
+		expect(only?.reason).toBe('wait 78s');
+	});
+
+	test('a line with no reason is still counted', () => {
+		const [only] = groupUnparsed(['x.mkv']);
+		expect(only?.reason).toBe('no reason given');
+		expect(only?.count).toBe(1);
+	});
+
+	test('an empty report is empty', () => {
+		expect(groupUnparsed([])).toEqual([]);
 	});
 });
 

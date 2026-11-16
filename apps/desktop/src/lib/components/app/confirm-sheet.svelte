@@ -41,7 +41,7 @@
 	}: {
 		open?: boolean;
 		title: string;
-		action: 'dupes.apply' | 'purge.apply';
+		action: 'dupes.apply' | 'purge.apply' | 'pull.start';
 		paths: string[];
 		count: number;
 		bytes: number;
@@ -61,7 +61,9 @@
 	const sentence = $derived(
 		action === 'dupes.apply'
 			? `${plural(count, 'file')} · ${formatBytes(bytes)} move to ${trashDir ?? 'the trash folder'}.`
-			: `${plural(count, 'file')} · ${formatBytes(bytes)} leave the phone. The drive copies are untouched.`
+			: action === 'pull.start'
+				? `${plural(count, 'file')} · ${formatBytes(bytes)} are copied to the drive, verified, and then deleted from the phone. This cannot be undone — afterwards the drive holds the only copy.`
+				: `${plural(count, 'file')} · ${formatBytes(bytes)} leave the phone for good. The drive copies are untouched.`
 	);
 
 	function handleOpenChange(next: boolean): void {

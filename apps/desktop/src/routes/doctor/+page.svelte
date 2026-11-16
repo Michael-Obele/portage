@@ -12,7 +12,6 @@
 	 * hide under a wall of passes, and it puts a copy button on every fix. It
 	 * never re-judges a status and never invents a check.
 	 */
-	import { onMount } from 'svelte';
 
 	import CopyButton from '../../lib/components/app/copy-button.svelte';
 	import {
@@ -41,14 +40,22 @@
 	import { ToggleGroup, ToggleGroupItem } from '../../lib/components/ui/toggle-group/index.js';
 	import type { DoctorCheck, DoctorFrame, DoctorStatus } from '../../lib/engine/protocol.ts';
 	import { app } from '../../lib/state/app.svelte.ts';
+	import { screens } from '../../lib/state/screens.svelte.ts';
 	import { plural } from '../../lib/util/format.ts';
 	import { cn } from '../../lib/utils.ts';
 
+	/**
+	 * The report lives in a module store (see `lib/state/screens.svelte.ts`), so
+	 * a tab click no longer throws away a completed check — and a report that
+	 * arrives while another tab is open is still captured. Reads are aliases;
+	 * writes go through `screen.`.
+	 */
+	const screen = screens.doctor;
 	/** The last report. Every row on the screen comes from this frame. */
-	let report = $state<DoctorFrame | null>(null);
-	let running = $state(false);
-	let filter = $state<DoctorFilter>('all');
-	let failure = $state<Band | null>(null);
+	const report = $derived(screen.report);
+	const running = $derived(screen.running);
+	const filter = $derived(screen.filter);
+	const failure = $derived(screen.failure);
 
 	const engineStopped = $derived(app.connection === 'stopped');
 	const busy = $derived(running && !engineStopped);
@@ -115,22 +122,17 @@
 
 	async function runNow(bench: boolean): Promise<void> {
 		if (busy) return;
-		running = true;
-		failure = null;
+		screen.running = true;
+		screen.failure = null;
 		try {
 			await app.port.send('doctor', { bench });
 		} catch (error) {
-			failure = failureBand(error, 'doctor');
+			screen.failure = failureBand(error, 'doctor');
 		} finally {
-			running = false;
+			screen.running = false;
 		}
 	}
 
-	onMount(() =>
-		app.observeFrame((frame) => {
-			if (frame.type === 'doctor') report = frame;
-		})
-	);
 </script>
 
 <PageHeader title="Doctor" summary={verdict.detail}>
@@ -198,7 +200,7 @@
 					aria-label="Which checks to show"
 					class="ms-auto h-8 gap-0 rounded-control bg-muted p-0.5"
 					onValueChange={(value) => {
-						if (value) filter = value as DoctorFilter;
+						if (value) screen.setFilter(value as DoctorFilter);
 					}}
 				>
 					<ToggleGroupItem
