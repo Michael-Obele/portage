@@ -26,12 +26,29 @@
  */
 import type { BunPlugin } from "bun";
 
-export const sveltePlugin: BunPlugin = {
+/**
+ * Where the compiler comes from.
+ *
+ * A dynamic `import("svelte/compiler")` resolves relative to THIS file, so it
+ * only works when the root `node_modules` is present. The desktop app installs
+ * its own dependencies and nothing else, so its preload passes a loader that
+ * resolves from `apps/desktop` instead — same plugin, different resolution.
+ */
+export type CompilerLoader = () => Promise<{
+  compileModule: (code: string, options: Record<string, unknown>) => { js: { code: string } };
+  compile: (source: string, options: Record<string, unknown>) => { js: { code: string } };
+}>;
+
+const compileFromThisFile: CompilerLoader = () =>
+  import("svelte/compiler") as unknown as ReturnType<CompilerLoader>;
+
+export function makeSveltePlugin(loadCompiler: CompilerLoader = compileFromThisFile): BunPlugin {
+  return {
   name: "svelte",
   setup(build) {
     // `.svelte.ts` — runes outside a component. This is the one portage uses.
     build.onLoad({ filter: /\.svelte\.ts$/ }, async (args) => {
-      const { compileModule } = await import("svelte/compiler");
+      const { compileModule } = await loadCompiler();
       const source = await Bun.file(args.path).text();
       // Transpile TypeScript BEFORE handing it to compileModule. See header.
       const js = new Bun.Transpiler({ loader: "ts" }).transformSync(source);
@@ -44,7 +61,7 @@ export const sveltePlugin: BunPlugin = {
 
     // `.svelte` — components (unused today, kept so they keep working).
     build.onLoad({ filter: /\.svelte$/ }, async (args) => {
-      const { compile } = await import("svelte/compiler");
+      const { compile } = await loadCompiler();
       const source = await Bun.file(args.path).text();
       const result = compile(source, {
         filename: args.path,
@@ -56,6 +73,9 @@ export const sveltePlugin: BunPlugin = {
       return { contents: result.js.code, loader: "js" };
     });
   },
-};
+  };
+}
+
+export const sveltePlugin: BunPlugin = makeSveltePlugin();
 
 export default sveltePlugin;

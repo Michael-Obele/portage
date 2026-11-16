@@ -8,9 +8,14 @@
  * import of one dies with `ReferenceError: $state is not defined`.
  *
  * Bun resolves `--preload` against the app directory, so this file exists rather
- * than pointing at the root one. It registers the same plugin; nothing is
- * duplicated but the two lines that must be in every entry point.
+ * than pointing at the root one.
+ *
+ * The COMPILER, though, resolves from where it is imported. CI installs this
+ * app's dependencies only — there is no root `node_modules` — so the loader is
+ * handed a resolver rooted here. Importing the root preload instead failed in CI
+ * with `Cannot find module 'svelte/compiler' from scripts/svelte-loader.ts`
+ * while passing locally, where the root install is present.
  */
-import { sveltePlugin } from "../../../scripts/svelte-loader.ts";
+import { makeSveltePlugin } from "../../../scripts/svelte-loader.ts";
 
-Bun.plugin(sveltePlugin);
+Bun.plugin(makeSveltePlugin(() => import("svelte/compiler")));
