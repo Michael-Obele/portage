@@ -14,11 +14,11 @@ import { dirname, normPath, resolveInside } from "../util/paths.ts";
 
 import {
   findByteIdentical,
-  markSuspicious,
   suggestKeeper,
   type Candidate,
 } from "./tier1.ts";
-import { findSameEpisode, parseEpisode } from "./tier2.ts";
+import { RESOLUTION_RANK, isMediaCandidate, resolutionFrom } from "./naming.ts";
+import { findSameEpisode } from "./tier2.ts";
 import type {
   ApplyResult,
   DupeGroup,
@@ -39,8 +39,24 @@ export interface ScanOptions {
 /** Never crossed, never considered. §6 rule 4. */
 const KEEP_PATTERNS = [/(^|\/)keep\.txt$/i, /\.important$/i];
 
-/** How small is too small. §6 rule 11. */
-const TRUNCATED_FRACTION = 0.5;
+/**
+ * How small is too small. §6 rule 11.
+ *
+ * A THIRD, not a half. Encodes of one series vary legitimately: on the real
+ * drive one 1080p [Dual] season ran 144 MB — 378 MB, a 2.6× spread with no
+ * damage anywhere in it, and the smallest file missed a 50 % test by 53 KB.
+ * What this rule is looking for is a FRAGMENT, and a fragment is not 55 % of an
+ * episode; it is a third of one or less (the field evidence in §6 rule 11 is
+ * 89 MB against 300 MB).
+ */
+const TRUNCATED_FRACTION = 0.35;
+
+/**
+ * The same fraction, for the keeper rule. They are deliberately the same number
+ * and deliberately separate names: one decides what to REPORT, the other what
+ * to KEEP, and they may drift apart for good reasons.
+ */
+const KEEPER_SIZE_FLOOR = 0.35;
 
 function isProtected(relative: string): boolean {
   return KEEP_PATTERNS.some((re) => re.test(relative));
@@ -127,37 +143,116 @@ function toGroup(
  * episodes, so they never form a group and a per-group check would never see
  * them. So we compare each file against its SHOW SIBLINGS: everything sharing
  * the name up to the first digit run (`hrs.s`, `Frieren.S01E`).
+ *
+ * **Siblings must be in the same QUALITY CLASS.** Size alone is not evidence of
+ * a fragment: a 720p copy of an episode is legitimately less than half a 1080p
+ * one, and comparing across resolutions flagged real files on a real drive. So
+ * the comparison is `(show stem, resolution)`, and a file with no resolution in
+ * its name is only compared with others that also state none.
  */
 function showStem(relative: string): string {
-  const name = relative.split("/").pop() ?? relative;
-  const stem = name.replace(/\.[^.]+$/, "");
+  const parts = relative.split("/");
+  const name = parts.pop() ?? relative;
+  // The FOLDER is part of the identity. `Big Show/EP 01.mkv` and
+  // `Tiny Show/EP 01.mkv` reduce to the same basename stem, and without this
+  // one show's file was flagged as a fragment of another's.
+  const folder = (parts.pop() ?? "").toLowerCase();
+  const stem = name
+    .replace(/\.[^.]+$/, "")
+    // Resolution is a QUALITY CLASS, not part of the show's name: `FHD` and
+    // `1080p` must land in the same bucket or a fragment wearing one spelling
+    // is never compared with its siblings.
+    .replace(RESOLUTION_WORD, "")
+    .replace(/\s+/g, " ")
+    // Stripping a token leaves its separator (`Show.02.720p` -> `Show.02.`), and
+    // a trailing dot made a tagged file never meet its untagged siblings.
+    .replace(/[._\-\s]+$/g, "")
+    .trim();
   const cut = stem.search(/\d/);
   const head = (cut === -1 ? stem : stem.slice(0, cut)).toLowerCase();
   const tail =
     cut === -1 ? "" : stem.slice(cut).replace(/\d+/g, "#").toLowerCase();
-  return `${head}${tail}`.slice(0, 40);
+  return `${folder}|${head}${tail}`.slice(0, 120);
 }
+
+/**
+ * Any resolution spelling, so the stem does not depend on which one is used.
+ *
+ * No bare `hd`/`sd`: `SD Gundam` is a show and `HD` is a plausible folder, and
+ * stripping them merged two real titles. The bracketed spellings that matter
+ * (`1080p`, `720p`, `FHD`, `4k`…) are all unambiguous.
+ */
+const RESOLUTION_WORD = /\b(?:2160p|1440p|1080p|720p|576p|480p|360p|4k|uhd|fhd)\b/gi;
 
 /** @returns the relatives flagged as truncated. */
 export function flagTruncated(candidates: Candidate[]): Set<string> {
   const byStem = new Map<string, Candidate[]>();
   for (const c of candidates) {
-    const stem = showStem(c.relative);
-    const list = byStem.get(stem);
+    const name = c.relative.split("/").pop() ?? c.relative;
+    // Only media can be a truncated EPISODE. Without this, a thumbnail beside
+    // its audio track was reported as a fragment of it.
+    if (!isMediaCandidate(name, c.size)) continue;
+    // Siblings are `(immediate folder + digit-normalised stem, resolution RANK)`.
+    // `1080p` and `720p` are different releases, not different lengths of the
+    // same one, and the resolution may be stated by the FOLDER (`Show [720p]/`)
+    // rather than the file. The key is the RANK, so `FHD` and `1080p` meet.
+    // The file's OWN tag first, the folder only as a fallback. Reading the
+    // whole path left-to-right let a `720p/` shelf above the show override a
+    // `1080p` filename, which put a 1080p file in the 720p class and flagged it.
+    const resolution = resolutionFrom(name) ?? resolutionFrom(c.relative);
+    const rank = resolution === null ? "unknown" : String(RESOLUTION_RANK[resolution] ?? resolution);
+    const key = `${showStem(c.relative)}|${rank}`;
+    const list = byStem.get(key);
     if (list) list.push(c);
-    else byStem.set(stem, [c]);
+    else byStem.set(key, [c]);
   }
   const flagged = new Set<string>();
   for (const group of byStem.values()) {
     // One file alone cannot be "truncated relative to its siblings".
     if (group.length < 2) continue;
-    const largest = Math.max(...group.map((c) => c.size));
-    if (largest <= 0) continue;
+    // LEAVE-ONE-OUT median, not the group's median.
+    //
+    // The group's own median is dragged by the file being judged, and with a
+    // handful of siblings that is the difference between "a third of a typical
+    // episode" and "a third of a typical episode that is not this one". Each
+    // file is measured against its SIBLINGS; a group of two compares each to
+    // the other, which is exactly the field case in §6 rule 11.
     for (const c of group) {
-      if (c.size < largest * TRUNCATED_FRACTION) flagged.add(c.path);
+      const others = group
+        .filter((other) => other !== c)
+        .map((other) => other.size)
+        .sort((a, b) => a - b);
+      if (others.length === 0) continue;
+      const median =
+        others.length % 2 === 1
+          ? (others[(others.length - 1) / 2] as number)
+          : ((others[others.length / 2 - 1] as number) + (others[others.length / 2] as number)) / 2;
+      if (median > 0 && c.size < median * TRUNCATED_FRACTION) flagged.add(c.path);
     }
   }
   return flagged;
+}
+
+/**
+ * Choose the keeper of a group, or none.
+ *
+ * The floor is the whole point: inside a group every member is the SAME
+ * episode, so size is meaningful evidence, and a member under a third of the
+ * largest is a partial file that must never be proposed as the copy to keep.
+ * When nothing clears the floor the group has no keeper at all — which is
+ * honest, and makes `reclaimableBytes` zero rather than inviting a bad choice.
+ */
+function electKeeper(members: DupeMember[], suggest: boolean): void {
+  for (const member of members) member.keep = false;
+  if (!suggest) return;
+  const largest = Math.max(...members.map((member) => member.size));
+  const viable = members.filter(
+    (member) => member.suspicious === null && (largest <= 0 || member.size >= largest * KEEPER_SIZE_FLOOR),
+  );
+  const best = [...viable].sort(
+    (a, b) => b.size - a.size || (b.mtime ?? 0) - (a.mtime ?? 0) || (a.path < b.path ? -1 : 1),
+  )[0];
+  if (best) best.keep = true;
 }
 
 /** Read-only. See the header. */
@@ -204,23 +299,27 @@ export async function scanDuplicates(opts: ScanOptions): Promise<DupeReport> {
   if (opts.tier !== 1) {
     opts.onProgress?.("tier 2: looking for the same episode in two releases");
     const seen = new Set(groups.flatMap((g) => g.members.map((m) => m.path)));
-    for (const { members, label } of await findSameEpisode(
-      candidates,
-      seen,
-      opts.onProgress,
-    )) {
+    const sameEpisode = await findSameEpisode(candidates, seen, opts.onProgress, suggest);
+    // Only MEDIA files that could not be read as an episode land here. A parsed
+    // file with no sibling is not a failure, and a `.zip` was never a candidate
+    // for an episode number in the first place.
+    unparsed.push(...sameEpisode.unparsed);
+    for (const { members, label } of sameEpisode.groups) {
       for (const m of members) {
         if (truncatedPaths.has(m.path)) m.suspicious = "truncated";
         if (m.suspicious) truncated.push(m.relative);
       }
       // A truncated file is never the keeper (§6 rule 11), whatever scored well.
-      if (suggest) {
-        const current = members.find((m) => m.keep);
-        if (current?.suspicious) {
-          current.keep = false;
-          const clean = members.find((m) => !m.suspicious);
-          if (clean) clean.keep = true;
-        }
+      //
+      // The re-election goes through the floor instead of taking the next clean
+      // member in array order: a flagged keeper's replacement is otherwise an
+      // arbitrary member, and an 89 MB / 300 MB / 25 MB group was observed
+      // promoting the 25 MB file to keeper at 28 % of the group's largest.
+      // `findSameEpisode` already ranked by source and resolution, so only a
+      // FLAGGED keeper is re-elected — this must not throw that ranking away.
+      const chosen = members.find((member) => member.keep);
+      if (chosen !== undefined && chosen.suspicious !== null) {
+        electKeeper(members, suggest);
       }
       groups.push(
         toGroup(
@@ -234,15 +333,12 @@ export async function scanDuplicates(opts: ScanOptions): Promise<DupeReport> {
     }
   }
 
-  // Everything the parser could not place, and every fragment found anywhere.
-  const grouped = new Set(groups.flatMap((g) => g.members.map((m) => m.path)));
+  // Every fragment found anywhere. A file that IS in a group is not a caveat,
+  // and tier 2 has already reported the media it could not read.
   for (const c of candidates) {
     if (truncatedPaths.has(c.path) && !truncated.includes(c.relative)) {
       truncated.push(c.relative);
     }
-    if (grouped.has(c.path)) continue;
-    const { reason } = await parseEpisode(c.path.split("/").pop() ?? c.path);
-    if (reason) unparsed.push(`${c.relative} — ${reason}`);
   }
 
   return {

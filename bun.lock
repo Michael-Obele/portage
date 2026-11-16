@@ -6,7 +6,6 @@
       "name": "portage",
       "dependencies": {
         "@opentui/core": "0.5.14",
-        "parse-torrent-title": "3.0.1",
         "smol-toml": "1.9.0",
         "svelte": "5.38.7",
         "valibot": "^1.5.0",
@@ -87,8 +86,6 @@
     "magic-string": ["magic-string@0.30.21", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.5" } }, "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ=="],
 
     "marked": ["marked@17.0.1", "", { "bin": { "marked": "bin/marked.js" } }, "sha512-boeBdiS0ghpWcSwoNm/jJBwdpFaMnZWRzjA6SkUMYb40SVaN1x7mmfGKp0jvexGcx+7y2La5zRZsYFZI6Qpypg=="],
-
-    "parse-torrent-title": ["parse-torrent-title@3.0.1", "", {}, "sha512-RxSx53deKlA3oGKvt291//YtKPhVpMay0oug73So1W6074xGAI0XI53l1Lc0Cd7CUtMTUEwpeNUSkdaC0CCtKQ=="],
 
     "smol-toml": ["smol-toml@1.9.0", "", {}, "sha512-hpd+HLON7HdZXqYchMM/+LaTTbdK0AU3NngIJ4KVyWbY9bfQqdL9cD+4yf6dUoU2Ap4VsU0JkQi6FxAI1B2mXQ=="],
 
