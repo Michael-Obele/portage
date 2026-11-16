@@ -61,6 +61,56 @@ export function diskSpace(path: string): DiskSpace | null {
   return { free, total };
 }
 
+/**
+ * The same reading, bounded.
+ *
+ * `diskSpace` above is synchronous on purpose for callers that only have a
+ * path, but `Bun.spawnSync` cannot be interrupted: on a wedged FUSE mount `df`
+ * blocks forever and takes the whole event loop with it, so the engine stops
+ * answering ANY command — the app looks dead because one drive is sick. This
+ * version goes through `SpawnFn`, which has a deadline and kills the child.
+ */
+export async function diskSpaceAsync(
+  spawn: (cmd: string[], opts?: { timeoutMs?: number }) => Promise<{
+    code: number;
+    stdout: string;
+  }>,
+  path: string,
+): Promise<DiskSpace | null> {
+  const res = await spawn(["df", "-B1", "--output=size,avail", path], {
+    timeoutMs: 3_000,
+  });
+  if (res.code !== 0) return null;
+  const lines = res.stdout.trim().split("\n");
+  const last = lines[lines.length - 1];
+  if (!last) return null;
+  const parts = last.trim().split(/\s+/);
+  if (parts.length < 2) return null;
+  const total = Number(parts[0]);
+  const free = Number(parts[1]);
+  if (!Number.isFinite(total) || !Number.isFinite(free)) return null;
+  return { free, total };
+}
+
+/** Resolve to `fallback` when `task` takes longer than `ms`. */
+export async function withTimeout<T>(
+  task: Promise<T>,
+  ms: number,
+  fallback: T,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+    // A pending timer must not keep the process alive on its own.
+    (timer as { unref?: () => void }).unref?.();
+  });
+  try {
+    return await Promise.race([task, deadline]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 export interface FileStat {
   size: number;
   mtimeMs: number;
@@ -119,12 +169,13 @@ export async function ensureStateDirs(
 /** Is `path` an existing directory? */
 export async function isDirectory(path: string): Promise<boolean> {
   const stat = await statSafe(path);
-  if (stat) return stat.isDir;
-  const res = Bun.spawnSync(["test", "-d", path], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  return res.exitCode === 0;
+  // "We could not read it" is not "it is a directory". The old fallback ran a
+  // SYNCHRONOUS `test -d`, and a synchronous child cannot be timed out: on a
+  // mount that wedged between the stat and the spawn it blocked the event loop
+  // for as long as the mount stayed sick — taking every command in the engine
+  // with it. A caller that needs to try harder can; this never lies and never
+  // blocks.
+  return stat?.isDir ?? false;
 }
 
 /** Move a file, falling back to copy+unlink across a device boundary. */

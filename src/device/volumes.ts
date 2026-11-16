@@ -7,7 +7,7 @@
  */
 
 import { join } from "node:path";
-import { diskSpace, isDirectory } from "../util/fs.ts";
+import { diskSpaceAsync, isDirectory, withTimeout } from "../util/fs.ts";
 import type { SpawnFn } from "../util/spawn.ts";
 
 /** One row of `lsblk` output, before any judgement about whether it is useful. */
@@ -38,9 +38,37 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-function toBlock(node: Record<string, unknown>): RawBlock {
+/** How a block device is physically attached. `RM`/`TRAN` describe the LINK. */
+export interface Link {
+  rm: boolean;
+  tran: string | null;
+}
+
+const UNPLUGGED: Link = { rm: false, tran: null };
+
+/**
+ * One node, with the link it inherits when it does not carry one itself.
+ *
+ * **`lsblk` reports `RM` and `TRAN` on the DISK row only.** A partition of a USB
+ * drive prints `RM="0"` and `TRAN=""` even though the drive it lives on is
+ * removable and connected over USB — verified against lsblk 2.39 with a real
+ * USB disk: `/dev/sda` says `TRAN="usb"`, `/dev/sda1` says `TRAN=""`. Reading
+ * the partition's own values made every external drive look internal, which is
+ * the one fact this module exists to report. So a node that carries no link of
+ * its own takes the one from the disk above it.
+ */
+function toBlock(node: Record<string, unknown>, inherited: Link): RawBlock {
   const mountpoints = Array.isArray(node.mountpoints) ? node.mountpoints : [];
   const firstArrayMount = mountpoints.find((m) => asString(m) !== null);
+  const type = asString(node.type) ?? "";
+  const own: Link = { rm: node.rm === true, tran: asString(node.tran) };
+  // A disk states its own link. Anything else inherits FIELD BY FIELD: a node
+  // that carries only half of one (a partition with `TRAN="usb"` and no `RM`)
+  // must keep the half it has and take the half it lacks, not throw both away.
+  const link: Link =
+    type === "disk"
+      ? own
+      : { rm: own.rm || inherited.rm, tran: own.tran ?? inherited.tran };
   return {
     name: asString(node.name) ?? "",
     label: asString(node.label),
@@ -49,9 +77,9 @@ function toBlock(node: Record<string, unknown>): RawBlock {
     // `MOUNTPOINT` (with --output MOUNTPOINT) is a string|null; `MOUNTPOINTS` is
     // an array. Both appear across util-linux versions, so accept either.
     mountpoint: asString(node.mountpoint) ?? asString(firstArrayMount),
-    rm: node.rm === true,
-    tran: asString(node.tran),
-    type: asString(node.type) ?? "",
+    rm: link.rm,
+    tran: link.tran,
+    type,
   };
 }
 
@@ -67,15 +95,20 @@ export function parseLsblk(json: string): RawBlock[] {
   if (!Array.isArray(roots)) return [];
 
   const out: RawBlock[] = [];
-  const walk = (nodes: unknown[]): void => {
+  const walk = (nodes: unknown[], inherited: Link): void => {
     for (const node of nodes) {
       if (typeof node !== "object" || node === null) continue;
       const record = node as Record<string, unknown>;
-      out.push(toBlock(record));
-      if (Array.isArray(record.children)) walk(record.children);
+      const block = toBlock(record, inherited);
+      out.push(block);
+      // Children inherit what this node settled on, so a disk's link reaches
+      // every partition under it (and a partition's own link wins if it has one).
+      if (Array.isArray(record.children)) {
+        walk(record.children, { rm: block.rm, tran: block.tran });
+      }
     }
   };
-  walk(roots);
+  walk(roots, UNPLUGGED);
   return out;
 }
 
@@ -173,8 +206,18 @@ async function mountOptions(
   };
 }
 
+/** Injection points, so a unit test never reads a real mount. */
+export interface ListVolumesOptions {
+  /** Defaults to the real `.portage` probe. */
+  isPortageDrive?: (mountPoint: string) => Promise<boolean>;
+}
+
 /** Every mounted volume worth offering, enriched for display and for safety. */
-export async function listVolumes(spawn: SpawnFn): Promise<Volume[]> {
+export async function listVolumes(
+  spawn: SpawnFn,
+  options: ListVolumesOptions = {},
+): Promise<Volume[]> {
+  const probePortage = options.isPortageDrive ?? isPortageDrive;
   const res = await spawn(LSBLK_ARGS, { timeoutMs: 10_000 });
   if (res.code !== 0) return [];
 
@@ -183,7 +226,11 @@ export async function listVolumes(spawn: SpawnFn): Promise<Volume[]> {
     if (!isRealVolume(block)) continue;
     const mountPoint = block.mountpoint as string;
     const fsType = block.fstype as string;
-    const space = diskSpace(mountPoint);
+    // Every probe here is BOUNDED. A wedged mount used to block the event loop
+    // inside `spawnSync`, which meant `volumes.list` never answered and every
+    // screen that reads a volume list hung with it — the app looked dead
+    // because one drive was sick.
+    const space = await diskSpaceAsync(spawn, mountPoint);
     const live = await mountOptions(spawn, mountPoint);
     volumes.push({
       device: `/dev/${block.name}`,
@@ -196,7 +243,8 @@ export async function listVolumes(spawn: SpawnFn): Promise<Volume[]> {
       removable: block.rm,
       transport: block.tran,
       readOnly: live.readOnly,
-      isPortageDrive: await isPortageDrive(mountPoint),
+      // A glob walk on a hung mount never returns; treat it as "not a portage drive".
+      isPortageDrive: await withTimeout(probePortage(mountPoint), 3_000, false),
     });
   }
   return volumes;
