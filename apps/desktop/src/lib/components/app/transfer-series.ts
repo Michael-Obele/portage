@@ -106,6 +106,36 @@ export function seriesSummary(series: RateSample[], firstVerifyAt: number | null
 	return `${text} First file verified at ${formatSeconds(firstVerifyAt)}.`;
 }
 
+/**
+ * The one sentence the chart adds to the hero.
+ *
+ * `seriesSummary` restated the instant and average rate, which the hero already
+ * prints — and it restated them from the LAST SAMPLE, which is up to a second
+ * older than the live figure. Two different averages for the same run, 150 px
+ * apart, is a contradiction a person cannot resolve. What the chart can say that
+ * the hero cannot is whether the rate is falling.
+ */
+export function seriesDrift(series: RateSample[]): string {
+	const averages = series
+		.map((sample) => sample.average)
+		.filter((value): value is number => value !== null && Number.isFinite(value));
+	if (averages.length < 2) return 'Not enough samples yet to show a trend.';
+	const from = averages[0] as number;
+	const to = averages[averages.length - 1] as number;
+	const span = formatSeconds((series[series.length - 1] as RateSample).t);
+	if (from <= 0) {
+		// Printing the current average here would be the duplicate this function
+		// exists to remove; the hero already carries it.
+		return `No starting rate to compare against — ${formatSeconds((series[series.length - 1] as RateSample).t)} of samples.`;
+	}
+	const change = ((to - from) / from) * 100;
+	const size = Math.abs(Math.round(change));
+	if (size < 5) return `Steady — the average has moved less than 5 % over ${span}.`;
+	return change < 0
+		? `Falling — the average rate is down ${size} % over ${span}.`
+		: `Rising — the average rate is up ${size} % over ${span}.`;
+}
+
 function formatSeconds(seconds: number): string {
 	if (!Number.isFinite(seconds) || seconds < 0) return DASH;
 	if (seconds < 60) return `${Math.round(seconds)} s`;

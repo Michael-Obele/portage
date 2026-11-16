@@ -21,10 +21,13 @@
 	let {
 		overall,
 		proof,
+		/** Whether the end-of-run summary has landed, so every counter is knowable. */
+		settled = true,
 		class: className
 	}: {
 		overall: Overall;
 		proof: ProofCounts;
+		settled?: boolean;
 		class?: string;
 	} = $props();
 
@@ -87,15 +90,15 @@
 	</div>
 
 	<!-- The bar repeats the percent above it, so it carries no text of its own. -->
-		<!-- shadcn's `Progress`, not a hand-built bar. It owns the ARIA contract
+	<!-- shadcn's `Progress`, not a hand-built bar. It owns the ARIA contract
 		     and the indicator transition, so a paused run and a stalled one look the
 		     same on every screen that shows a bar. The percent above already says the
 		     number, so this carries only the accessible text. -->
-		<Progress
-			value={percent}
-			aria-valuetext="{percent}% of {formatBytes(overall.bytesTotal)}"
-			class="h-2 w-full rounded-full"
-		/>
+	<Progress
+		value={percent}
+		aria-valuetext="{percent}% of {formatBytes(overall.bytesTotal)}"
+		class="h-2 w-full rounded-full"
+	/>
 
 	<dl class="grid grid-cols-2 gap-4 sm:grid-cols-4" data-numeric>
 		{#each readings as reading (reading.key)}
@@ -121,10 +124,12 @@
 
 	<div class="flex flex-col gap-2 border-t border-border pt-3">
 		<h3 class="text-label text-muted-foreground">Proof</h3>
-		<ProofStrip {proof} total={overall.filesTotal} />
-		<p class="measure text-caption text-muted-foreground">
-			Written and verified are counted from the run's own rows. Deleted and kept on phone are only
-			knowable from the engine's end-of-run summary, so they stay at zero until it arrives.
-		</p>
+		<ProofStrip {proof} total={overall.filesTotal} {settled} />
+		{#if !settled}
+			<p class="measure text-caption text-muted-foreground">
+				Not known yet: how many phone copies the engine deleted, or chose to keep. That verdict is
+				printed in the end-of-run summary, and a dash is honest until it arrives.
+			</p>
+		{/if}
 	</div>
 </section>

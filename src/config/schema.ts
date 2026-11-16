@@ -139,4 +139,9 @@ export const ALWAYS_EXCLUDED_DIRS = [
   ".Trash-1000",
   "$RECYCLE.BIN",
   "System Volume Information",
+  // Portage's own state, and its trash. The scan glob already skips dot
+  // entries, so this is belt-and-braces — but the intent should not depend on a
+  // glob flag, and the phone scan walks the same list. A dedupe run must never
+  // offer the files it moved to `.portage/trash/` as duplicates of themselves.
+  ".portage",
 ];

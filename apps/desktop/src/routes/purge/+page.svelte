@@ -23,7 +23,6 @@
 	 * both ends, which on a phone means real minutes, so it happens when the
 	 * person asks for it.
 	 */
-	import { onMount } from 'svelte';
 
 	import ConfirmSheet from '../../lib/components/app/confirm-sheet.svelte';
 	import {
@@ -51,29 +50,32 @@
 	import { ToggleGroup, ToggleGroupItem } from '../../lib/components/ui/toggle-group/index.js';
 	import type { NeedsConfirmFrame, PurgePlanFrame } from '../../lib/engine/protocol.ts';
 	import { app } from '../../lib/state/app.svelte.ts';
+	import { screens } from '../../lib/state/screens.svelte.ts';
 	import { formatBytes, plural, truncateFront } from '../../lib/util/format.ts';
 
-	/** The last plan. Every number on the screen comes from this frame. */
-	let plan = $state<PurgePlanFrame | null>(null);
 	/**
-	 * When the plan on screen was made.
+	 * The plan lives in a module store (see `lib/state/screens.svelte.ts`), so a
+	 * tab click no longer throws away a check that re-read both ends of every
+	 * file. Reads are aliases; writes go through `screen.`.
 	 *
-	 * Without it, "Check again" returning the same 15 files is indistinguishable
-	 * from a dead button — the numbers are legitimately identical when nothing
-	 * changed, so the clock is the only thing that can prove a check happened.
+	 * `plannedAt` is the clock that distinguishes "Check again" from a dead
+	 * button, and it belongs with the plan it describes.
 	 */
-	let plannedAt = $state<Date | null>(null);
+	const screen = screens.purge;
+	/** The last plan. Every number on the screen comes from this frame. */
+	const plan = $derived(screen.plan);
+	const plannedAt = $derived(screen.plannedAt);
 	/** Selected keys — never paths. Replaced, not mutated, so the UI reacts. */
-	let selection = $state<Set<string>>(new Set());
-	let planning = $state(false);
-	let applying = $state(false);
+	const selection = $derived(screen.selection);
+	const planning = $derived(screen.planning);
+	const applying = $derived(screen.applying);
 	/** Re-read both hashes instead of trusting the journal. Slower, stronger. */
-	let reRead = $state(false);
-	let failure = $state<Band | null>(null);
+	const reRead = $derived(screen.reRead);
+	const failure = $derived(screen.failure);
 	/** A failed apply leaves the selection attached to nothing live. */
-	let staleSelection = $state(false);
-	let pendingConfirm = $state<NeedsConfirmFrame | null>(null);
-	let sheetOpen = $state(false);
+	const staleSelection = $derived(screen.staleSelection);
+	const pendingConfirm = $derived(screen.pendingConfirm);
+	const sheetOpen = $derived(screen.sheetOpen);
 
 	const eligible = $derived(plan?.eligible ?? []);
 	const totals = $derived(totalsFor(selection, eligible));
@@ -150,17 +152,17 @@
 
 	async function planNow(): Promise<void> {
 		if (busy) return;
-		planning = true;
-		failure = null;
+		screen.planning = true;
+		screen.failure = null;
 		// NOT cleared here. Only a `purgePlan` frame proves the plan on screen is
 		// current; a check that throws must leave the old plan marked stale rather
 		// than re-enabling Delete against files it has already deleted.
 		try {
 			await app.port.send('purge.plan', { verifyHash: reRead });
 		} catch (error) {
-			failure = failureBand(error, 'purge');
+			screen.failure = failureBand(error, 'purge');
 		} finally {
-			planning = false;
+			screen.planning = false;
 		}
 	}
 
@@ -171,27 +173,27 @@
 	async function requestDelete(): Promise<void> {
 		const current = plan;
 		if (current === null || deleteDisabled) return;
-		applying = true;
-		failure = null;
-		pendingConfirm = null;
+		screen.applying = true;
+		screen.failure = null;
+		screen.pendingConfirm = null;
 		try {
 			await app.port.send('purge.apply', {
 				planId: current.planId,
 				keys: [...selection]
 			});
 		} catch (error) {
-			failure = failureBand(error, 'purge');
-			staleSelection = true;
+			screen.failure = failureBand(error, 'purge');
+			screen.staleSelection = true;
 		} finally {
-			applying = false;
+			screen.applying = false;
 		}
 	}
 
 	async function confirmDelete(): Promise<void> {
 		const current = plan;
 		if (current === null || applying) return;
-		applying = true;
-		failure = null;
+		screen.applying = true;
+		screen.failure = null;
 		try {
 			const answer = await app.port.send('purge.apply', {
 				planId: current.planId,
@@ -201,15 +203,15 @@
 			const outcome = purgeOutcome(answer);
 			if (outcome === null) {
 				// The engine asked again: the sheet stays open with fresh facts.
-				sheetOpen = true;
+				screen.sheetOpen = true;
 				return;
 			}
-			sheetOpen = false;
-			pendingConfirm = null;
+			screen.sheetOpen = false;
+			screen.pendingConfirm = null;
 			// The plan that was just acted on describes files that no longer exist.
 			// Mark it stale BEFORE the re-plan, so an engine that has gone away
 			// between the delete and the check cannot leave a live-looking plan.
-			staleSelection = true;
+			screen.staleSelection = true;
 
 			const deleted = outcome.deleted;
 			const failed = outcome.failed;
@@ -224,7 +226,7 @@
 					: `Deleted ${plural(deleted, 'file')} from the phone.`
 			);
 			if (failed > 0) {
-				failure = {
+				screen.failure = {
 					what: `${plural(failed, 'file')} were refused and are still on the phone.`,
 					means: `${plural(deleted, 'file')} were deleted. The engine will not delete a file it cannot vouch for, so the refused copies are untouched.`,
 					todo: 'Read the refusals below before checking again. A refused file is a reason to look, never a reason to retry.',
@@ -232,31 +234,15 @@
 				};
 			}
 		} catch (error) {
-			sheetOpen = false;
-			pendingConfirm = null;
-			failure = failureBand(error, 'purge');
-			staleSelection = true;
+			screen.sheetOpen = false;
+			screen.pendingConfirm = null;
+			screen.failure = failureBand(error, 'purge');
+			screen.staleSelection = true;
 		} finally {
-			applying = false;
+			screen.applying = false;
 		}
 	}
 
-	onMount(() =>
-		app.observeFrame((frame) => {
-			if (frame.type === 'purgePlan') {
-				// The frame, not the answer: this is the plan.
-				plan = frame;
-				plannedAt = new Date();
-				selection = new Set();
-				staleSelection = false;
-				return;
-			}
-			if (frame.type === 'needsConfirm' && frame.action === 'purge.apply') {
-				pendingConfirm = frame;
-				sheetOpen = true;
-			}
-		})
-	);
 </script>
 
 <PageHeader title="Purge" {summary}>
@@ -329,8 +315,8 @@
 						size="xs"
 						disabled={allSelected}
 						onclick={() => {
-							selection = allKeys(eligible);
-							staleSelection = false;
+							screen.selection = allKeys(eligible);
+							screen.staleSelection = false;
 						}}
 					>
 						Select all
@@ -349,8 +335,8 @@
 						<Checkbox
 							checked={selection.has(candidate.key)}
 							onCheckedChange={() => {
-								selection = toggleKey(selection, candidate.key);
-								staleSelection = false;
+								screen.selection = toggleKey(selection, candidate.key);
+								screen.staleSelection = false;
 							}}
 							aria-label={`Select ${candidate.srcPath} to delete from the phone`}
 						/>
@@ -423,23 +409,23 @@
 					onValueChange={(value) => {
 						const next = value === 'reread';
 						if (next === reRead) return;
-						reRead = next;
+						screen.setReRead(next);
 						void planNow();
 					}}
 				>
 					<ToggleGroupItem
 						value="journal"
 						class="h-7 min-w-0 rounded-[calc(var(--radius-control)-2px)] px-2 text-label tracking-normal normal-case data-[state=on]:bg-card data-[state=on]:text-foreground"
-						title="Trust the hash the transfer recorded"
+						title="Use the check recorded when each file was copied — fast"
 					>
-						Trust the journal
+						Use the copy record
 					</ToggleGroupItem>
 					<ToggleGroupItem
 						value="reread"
 						class="h-7 min-w-0 rounded-[calc(var(--radius-control)-2px)] px-2 text-label tracking-normal normal-case data-[state=on]:bg-card data-[state=on]:text-foreground"
-						title="Re-read both ends and compare before offering anything"
+						title="Read both copies now and compare them before offering anything — slower"
 					>
-						Re-read both ends
+						Re-check both copies
 					</ToggleGroupItem>
 				</ToggleGroup>
 			</div>
@@ -451,7 +437,9 @@
 					Tick a file above. Nothing is selected for you, because deleting from the phone is your
 					call and not this screen's.
 				{:else}
-					The sheet names every file before anything is deleted. The drive copy is not touched.
+					The sheet names every file before anything is deleted. <b
+						class="font-medium text-foreground">Deleting is permanent</b
+					> — the phone copy does not go to a trash folder. The drive copy is not touched.
 				{/if}
 			</p>
 
@@ -464,7 +452,7 @@
 
 {#if facts}
 	<ConfirmSheet
-		bind:open={sheetOpen}
+		bind:open={() => screen.sheetOpen, (next) => (screen.sheetOpen = next)}
 		title="Delete from the phone"
 		action="purge.apply"
 		paths={facts.paths}
@@ -475,8 +463,8 @@
 		busy={applying}
 		onconfirm={() => void confirmDelete()}
 		oncancel={() => {
-			sheetOpen = false;
-			pendingConfirm = null;
+			screen.sheetOpen = false;
+			screen.pendingConfirm = null;
 		}}
 	/>
 {/if}

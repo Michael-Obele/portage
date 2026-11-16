@@ -83,20 +83,6 @@ export function keeperReason(
   return "preferred keeper";
 }
 
-/**
- * Flag a file that is far smaller than its siblings.
- *
- * §6 rule 11: a fragment wearing an episode's name. A member under half the
- * largest size in its own group is reported, and is never eligible to be the
- * keeper — because keeping the fragment is how you lose the show.
- */
-export function markSuspicious(members: DupeMember[]): void {
-  const largest = Math.max(...members.map((m) => m.size));
-  for (const m of members) {
-    m.suspicious = largest > 0 && m.size < largest / 2 ? "truncated" : null;
-  }
-}
-
 /** Members eligible to be kept: not flagged as a problem. */
 function eligibleForKeep(members: DupeMember[]): DupeMember[] {
   const clean = members.filter((m) => m.suspicious === null);
@@ -179,7 +165,6 @@ export async function findByteIdentical(
       keep: false,
       suspicious: null,
     }));
-    markSuspicious(members);
     const keeper = suggestKeeper(eligibleForKeep(members));
     if (keeper) {
       keeper.keep = true;

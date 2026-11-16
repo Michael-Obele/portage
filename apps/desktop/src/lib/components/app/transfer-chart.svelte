@@ -23,7 +23,7 @@
 	import { DASH, formatDuration, formatRate } from '../../util/format.ts';
 	import { cn } from '../../utils.ts';
 	import { ChartContainer, type ChartConfig } from '../ui/chart/index.js';
-	import { seriesSummary, type RateSample } from './transfer-series.ts';
+	import { seriesDrift, seriesSummary, type RateSample } from './transfer-series.ts';
 
 	let {
 		series,
@@ -70,13 +70,17 @@
 	const enough = $derived(chartRows.length >= 2);
 
 	const summary = $derived(seriesSummary(series, firstVerifyAt));
+	const drift = $derived(seriesDrift(series));
 	const caption = $derived(
 		`${formatDuration(series[0]?.t ?? 0)} to ${formatDuration(series[series.length - 1]?.t ?? 0)} of the run`
 	);
 </script>
 
 <section class={cn('flex flex-col gap-2', className)}>
-	<p class="measure text-body text-foreground">{summary}</p>
+	<!-- `drift`, not `summary`: the hero above already carries the live instant
+	     and average rate, and this line used to repeat them from the last
+	     sample — one second behind — so the same run showed two averages. -->
+	<p class="measure text-body text-foreground">{drift}</p>
 
 	{#if enough}
 		<ChartContainer {config} class="aspect-auto h-44 w-full" aria-label={summary}>

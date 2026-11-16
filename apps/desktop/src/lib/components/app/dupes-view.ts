@@ -55,6 +55,13 @@ export function memberTone(member: WireDupeMember): MemberTone {
 /**
  * The default selection: every copy the engine did NOT pick as the keeper.
  *
+ * Tier 1 only. A tier-1 group is byte-identical — the copies really are the
+ * same file, so ticking the redundant one is a safe default and the action is
+ * one click. A tier-2 group is a name-and-size match ("same episode, different
+ * release"), and those copies can differ in subtitles, audio or resolution;
+ * pre-ticking a guess is how a person loses the only copy carrying their
+ * language. Tier 2 starts UNTICKED and has to be chosen on purpose.
+ *
  * The keeper arrives with `keep: true` and is deliberately left out, so the
  * obvious action is one click. It is still selectable — the engine's suggestion
  * is a suggestion, and the person may disagree.
@@ -62,6 +69,7 @@ export function memberTone(member: WireDupeMember): MemberTone {
 export function selectionFor(groups: readonly WireDupeGroup[]): Set<string> {
 	const selected = new Set<string>();
 	for (const group of groups) {
+		if (group.tier !== 1) continue;
 		for (const member of group.members) {
 			if (!member.keep) selected.add(member.key);
 		}
@@ -171,6 +179,57 @@ export function scanSentence(frame: DupesFrame): string {
 	const groups = plural(frame.groups.length, 'group');
 	const reclaimable = formatBytes(frame.reclaimableBytes);
 	return `Scanned ${files} · ${bytes}: ${groups} · ${reclaimable} reclaimable.`;
+}
+
+/**
+ * One reason, and how many files wore it.
+ *
+ * `unparsed` entries arrive from the engine as `"path — reason"`. Printing them
+ * one per row is what made this screen useless on a real drive: an archive of
+ * 7 500 videos produced thousands of lines for six distinct reasons, so the
+ * person saw a wall and learned nothing. Grouping by the reason turns that wall
+ * into a short list of things that actually went wrong.
+ */
+export interface UnparsedGroup {
+	reason: string;
+	count: number;
+	/** The first few paths, so the reason is checkable. */
+	examples: string[];
+}
+
+/** How many paths to show under a reason before saying "and N more". */
+const EXAMPLES_PER_REASON = 3;
+
+/**
+ * Group the engine's `unparsed` lines by their reason.
+ *
+ * The engine writes `${path} — ${reason}`. **A real filename may contain that
+ * separator; the engine's reasons never do** (they are fixed sentences —
+ * "no episode number in the filename"). So the LAST separator is the
+ * delimiter, and splitting on the first would cut a real path in half:
+ * `Master your Pixel 10 Pro camera — My 5 essential tips! [id].webm` is one
+ * file on the archive this screen was built for.
+ *
+ * Residual: a reason that quotes the filename (`"<stem>" is not a show name`)
+ * could carry a separator of its own. The wire field is still one string; if
+ * that ever bites, it should become `{ path, reason }`.
+ */
+export function groupUnparsed(unparsed: readonly string[]): UnparsedGroup[] {
+	const byReason = new Map<string, { count: number; examples: string[] }>();
+	for (const entry of unparsed) {
+		const trimmed = entry.trim();
+		if (trimmed === '') continue;
+		const cut = trimmed.lastIndexOf(' — ');
+		const path = cut === -1 ? trimmed : trimmed.slice(0, cut);
+		const reason = cut === -1 ? 'no reason given' : trimmed.slice(cut + 3).trim();
+		const slot = byReason.get(reason) ?? { count: 0, examples: [] };
+		slot.count += 1;
+		if (slot.examples.length < EXAMPLES_PER_REASON) slot.examples.push(path);
+		byReason.set(reason, slot);
+	}
+	return [...byReason.entries()]
+		.map(([reason, slot]) => ({ reason, count: slot.count, examples: slot.examples }))
+		.sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason));
 }
 
 // --- the confirm round-trip -------------------------------------------------

@@ -95,9 +95,15 @@ export function planSentence(plan: PurgePlanFrame | null): string {
 	return `The drive already holds a verified copy of ${plan.eligible.length === 1 ? 'this file' : 'these files'}. Deleting them frees the phone and leaves the drive untouched.`;
 }
 
-/** How the engine proved it: a recorded hash, or one it re-read. */
+/**
+ * How the engine proved the drive copy, in words a person can act on.
+ *
+ * "recorded hash" and "re-read hash" are the engine's mechanism, not the
+ * person's question. The question is "was this checked, and when?" — so say
+ * that. The distinction still matters and is still visible.
+ */
 export function proofWord(candidate: WirePurgeCandidate): string {
-	return candidate.proof === 'journal-hash' ? 'recorded hash' : 're-read hash';
+	return candidate.proof === 'journal-hash' ? 'checked when copied' : 'checked just now';
 }
 
 /** Why a route is worth showing in the refused list, in one phrase. */

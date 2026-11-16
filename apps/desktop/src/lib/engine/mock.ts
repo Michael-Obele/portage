@@ -662,7 +662,18 @@ export function mockDupes(): DupesFrame {
 		scannedFiles: 3_412,
 		scannedBytes: 1_402_000_000_000,
 		truncated: [`${base}/[SubsPlease] Frieren - 04 (1080p) [C3D4E5F6].mkv.part`],
-		unparsed: [`${base}/Bonus/OST [FLAC].7z`, `${base}/Bonus/artwork.zip`]
+		// The engine reports only MEDIA files that could not be read as an
+		// episode, and each line is "path — reason". Two reasons here, with
+		// repeats, so the screen's grouping is exercised rather than its
+		// row-count.
+		unparsed: [
+			`${base}/Bonus/NCED 01 [1080p].mkv — no episode number in the filename`,
+			`${base}/Bonus/NCOP 02 [1080p].mkv — no episode number in the filename`,
+			`${base}/Bonus/PV [1080p].mkv — no episode number in the filename`,
+			`${base}/S01 SP [1080p].mkv — no episode number in the filename`,
+			`${base}/Frieren 01-12 [1080p].mkv — "01-12" is a range of episodes, not one episode`,
+			`${base}/[Group] EP.1 1080p.mkv — the filename has no show name left once tags are removed`
+		]
 	};
 }
 

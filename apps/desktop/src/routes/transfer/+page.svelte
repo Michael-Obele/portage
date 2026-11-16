@@ -29,6 +29,7 @@
 	import TransferHero from '../../lib/components/app/transfer-hero.svelte';
 	import TransferRows from '../../lib/components/app/transfer-rows.svelte';
 	import { failureBand, type Band } from '../../lib/components/app/transfer-band.ts';
+	import { browserStore, consentGiven } from '../../lib/components/app/pull-consent.ts';
 	import {
 		deviceLabel,
 		filtersFromIntent,
@@ -50,17 +51,26 @@
 	import { plural } from '../../lib/util/format.ts';
 	import { app } from '../../lib/state/app.svelte.ts';
 	import { run } from '../../lib/state/run.svelte.ts';
+	import { screens } from '../../lib/state/screens.svelte.ts';
 
-	let starting = $state(false);
-	let startFailure = $state<Band | null>(null);
-	let nothingToMove = $state(false);
+	/**
+	 * Everything except the clock lives in a module store (see
+	 * `lib/state/screens.svelte.ts`), so leaving this tab and coming back shows
+	 * the same run instead of an empty screen.
+	 *
+	 * `now` stays local on purpose: it is a ticking value, not state to keep.
+	 */
+	const screen = screens.transfer;
+	const starting = $derived(screen.starting);
+	const startFailure = $derived(screen.startFailure);
+	const nothingToMove = $derived(screen.nothingToMove);
 	/** Real filenames from the plan, so the starting skeleton is not anonymous. */
-	let startingNames = $state<string[]>([]);
+	const startingNames = $derived(screen.startingNames);
 	/** The samples live in `run` so the summary can draw the finished run too. */
 	const series: RateSample[] = $derived(run.series);
-	let firstVerifyAt = $state<number | null>(null);
+	const firstVerifyAt = $derived(screen.firstVerifyAt);
 	let now = $state(Date.now());
-	let busy = $state(false);
+	const busy = $derived(screen.busy);
 
 	const view = $derived(run.view);
 	const intent: PullIntent | null = $derived(parseIntent(page.url.search));
@@ -80,6 +90,39 @@
 	const deviceLost = $derived(view.devices.some((device) => !device.ready));
 	const views = $derived(rowViews(view.rows, now));
 	const stalled = $derived(stalledSentence(views));
+
+	/**
+	 * What the engine is doing right now.
+	 *
+	 * `run.announcement` is the screen-reader string: produced on events, and
+	 * throttled to one every five seconds so a reader is not spammed. That also
+	 * means it is EMPTY for the whole first file, which is why the old fallback
+	 * — "Waiting for the first frame." — sat underneath a hero visibly counting
+	 * bytes and a 6 % progress bar. When there is nothing to announce, say what
+	 * the numbers already show instead of contradicting them.
+	 */
+	const statusLine = $derived.by((): string => {
+		// Terminal and paused states outrank the announcement. The announcement is
+		// only refreshed when frames arrive, so after the engine dies it keeps
+		// printing the last "Copying…" sentence forever — the one case where a
+		// stale line actively misleads. The wording here is deliberately not the
+		// header's: the header states the fact, this line states its consequence.
+		if (interrupted) return 'Stopped mid-run — no more frames are arriving.';
+		if (ended) return 'Nothing further will change.';
+		if (view.overall.paused) {
+			return 'Paused. The file in flight finished; nothing new starts until you resume.';
+		}
+		if (run.announcement !== '') return run.announcement;
+		if (view.overall.bytesDone > 0) {
+			const files =
+				view.overall.filesTotal > 0
+					? ` — ${view.overall.filesDone} of ${view.overall.filesTotal} files finished`
+					: '';
+			return `Copying${files}.`;
+		}
+		if (starting) return 'Starting the run…';
+		return 'Connected. Waiting for the first byte.';
+	});
 
 	const intentText = $derived.by(() => {
 		if (intent === null) return null;
@@ -118,29 +161,43 @@
 	 * would wipe the first frames of the run just begun.
 	 */
 	async function begin(wanted: PullIntent): Promise<void> {
-		starting = true;
-		startFailure = null;
-		nothingToMove = false;
+		// The promise is made on the Plan screen. This URL can be reached without
+		// ever having seen it — a bookmark, a reload, a Back button — so an
+		// unacknowledged delete-after-verify run goes back to the screen that
+		// explains it rather than starting one. A fixture is exempt: it cannot
+		// delete anything, and gating it would make the screen unreachable from
+		// `?mock=`, which is how it gets tested.
+		if (
+			!app.usingMock &&
+			wanted.mode === 'delete-after-verify' &&
+			!consentGiven(browserStore())
+		) {
+			void goto('/plan');
+			return;
+		}
+		screen.starting = true;
+		screen.startFailure = null;
+		screen.nothingToMove = false;
 		try {
-			startingNames = [];
+			screen.startingNames = [];
 			await app.port.send('plan', planArgs(filtersFromIntent(wanted), wanted.exclude));
 			// The `plan` frame landed while that answer was in flight — the engine
 			// always writes it first — and the observer below filled this in, so an
 			// empty list is a real answer: there is nothing to copy.
 			if (startingNames.length === 0) {
-				nothingToMove = true;
+				screen.nothingToMove = true;
 				return;
 			}
 			await app.port.send('pull.start', pullStartArgs(wanted));
 		} catch (error) {
-			startFailure = bandFrom(error);
+			screen.startFailure = bandFrom(error);
 		} finally {
-			starting = false;
+			screen.starting = false;
 		}
 	}
 
 	async function control(type: 'pull.pause' | 'pull.resume' | 'pull.stop'): Promise<void> {
-		busy = true;
+		screen.busy = true;
 		try {
 			await app.port.send(type);
 		} catch (error) {
@@ -149,14 +206,14 @@
 			const band = bandFrom(error);
 			app.pushNotice('error', `${band.what} ${band.todo}`);
 		} finally {
-			busy = false;
+			screen.busy = false;
 		}
 	}
 
 	onMount(() => {
 		const stopFrames = app.observeFrame((frame) => {
 			if (frame.type === 'plan' && starting) {
-				startingNames = frame.plan.toTransfer.map((file) => file.candidate.srcPath);
+				screen.startingNames = frame.plan.toTransfer.map((file) => file.candidate.srcPath);
 			}
 		});
 
@@ -167,7 +224,7 @@
 			const sample = sampleOf(run.view.overall);
 			if (sample !== null) {
 				run.pushSample(sample);
-				firstVerifyAt = nextFirstVerify(firstVerifyAt, run.view.proof.verified, sample.t);
+				screen.firstVerifyAt = nextFirstVerify(firstVerifyAt, run.view.proof.verified, sample.t);
 			}
 			run.refreshAnnouncement(now);
 		}, SAMPLE_INTERVAL_MS);
@@ -187,11 +244,28 @@
 	 * open the screen on a failure band it has not earned.
 	 */
 	let began = $state(false);
+
+	/**
+	 * The intent URL this screen has already acted on.
+	 *
+	 * `began` is per-mount so a fresh visit re-evaluates, but the marker is not:
+	 * coming BACK to a URL whose pull has already run must not silently start it
+	 * again. The Plan screen clears this marker when a person actually asks for a
+	 * new pull, so a real click is never mistaken for a back-navigation.
+	 */
 	$effect(() => {
 		if (began) return;
 		if (app.connection === 'connecting') return;
 		began = true;
 		if (intent === null) return;
+		// A URL is not a click: a bookmark, a reload or a Back button must not
+		// start a copy. The Plan screen mints a one-shot token when Pull is
+		// pressed; anything else is offered as a button below.
+		if (!screen.takeIntent(page.url.search, app.usingMock)) {
+			screen.awaitingStart = page.url.search;
+			return;
+		}
+		screen.awaitingStart = null;
 		// One run at a time: the engine refuses a second one, and a reload must
 		// not restart a run that is already going.
 		if (viewIsLive(run.view)) return;
@@ -201,7 +275,7 @@
 		// precede answers, so clearing after `pull.start` resolves wipes the new
 		// run's first frames.
 		run.beginRun();
-		firstVerifyAt = null;
+		screen.firstVerifyAt = null;
 		void begin(intent);
 	});
 </script>
@@ -241,6 +315,17 @@
 			action="Build a plan"
 			onselect={() => void goto('/plan')}
 		/>
+	{:else if !live && !ended && screen.awaitingStart !== null && startFailure === null}
+		<!-- The URL asked for a pull but nobody pressed anything: a link, a
+		     reload, a Back button. Offer the action instead of taking it. -->
+		<EmptyState
+			title="Ready when you are"
+			body={`${intentText ?? 'This link names a pull.'} Nothing has been copied. Opening a link never starts a copy on its own.`}
+			action={intent?.mode === 'keep' ? 'Copy only' : 'Pull and free the phone'}
+			onselect={() => {
+				if (intent !== null) void begin(intent);
+			}}
+		/>
 	{:else if !live && !ended && intent === null}
 		<EmptyState
 			title="No transfer is running"
@@ -251,23 +336,27 @@
 	{:else if !live && !ended && startFailure === null}
 		<SkeletonRows rows={4} label="Starting the run" />
 	{:else}
-		<TransferHero overall={view.overall} proof={view.proof} />
+		<TransferHero overall={view.overall} proof={view.proof} settled={ended} />
 
 		<!-- Visible only. The window's one live region is in the layout, fed by
 		     this same string and throttled to one announcement every five
 		     seconds; a second `aria-live` here would say every status change
 		     twice. Never bytes: a screen reader must not be read a 10 Hz
-		     counter. -->
+		     counter.
+
+		     The fallback is NOT "waiting for the first frame" by default. An
+		     announcement is only produced on events, so mid-file the string is
+		     still empty while the hero above is visibly counting bytes — the
+		     screen contradicted itself. When there is nothing to announce, say
+		     what the numbers already show. -->
 		<p class="flex flex-wrap items-baseline gap-2 text-body text-foreground">
 			<span class="text-muted-foreground">Status</span>
-			<span>{run.announcement === '' ? 'Waiting for the first frame.' : run.announcement}</span>
+			<span>{statusLine}</span>
 		</p>
 
 		{#if stalled}
 			<p class="measure text-body text-state-failed">{stalled}</p>
 		{/if}
-
-		<TransferChart {series} {firstVerifyAt} />
 
 		<TransferControls
 			paused={view.overall.paused}
@@ -281,11 +370,7 @@
 		/>
 
 		{#if starting && view.rows.length === 0}
-			<div
-				class="rounded-surface border border-border"
-				role="status"
-				aria-label="Starting the run"
-			>
+			<div class="rounded-surface border border-border" role="status" aria-label="Starting the run">
 				{#if startingNames.length === 0}
 					<SkeletonRows rows={6} label="Building the plan" />
 				{:else}
@@ -306,5 +391,19 @@
 		{:else}
 			<TransferRows rows={views} loading={false} />
 		{/if}
+
+		<!-- The chart is a diagnostic, not the headline: a two-second-old run
+		     does not need a line graph above the list of files it is copying.
+		     It used to sit between the hero and the rows, which pushed the one
+		     question this screen answers — what is it doing right now — below
+		     the fold. Collapsed by default, and still one keyboard press away. -->
+		<details class="rounded-surface border border-border bg-card px-4 py-3">
+			<summary class="cursor-pointer text-label text-muted-foreground">
+				Throughput chart — instant versus average over the run
+			</summary>
+			<div class="pt-3">
+				<TransferChart {series} {firstVerifyAt} />
+			</div>
+		</details>
 	{/if}
 </div>

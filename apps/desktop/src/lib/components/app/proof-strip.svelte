@@ -18,18 +18,29 @@
 		proof,
 		/** Files in this run, from the frame. Never a number this component made up. */
 		total,
+		/**
+		 * Whether the engine's end-of-run summary has arrived.
+		 *
+		 * `written` and `verified` are counted from the run's own rows, so they are
+		 * true the moment a row says so. `deleted` and `kept on phone` are only
+		 * knowable from the summary — before it lands they are not zero, they are
+		 * UNKNOWN, and a zero reads as "nothing was deleted", which is a different
+		 * and much more alarming statement.
+		 */
+		settled = true,
 		class: className
 	}: {
 		proof: ProofCounts;
 		total: number;
+		settled?: boolean;
 		class?: string;
 	} = $props();
 
 	const counters = $derived([
-		{ key: 'written', word: 'written', value: proof.written },
-		{ key: 'verified', word: 'verified', value: proof.verified },
-		{ key: 'deleted', word: 'deleted', value: proof.deleted },
-		{ key: 'kept', word: 'kept on phone', value: proof.kept }
+		{ key: 'written', word: 'written', value: proof.written, known: true },
+		{ key: 'verified', word: 'verified', value: proof.verified, known: true },
+		{ key: 'deleted', word: 'deleted', value: proof.deleted, known: settled || proof.deleted > 0 },
+		{ key: 'kept', word: 'kept on phone', value: proof.kept, known: settled || proof.kept > 0 }
 	]);
 
 	const denominator = $derived(Math.max(1, total, proof.written, proof.verified));
@@ -41,7 +52,9 @@
 
 	const summary = $derived(
 		`${proof.written} written, ${proof.verified} verified, ` +
-			`${proof.deleted} deleted from the phone, ${proof.kept} kept on the phone, ` +
+			(settled
+				? `${proof.deleted} deleted from the phone, ${proof.kept} kept on the phone, `
+				: 'deleted and kept on the phone not known until the run summary, ') +
 			`of ${total} files.`
 	);
 </script>
@@ -71,7 +84,9 @@
 		{#each counters as counter (counter.key)}
 			<div class="flex min-w-0 flex-col">
 				<dt class="truncate text-caption text-muted-foreground">{counter.word}</dt>
-				<dd class="font-mono text-lead text-foreground tabular-nums">{counter.value}</dd>
+				<dd class="font-mono text-lead text-foreground tabular-nums">
+					{counter.known ? counter.value : '—'}
+				</dd>
 			</div>
 		{/each}
 	</dl>

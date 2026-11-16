@@ -236,6 +236,11 @@
    order, and this is the only rule in the file that needs it. */
 [data-sonner-toaster] {
 	z-index: 40 !important;
+	/* Plan, Purge and Duplicates all pin their action bar to the bottom of the
+	   window, and a bottom-right toast landed straight on top of it — covering
+	   the "Pull and free the phone" caption and, on Duplicates, the move button.
+	   Lifting the stack above that bar keeps no-toast over no-action. */
+	bottom: 5rem !important;
 }
 
 @layer base {

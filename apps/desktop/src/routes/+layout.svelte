@@ -37,6 +37,8 @@
 	} from '../lib/components/ui/dialog/index.js';
 	import { app, type ThemeChoice } from '../lib/state/app.svelte.ts';
 	import { run } from '../lib/state/run.svelte.ts';
+	import { screens } from '../lib/state/screens.svelte.ts';
+	import { startScreenRouting } from '../lib/state/screens-routing.ts';
 	import { cn } from '../lib/utils.ts';
 	import type { LayoutProps } from './$types';
 
@@ -95,10 +97,15 @@
 		// The run store watches frames through the app rather than opening a
 		// second set of Tauri listeners: one window, one connection.
 		const stopObserving = app.observeFrame((frame) => run.applyFrame(frame));
+		// Screens keep their reports in a module store, so a scan that finishes
+		// while another tab is open still lands somewhere. Started BEFORE the
+		// connection so the first frames are not missed.
+		const stopScreens = startScreenRouting();
 		void app.start(browser ? location.search : '');
 
 		return () => {
 			stopObserving();
+			stopScreens();
 			void app.stop();
 		};
 	});
@@ -107,6 +114,26 @@
 	// 10 Hz frame rate cannot flood a screen reader.
 	$effect(() => {
 		run.refreshAnnouncement();
+	});
+
+	/**
+	 * A report outlives a tab switch, but not the engine that issued it.
+	 *
+	 * A `scanId`/`planId` is only valid in the process that issued it, so after a
+	 * restart the old numbers look usable and every action on them is refused.
+	 * Clearing on `stopped` turns that into an honest empty screen. Preferences
+	 * (filters, scope, the purge toggle) are inputs, not facts, and survive.
+	 */
+	$effect(() => {
+		// `restarting` as well as `stopped`: a restart replaces the child process
+		// silently (Rust suppresses the old child's exit), so waiting for
+		// `stopped` meant the dead ids were never cleared.
+		if (app.connection === 'stopped' || app.connection === 'restarting') {
+			screens.reset();
+			// The run view is engine-owned too: an unfinished run from the old
+			// process would otherwise look live forever.
+			run.reset();
+		}
 	});
 
 	function disarmChord(): void {

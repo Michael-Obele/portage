@@ -181,7 +181,7 @@ tracked status surface.
 
 | #       | Task                                                                             | State | Note                                                                                                             |
 | ------- | -------------------------------------------------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------- |
-| M5-1    | Filename parser → `EpisodeKey`                                                   | `[x]` | `parse-torrent-title@3.0.1` in `src/dedupe/tier2.ts` (no `src/anime/` module; parsing lives in dedupe)           |
+| M5-1    | Filename parser → `EpisodeKey`                                                   | `[x]` | `src/dedupe/naming.ts` cascade (2026-11-16; the `parse-torrent-title` dependency was removed — it read 785 of 7 567 real files, 10 %) in `src/dedupe/tier2.ts` (no `src/anime/` module; parsing lives in dedupe)           |
 | M5-2    | Title normalisation                                                              | `[x]` |                                                                                                                  |
 | M5-3    | Group key `(show, season ?? ABSOLUTE, episode)`; unparsed never guessed          | `[x]` |                                                                                                                  |
 | M5-4    | Scoring heuristic, advisory, with a printed reason                               | `[x]` |                                                                                                                  |

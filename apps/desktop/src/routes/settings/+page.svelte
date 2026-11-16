@@ -20,6 +20,7 @@
 	import { Label } from '../../lib/components/ui/label/index.js';
 	import { EngineFailure } from '../../lib/engine/client.ts';
 	import { app, scalePercent, UI_SCALES, type ThemeChoice } from '../../lib/state/app.svelte.ts';
+	import { screens } from '../../lib/state/screens.svelte.ts';
 	import { cn } from '../../lib/utils.ts';
 
 	const THEMES: ReadonlyArray<{ value: ThemeChoice; label: string }> = [
@@ -43,10 +44,16 @@
 	 * `null` while the field is pristine, so the engine's value shows through
 	 * and a `config` frame that arrives after mount still lands. Typing sets it.
 	 */
-	let draft = $state<string | null>(null);
-	let saving = $state(false);
-	let saveError = $state<string | null>(null);
-	let saveFix = $state('');
+	/**
+	 * The unsaved draft lives in a module store (see
+	 * `lib/state/screens.svelte.ts`). It is deliberately NOT persisted to disk: an
+	 * adb override typed a week ago should not reappear as a pending edit.
+	 */
+	const screen = screens.settings;
+	const draft = $derived(screen.draft);
+	const saving = $derived(screen.saving);
+	const saveError = $derived(screen.saveError);
+	const saveFix = $derived(screen.saveFix);
 
 	const saved = $derived(app.config?.adb_path ?? '');
 	const value = $derived(draft ?? saved);
@@ -82,37 +89,37 @@
 	});
 
 	async function save(): Promise<void> {
-		saving = true;
-		saveError = null;
-		saveFix = '';
+		screen.saving = true;
+		screen.saveError = null;
+		screen.saveFix = '';
 		try {
 			// The engine writes its own config file; the app never touches it.
 			await app.setConfig('adb_path', value.trim());
-			draft = null;
+			screen.draft = null;
 			// adb is resolved once per engine process, so the new path only takes
 			// effect on the next one. Restart now rather than leave a field that
 			// looks applied and is not.
 			await app.restartEngine();
 		} catch (error) {
-			saveError = error instanceof Error ? error.message : 'The engine did not answer.';
-			saveFix = error instanceof EngineFailure ? error.fix : '';
+			screen.saveError = error instanceof Error ? error.message : 'The engine did not answer.';
+			screen.saveFix = error instanceof EngineFailure ? error.fix : '';
 		} finally {
-			saving = false;
+			screen.saving = false;
 		}
 	}
 
 	async function recheck(): Promise<void> {
 		// A restart swaps the child process; Save and Revert must not race it.
-		saving = true;
-		saveError = null;
-		saveFix = '';
+		screen.saving = true;
+		screen.saveError = null;
+		screen.saveFix = '';
 		try {
 			await app.restartEngine();
 		} catch (error) {
-			saveError = error instanceof Error ? error.message : 'The engine did not answer.';
-			saveFix = error instanceof EngineFailure ? error.fix : '';
+			screen.saveError = error instanceof Error ? error.message : 'The engine did not answer.';
+			screen.saveFix = error instanceof EngineFailure ? error.fix : '';
 		} finally {
-			saving = false;
+			screen.saving = false;
 		}
 	}
 
@@ -125,14 +132,14 @@
 	 * but no `config` at startup, so a direct load of this screen left the adb
 	 * field disabled for good: `canSave` needs a config to compare against.
 	 */
-	let loaded = $state(false);
+	const loaded = $derived(screen.loaded);
 	$effect(() => {
 		if (loaded) return;
 		if (app.connection !== 'connected' && app.connection !== 'mock') return;
-		loaded = true;
+		screen.loaded = true;
 		void app.loadConfig().catch((error: unknown) => {
-			saveError = error instanceof Error ? error.message : 'The engine did not answer.';
-			saveFix = error instanceof EngineFailure ? error.fix : '';
+			screen.saveError = error instanceof Error ? error.message : 'The engine did not answer.';
+			screen.saveFix = error instanceof EngineFailure ? error.fix : '';
 		});
 	});
 </script>
@@ -172,7 +179,7 @@
 				id="adb-path"
 				class="h-8 rounded-control border border-input bg-background px-2 font-mono text-label md:text-label"
 				placeholder="Leave empty to search PATH and the SDK folders"
-				bind:value={() => value, (next) => (draft = next)}
+				bind:value={() => value, (next) => (screen.draft = next)}
 				disabled={!canSave || saving}
 				spellcheck={false}
 				autocomplete="off"
@@ -207,7 +214,7 @@
 				class={CONTROL}
 				size="sm"
 				disabled={!dirty || saving}
-				onclick={() => (draft = null)}
+				onclick={() => (screen.draft = null)}
 			>
 				Revert
 			</Button>

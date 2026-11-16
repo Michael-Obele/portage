@@ -110,6 +110,172 @@ describe("§6 rule 11 — truncation is a problem, not a duplicate", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  test("a smaller RESOLUTION is a different release, not a fragment", async () => {
+    // The bug this pins: a healthy 720p copy sat beside 1080p siblings and was
+    // reported as truncated, because size alone was treated as evidence. On a
+    // real drive that produced six false flags.
+    const root = await drive();
+    try {
+      await put(root, "Anime/Show S1/Show S1 - E01 [1080p].mkv", 900_000);
+      await put(root, "Anime/Show S1/Show S1 - E02 [1080p].mkv", 900_000);
+      await put(root, "Anime/Show S1/Show S1 - E03 [720p].mkv", 300_000);
+      const report = await scanDuplicates({ roots: [root] });
+      expect(report.truncated).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("the documented 89-vs-300 case is flagged (a 3.4x gap, not a 10x one)", async () => {
+    // The field evidence in §6 rule 11, at its real ratio. A 10x gap passes any
+    // naive rule; this one is what makes the leave-one-out median necessary.
+    const root = await drive();
+    try {
+      await put(root, "Anime/Show.S01E13.1080p.WEB-DL.mkv", 89_000);
+      await put(root, "Anime/Show.S01E17.1080p.WEB-DL.mkv", 300_000);
+      const report = await scanDuplicates({ roots: [root] });
+      expect(report.truncated).toContain("Anime/Show.S01E13.1080p.WEB-DL.mkv");
+      expect(report.truncated).not.toContain("Anime/Show.S01E17.1080p.WEB-DL.mkv");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a resolution stated by the FOLDER still separates the classes", async () => {
+    // `Show [720p]/Show - 01.mkv` is a normal anime-library shape; the files
+    // name no resolution at all, so reading only the basename put them in one
+    // bucket and flagged the 720p copy.
+    const root = await drive();
+    try {
+      await put(root, "Anime/Show [1080p]/Show - 01.mkv", 300_000);
+      await put(root, "Anime/Show [1080p]/Show - 02.mkv", 300_000);
+      await put(root, "Anime/Show [720p]/Show - 01.mkv", 100_000);
+      const report = await scanDuplicates({ roots: [root] });
+      expect(report.truncated).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a fragment is never the keeper, even when its score wins", async () => {
+    // The invariant, and the reason it cannot live only in the cross-scan
+    // sweep: the 1080p file is the ONLY member of its resolution class, so
+    // nothing ever compared it. It is a partial download at a third of the
+    // 720p copy, and 1080p outranks 720p — so without this rule the complete
+    // copy is the one offered for the trash.
+    const root = await drive();
+    try {
+      const fragment = await put(root, "Anime/Show.S01E05.1080p.WEB-DL.mkv", 90_000);
+      const complete = await put(root, "Anime/Show.S01E05.720p.WEB-DL.mkv", 300_000);
+      const report = await scanDuplicates({ roots: [root], tier: 2 });
+      const group = report.groups[0];
+      expect(group).toBeDefined();
+      const keeper = group?.members.find((m) => m.keep);
+      expect(keeper?.path).toBe(complete);
+      expect(group?.members.find((m) => m.path === fragment)?.keep).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("re-electing after a flag never promotes a sub-floor member", async () => {
+    // The 1080p copy is flagged by the sweep (a 300 MB sibling in its class), so
+    // the group re-elects. Its only remaining member is a 25 MB 720p copy at 28 %
+    // of the group's largest — the old re-election took the next clean member in
+    // array order and made THAT the keeper.
+    const root = await drive();
+    try {
+      await put(root, "Show [1080p]/Show.S01E01.1080p.WEB-DL.mkv", 89_000);
+      await put(root, "Show [1080p]/Show.S01E02.1080p.WEB-DL.mkv", 300_000);
+      const tiny = await put(root, "Show [720p]/Show.S01E01.720p.WEB-DL.mkv", 25_000);
+      const report = await scanDuplicates({ roots: [root], tier: 2 });
+      expect(report.truncated).toContain("Show [1080p]/Show.S01E01.1080p.WEB-DL.mkv");
+      for (const group of report.groups) {
+        const keeper = group.members.find((m) => m.keep);
+        expect(keeper?.path).not.toBe(tiny);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("--no-auto proposes no keeper for a tier-2 group either", async () => {
+    const root = await drive();
+    try {
+      await put(root, "Anime/Show.S01E05.1080p.WEB-DL.mkv", 300_000);
+      await put(root, "Anime/Show.S01E05.1080p.BluRay.mkv", 320_000);
+      const report = await scanDuplicates({ roots: [root], tier: 2, suggest: false });
+      expect(report.groups).toHaveLength(1);
+      expect(report.groups[0]?.members.filter((m) => m.keep)).toHaveLength(0);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("two fragments cannot outvote one complete copy", async () => {
+    const root = await drive();
+    try {
+      await put(root, "Anime/Show.S01E05.1080p.WEB-DL.a.mkv", 90_000);
+      await put(root, "Anime/Show.S01E05.1080p.WEB-DL.b.mkv", 95_000);
+      const complete = await put(root, "Anime/Show.S01E05.1080p.HDTV.mkv", 300_000);
+      const report = await scanDuplicates({ roots: [root], tier: 2 });
+      const keeper = report.groups[0]?.members.find((m) => m.keep);
+      expect(keeper?.path).toBe(complete);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a legitimately small encode in a wide spread is not flagged", async () => {
+    // The real case: one 1080p [Dual] season ran 144 MB — 378 MB. That is a
+    // 2.6x spread of ordinary encodes, not damage, and the smallest file missed
+    // a 50 % test by 53 KB. A fragment is a THIRD of a typical sibling or less.
+    const root = await drive();
+    try {
+      // The same RATIOS at a thousandth of the bytes: only the ratios matter,
+      // and writing 3.5 GB to exercise a comparison would be absurd.
+      const sizes = [144, 192, 213, 249, 251, 276, 289, 294, 295, 301, 302, 341, 378];
+      for (let i = 0; i < sizes.length; i += 1) {
+        const episode = String(13 + i).padStart(2, "0");
+        await put(
+          root,
+          `Anime/Fire Force S03/Fire Force S03 - E${episode} [Dual] 1080p.mkv`,
+          (sizes[i] as number) * 1_000,
+        );
+      }
+      const report = await scanDuplicates({ roots: [root] });
+      expect(report.truncated).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a non-media file is never called a fragment of its media sibling", async () => {
+    // A thumbnail beside its audio track shares a stem and is far smaller; it is
+    // not an episode, so the truncation sweep must not look at it at all.
+    const root = await drive();
+    try {
+      await put(root, "Audio/Talk [ABC].opus", 900_000);
+      await put(root, "Audio/Talk [ABC].png", 30_000);
+      const report = await scanDuplicates({ roots: [root] });
+      expect(report.truncated).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a fragment WITHIN one resolution is still flagged", async () => {
+    const root = await drive();
+    try {
+      await put(root, "Anime/Show S1/Show S1 - E01 [1080p].mkv", 900_000);
+      await put(root, "Anime/Show S1/Show S1 - E02 [1080p].mkv", 90_000);
+      const report = await scanDuplicates({ roots: [root] });
+      expect(report.truncated).toContain("Anime/Show S1/Show S1 - E02 [1080p].mkv");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("§5 — tier 2 groups what it can and never guesses the rest", () => {
@@ -125,46 +291,57 @@ describe("§5 — tier 2 groups what it can and never guesses the rest", () => {
       await put(root, "Anime/Frieren.S01E08.1080p.WEB-DL.mkv", 400_000);
       const report = await scanDuplicates({ roots: [root], tier: 2 });
       const labels = report.groups.map((g) => g.label);
-      expect(labels).toContain('S01E07 "frieren"');
-      expect(labels).not.toContain('S01E08 "frieren"');
+      expect(labels).toContain('S01E07 "Frieren"');
+      // Two different episodes never meet, whatever their titles say.
+      expect(labels.some((label) => (label ?? "").includes("S01E08"))).toBe(false);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
   });
 
-  test("an abbreviated title is left alone, never guessed", async () => {
+  test("an abbreviated title groups only with itself, never with a spelled-out name", async () => {
     const root = await drive();
     try {
-      // `hrs` is Higehiro. No parser can know that, so it must not be grouped.
+      // `hrs` is Higehiro, and no parser can know that. What the cascade can do
+      // is refuse to MERGE the two spellings — which is the only outcome that
+      // could delete the wrong file. Grouping `hrs` with `hrs` is safe, and
+      // leaving it out was throwing away real duplicates.
       await put(
         root,
         "Anime/hrs.s01e01.br720p.x264.400mb-pahe.in.mkv",
         400_000,
       );
       await put(root, "Anime/hrs.s01e01.1080p.x264.900mb.mkv", 900_000);
+      await put(root, "Anime/Higehiro.S01E01.1080p.WEB-DL.mkv", 900_000);
       const report = await scanDuplicates({ roots: [root], tier: 2 });
-      expect(report.groups).toHaveLength(0);
-      expect(report.unparsed.length).toBeGreaterThan(0);
-      expect(report.unparsed.join(" ")).toContain("abbreviation");
+      expect(report.groups).toHaveLength(1);
+      const members = report.groups[0]?.members.map((m) => m.relative) ?? [];
+      expect(members).toHaveLength(2);
+      expect(members.every((path) => path.includes("hrs.s01e01"))).toBe(true);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
   });
 
-  test("the doc's own '- 07' filenames are reported unparsed, not grouped", async () => {
+  test("the doc's own '- 07' filenames are read, not declared unparsed", async () => {
     const root = await drive();
     try {
+      // docs/dedupe.md §4 quotes these filenames as the reason tier 2 must be
+      // honest about what it cannot read. They are readable: a dash plus a
+      // number is a well-formed absolute marker, and the old parser's failure
+      // to see it (`parse-torrent-title` needs `S..E..` or `Ep..`) was the
+      // limitation, not the truth.
       await put(root, "Anime/Frieren - 07 [1080p][SubsPlease].mkv", 400_000);
       await put(
         root,
         "Anime/Frieren - 07 [720p][TV][HorribleSubs].mkv",
         300_000,
       );
+      await put(root, "Anime/Frieren - 08 [1080p][SubsPlease].mkv", 400_000);
       const report = await scanDuplicates({ roots: [root], tier: 2 });
-      // parse-torrent-title does not recognise a bare `- 07`. §5 says v1 prints
-      // `unparsed` rather than guessing, so that is the correct outcome.
-      expect(report.groups).toHaveLength(0);
-      expect(report.unparsed.length).toBe(2);
+      expect(report.groups).toHaveLength(1);
+      expect(report.groups[0]?.members).toHaveLength(2);
+      expect(report.unparsed).toHaveLength(0);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

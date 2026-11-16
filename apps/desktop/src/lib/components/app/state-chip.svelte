@@ -18,6 +18,7 @@
 	import { cn } from '../../utils.ts';
 
 	export type StateChipState =
+		| 'will-copy'
 		| 'queued'
 		| 'copying'
 		| 'verifying'
@@ -36,6 +37,9 @@
 	}
 
 	const CHIPS: Record<StateChipState, Chip> = {
+		// A plan is a proposal, not a queue. "queued" on the Plan screen said the
+		// engine had already started these when it had not started anything.
+		'will-copy': { word: 'will copy', icon: Clock, tone: 'neutral' },
 		queued: { word: 'queued', icon: Clock, tone: 'neutral' },
 		copying: { word: 'copying', icon: Copy, tone: 'copying' },
 		verifying: { word: 'verifying', icon: ShieldCheck, tone: 'copying' },
