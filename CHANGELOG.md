@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.16](https://github.com/Michael-Obele/portage/compare/v0.1.15...v0.1.16) (2026-11-17)
+
+
+### Features
+
+* **desktop:** reclaim the trash, and scan drives in Rust ([4c889e9](https://github.com/Michael-Obele/portage/commit/4c889e9a044311a48e458a140e8e2a9b858ea129))
+
+
+### Refactoring
+
+* drop the CLI and the TUI; the app is the only front end ([1774875](https://github.com/Michael-Obele/portage/commit/17748752a5f1e1dc0d1d98b809400a7a7d5d1e5a))
+
 ## [0.1.15](https://github.com/Michael-Obele/portage/compare/v0.1.14...v0.1.15) (2026-11-16)
 
 
