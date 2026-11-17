@@ -17,7 +17,7 @@ export const PROTOCOL_VERSION = 1;
 //
 // These mirror `src/config/schema.ts`, `src/device/*.ts`, `src/index/journal.ts`,
 // `src/plan/plan.ts`, `src/scan/scan.ts`, `src/xfer/*.ts` and
-// `src/tui/state.svelte.ts`. They are the ENGINE'S shapes; the app copies them
+// `src/serve/view.svelte.ts`. They are the ENGINE'S shapes; the app copies them
 // so a payload can be typed without importing the engine's runtime.
 
 export type DeleteSource = 'after-verify' | 'never' | 'prompt';

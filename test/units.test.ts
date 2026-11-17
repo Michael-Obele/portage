@@ -27,7 +27,6 @@ import {
   truncateMiddle,
   isMarkerFile,
 } from "../src/util/paths.ts";
-import { parseArgs, bool, int, str } from "../src/cli/args.ts";
 import { loadConfig, coerceConfigValue } from "../src/config/load.ts";
 import { DEFAULT_CONFIG } from "../src/config/schema.ts";
 import { PendingRegister } from "../src/serve/pending.ts";
@@ -291,64 +290,6 @@ describe("formatting", () => {
     expect(out.length).toBeLessThanOrEqual(24);
     expect(out).toContain("…");
     expect(out.endsWith("D4].mkv")).toBe(true);
-  });
-});
-
-describe("argument parsing", () => {
-  test("commands, positionals and flags are separated", () => {
-    const a = parseArgs(["pull", "--device", "abc", "--dry-run", "extra"]);
-    expect(a.command).toBe("pull");
-    expect(a.flags.device).toBe("abc");
-    expect(a.flags["dry-run"]).toBe(true);
-    expect(a.positionals).toEqual(["extra"]);
-  });
-
-  test("--flag=value and --flag value are equivalent", () => {
-    expect(parseArgs(["plan", "--jobs=4"]).flags.jobs).toBe("4");
-    expect(parseArgs(["plan", "--jobs", "4"]).flags.jobs).toBe("4");
-  });
-
-  test("--no-tui sets the flag to false", () => {
-    expect(parseArgs(["pull", "--no-tui"]).flags.tui).toBe(false);
-  });
-
-  test("short aliases expand", () => {
-    const a = parseArgs(["pull", "-d", "xyz", "-n"]);
-    expect(a.flags.device).toBe("xyz");
-    expect(a.flags["dry-run"]).toBe(true);
-  });
-
-  test("a value flag with no value is a usage error, not a silent undefined", () => {
-    expect(() => parseArgs(["pull", "--jobs"])).toThrow(/--jobs needs a value/);
-    expect(() => parseArgs(["pull", "--jobs", "--dry-run"])).toThrow(
-      /--jobs needs a value/,
-    );
-  });
-
-  test("everything after `--` is positional", () => {
-    const a = parseArgs(["db", "export", "--", "--weird-path"]);
-    expect(a.positionals).toEqual(["export", "--weird-path"]);
-  });
-
-  test("accessors read the right shapes", () => {
-    const a = parseArgs([
-      "pull",
-      "--jobs",
-      "5",
-      "--dry-run",
-      "--show",
-      "frieren",
-    ]);
-    expect(int(a.flags, "jobs", 1)).toBe(5);
-    expect(bool(a.flags, "dry-run")).toBe(true);
-    expect(bool(a.flags, "keep-source")).toBe(false);
-    expect(str(a.flags, "show")).toBe("frieren");
-  });
-
-  test("a non-numeric value for a number flag names the flag", () => {
-    expect(() =>
-      int(parseArgs(["pull", "--jobs", "lots"]).flags, "jobs", 1),
-    ).toThrow(/--jobs/);
   });
 });
 

@@ -154,7 +154,7 @@ fn build_command(app: &AppHandle) -> Result<Command, String> {
         Some(root) => app
             .shell()
             .command("bun")
-            .args(["run", "src/cli/index.ts", "serve"])
+            .args(["run", "src/serve/main.ts", "serve"])
             .current_dir(root),
         None => app
             .shell()

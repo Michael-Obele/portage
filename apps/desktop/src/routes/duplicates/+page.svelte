@@ -34,12 +34,7 @@
 		selectionFor,
 		toggle
 	} from '#lib/components/app/dupes-view.ts';
-	import {
-		EmptyState,
-		ErrorBand,
-		PageHeader,
-		SkeletonRows
-	} from '#lib/components/app/index.ts';
+	import { EmptyState, ErrorBand, PageHeader, SkeletonRows } from '#lib/components/app/index.ts';
 	import StatStrip from '#lib/components/app/stat-strip.svelte';
 	import { CONTROL } from '#lib/components/app/tokens.ts';
 	import { failureBand, type Band } from '#lib/components/app/transfer-band.ts';
@@ -202,7 +197,11 @@
 				value: plural(current.groups.length, 'group'),
 				hint: `${plural(current.tier1Count, 'byte-identical group')} · ${plural(current.tier2Count, 'same-episode group')}`
 			},
-				{ label: 'Reclaimable', value: formatBytes(current.reclaimableBytes), hint: 'from this report' },
+			{
+				label: 'Reclaimable',
+				value: formatBytes(current.reclaimableBytes),
+				hint: 'from this report'
+			},
 			{ label: 'Files scanned', value: plural(current.scannedFiles, 'file') },
 			{
 				label: 'Bytes scanned',
@@ -472,7 +471,8 @@
 			if (failed > 0) {
 				screen.failure = {
 					what: `${plural(failed, 'folder')} could not be emptied.`,
-					means: 'What was deleted is gone; what was refused is still in the trash and still taking space.',
+					means:
+						'What was deleted is gone; what was refused is still in the trash and still taking space.',
 					todo: 'Read the refusal above. A folder another program is holding open cannot be removed.',
 					code: null
 				};
@@ -528,7 +528,9 @@
 				class={CONTROL}
 				size="sm"
 				disabled={busy || driveUnknown}
-				title={driveUnknown ? 'Reading the drives first — a whole-drive scan needs to know the mount' : ''}
+				title={driveUnknown
+					? 'Reading the drives first — a whole-drive scan needs to know the mount'
+					: ''}
 				onclick={() => void scanNow()}
 			>
 				{scan === null ? 'Scan for duplicates' : 'Scan again'}
@@ -546,9 +548,9 @@
 		     missing binary rather than a slow drive. -->
 		<p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-muted-foreground">
 			<span data-numeric>
-				Walked {plural(scan.io.dirs, 'folder')} in {(
-					Math.max(scan.io.elapsedMs, 0) / 1000
-				).toFixed(1)} s
+				Walked {plural(scan.io.dirs, 'folder')} in {(Math.max(scan.io.elapsedMs, 0) / 1000).toFixed(
+					1
+				)} s
 				{scan.io.via === 'scanner' ? 'with the fast scanner' : 'with the built-in walker'}.
 			</span>
 			{#if scannedAge !== null}
@@ -574,9 +576,8 @@
 		</p>
 		{#if scan.io.via === 'glob'}
 			<p class="measure text-caption text-muted-foreground">
-				This scan used the built-in walker, which is correct but far slower on a
-				mounted drive. {scan.io.scannerError ??
-					'The portage-scan binary was not installed next to the engine.'}
+				This scan used the built-in walker, which is correct but far slower on a mounted drive. {scan
+					.io.scannerError ?? 'The portage-scan binary was not installed next to the engine.'}
 			</p>
 		{/if}
 	{/if}
@@ -612,9 +613,9 @@
 				</span>
 			</div>
 			<p class="measure text-body text-muted-foreground">
-				Moved copies sit in <span class="font-mono text-label text-foreground">{trash.root}</span
-				>, on this same drive, so they still take the space they always did. Emptying the
-				trash is the step that frees it, and it cannot be undone.
+				Moved copies sit in <span class="font-mono text-label text-foreground">{trash.root}</span>,
+				on this same drive, so they still take the space they always did. Emptying the trash is the
+				step that frees it, and it cannot be undone.
 			</p>
 			<div class="flex flex-wrap items-center gap-2">
 				<Button
@@ -629,7 +630,10 @@
 				<!-- Each day by its AGE, not its folder name: "yesterday" is the fact
 				     that decides whether this is stale. Each row can go on its own,
 				     which is what `trash.empty`'s `days` was always for. -->
-				<ul class="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground" data-numeric>
+				<ul
+					class="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground"
+					data-numeric
+				>
 					{#each trash.days as day (day.date)}
 						<li class="flex items-center gap-1.5">
 							<span class="text-foreground">{dayAge(day.date, clockNow.now)}</span>
@@ -648,7 +652,9 @@
 					{/each}
 					{#if trash.looseFiles > 0}
 						<li class="flex items-center gap-1.5">
-							<span>loose · {plural(trash.looseFiles, 'file')} · {formatBytes(trash.looseBytes)}</span>
+							<span
+								>loose · {plural(trash.looseFiles, 'file')} · {formatBytes(trash.looseBytes)}</span
+							>
 							<Button
 								class={CONTROL}
 								size="xs"
@@ -763,9 +769,8 @@
 				{#if staleSelection}
 					This selection no longer belongs to a live scan. Scan again before moving anything.
 				{:else}
-				The sheet names every file and where it goes before anything moves. A move frees
-				nothing until you empty the trash. A keeper is only a suggestion — tick it if you
-				disagree.
+					The sheet names every file and where it goes before anything moves. A move frees nothing
+					until you empty the trash. A keeper is only a suggestion — tick it if you disagree.
 				{/if}
 			</p>
 
@@ -777,17 +782,17 @@
 </div>
 
 {#if sheet}
-		<ConfirmSheet
-			bind:open={() => screen.sheetOpen, (next) => (screen.sheetOpen = next)}
-			title={sheet.title}
-			action={sheet.action}
-			paths={sheet.paths}
-			count={sheet.count}
-			bytes={sheet.bytes}
-			trashDir={sheet.trashDir}
-			confirmWord={sheet.confirmWord}
-			busy={applying || emptying}
-			onconfirm={() => (sheet.action === 'trash.empty' ? void confirmEmpty() : void confirmMove())}
+	<ConfirmSheet
+		bind:open={() => screen.sheetOpen, (next) => (screen.sheetOpen = next)}
+		title={sheet.title}
+		action={sheet.action}
+		paths={sheet.paths}
+		count={sheet.count}
+		bytes={sheet.bytes}
+		trashDir={sheet.trashDir}
+		confirmWord={sheet.confirmWord}
+		busy={applying || emptying}
+		onconfirm={() => (sheet.action === 'trash.empty' ? void confirmEmpty() : void confirmMove())}
 		oncancel={() => {
 			screen.sheetOpen = false;
 			screen.pendingConfirm = null;

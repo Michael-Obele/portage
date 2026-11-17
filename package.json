@@ -15,23 +15,19 @@
     "bun": ">=1.2.0"
   },
   "scripts": {
-    "start": "bun run src/cli/index.ts",
-    "dev": "bun --watch src/cli/index.ts",
+    "start": "bun run src/serve/main.ts",
+    "dev": "bun --watch src/serve/main.ts",
     "test": "bun test --preload ./scripts/preload.ts",
     "typecheck": "tsc --noEmit",
     "build": "bun run scripts/build.ts",
-    "build:scanner": "bun run scripts/scanner.ts",
-    "tui": "bun run src/tui/main.svelte.ts",
-    "doctor": "bun run src/cli/index.ts doctor"
+    "build:scanner": "bun run scripts/scanner.ts"
   },
   "dependencies": {
-    "@opentui/core": "0.5.14",
     "smol-toml": "1.9.0",
     "svelte": "5.38.7",
     "valibot": "^1.5.0"
   },
   "devDependencies": {
-    "@opentui/core": "0.5.14",
     "@types/bun": "latest",
     "svelte": "5.38.7",
     "typescript": "5.9.3"

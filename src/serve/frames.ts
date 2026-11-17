@@ -9,7 +9,7 @@
  * Nothing here prints. stdout IS the protocol; a stray debug print in this
  * directory would corrupt a frame rather than log something.
  */
-import { view, type DeviceRow, type FileRow, type Overall } from "#lib/tui/state.svelte.ts";
+import { view, type DeviceRow, type FileRow, type Overall } from "#lib/serve/view.svelte.ts";
 import type { PortageConfig } from "#lib/config/schema.ts";
 import type { DeviceInfo } from "#lib/device/adb.ts";
 import type { Volume } from "#lib/device/volumes.ts";

@@ -31,7 +31,7 @@ import type { DeleteSource } from "#lib/config/schema.ts";
 import { preconditionError } from "#lib/util/errors.ts";
 import type { Logger } from "#lib/util/log.ts";
 
-import { TransferSink } from "#lib/tui/sink.ts";
+import { TransferSink } from "#lib/serve/sink.ts";
 
 /**
  * Pause and stop.

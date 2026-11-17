@@ -39,8 +39,8 @@ import { defaultScanIo, resilientScanIo } from "#lib/dedupe/scan-io.ts";
 import { emptyTrash, readTrash } from "#lib/dedupe/trash.ts";
 import { diskSpaceAsync } from "#lib/util/fs.ts";
 import type { Output } from "#lib/output/output.ts";
-import { doctor as doctorCommand } from "#lib/cli/commands/doctor.ts";
-import { db as dbCommand } from "#lib/cli/commands/status.ts";
+import { doctor as doctorCommand } from "#lib/serve/doctor.ts";
+import { db as dbCommand } from "#lib/serve/db.ts";
 import { silentLogger, type Logger } from "#lib/util/log.ts";
 import { realSpawn } from "#lib/util/spawn.ts";
 import {

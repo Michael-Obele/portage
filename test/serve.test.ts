@@ -41,8 +41,8 @@ import {
   ETA_MIN_BYTES,
   ETA_MIN_SAMPLES,
   view,
-} from "../src/tui/state.svelte.ts";
-import { TransferSink } from "../src/tui/sink.ts";
+} from "../src/serve/view.svelte.ts";
+import { TransferSink } from "../src/serve/sink.ts";
 import { silentLogger } from "../src/util/log.ts";
 import { fakeDevice, makeTempDrive } from "./helpers.ts";
 
@@ -1383,7 +1383,7 @@ describe("the serve process", () => {
   test("exits 0 after shutdown with stdin still open", async () => {
     const home = await mkdtemp(join(tmpdir(), "portage-serve-exit-"));
     const child = Bun.spawn({
-      cmd: ["bun", "run", "src/cli/index.ts", "serve"],
+      cmd: ["bun", "run", "src/serve/main.ts", "serve"],
       cwd: join(import.meta.dir, ".."),
       env: { ...Bun.env, HOME: home },
       stdin: "pipe",

@@ -30,7 +30,7 @@ import {
   view,
   type FileRow,
   type RowState,
-} from "#lib/tui/state.svelte.ts";
+} from "#lib/serve/view.svelte.ts";
 
 /** The interface docs/tui-impl/01-architecture.md specifies. */
 export interface ViewSink {
@@ -89,8 +89,6 @@ export class TransferSink implements ViewSink {
     view.overall.elapsedMs = 0;
     view.overall.jobs = Math.max(1, jobs);
     view.overall.paused = false;
-    view.selected = 0;
-    view.scrollTop = 0;
 
     // A skipped file is not a row to watch, but it IS information. It goes in
     // the queue so the user can see what the plan decided not to do.

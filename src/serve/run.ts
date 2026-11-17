@@ -23,8 +23,8 @@ import {
   createControl,
   startPull,
   type TransferControl,
-} from "#lib/tui/runner.ts";
-import { TransferSink } from "#lib/tui/sink.ts";
+} from "#lib/serve/run-loop.ts";
+import { TransferSink } from "#lib/serve/sink.ts";
 import type { EngineSummary } from "#lib/xfer/engine.ts";
 
 import type { Frames } from "#lib/serve/frames.ts";

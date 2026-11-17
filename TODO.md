@@ -27,6 +27,18 @@ Back to [README](./README.md) · Spec: [docs/](./docs/README.md) · Milestones: 
 
 ---
 
+## Scope — 2026-11-17: the app and apull.sh only
+
+The CLI (`src/cli/`) and the terminal UI (`src/tui/`) were **removed**. There is
+one product surface — the desktop app — plus `scripts/apull.sh` for a bare pull.
+Windows and Apple come later; nothing here is built for them yet.
+
+What survived the removal because the wire needs it, moved under `src/serve/`:
+the run view model (`view.svelte.ts`), the transfer sink, the run loop, the
+doctor checks and the journal-export handler. Milestones below that reference
+`src/cli/index.ts`, `src/tui/*` or `@opentui/core` are **superseded** — they
+describe a surface that no longer exists, and their tests were deleted with it.
+
 ## Snapshot — 2026-11-17 (desktop reclaim + Rust scanner)
 
 | Thing | State |
@@ -73,23 +85,13 @@ Back to [README](./README.md) · Spec: [docs/](./docs/README.md) · Milestones: 
 | Dedupe           | engine built (tier 1 + tier 2), report + review + `--apply` to trash; **journalling not written**                                                                                                                                                      |
 | Not built at all | `portage retry`, `portage verify`, `portage trash`, `--organize`, Tier-2 transfer pre-check, `archive.anime_key`                                                                                                                                       |
 
-### Working command surface (verified against `src/cli/index.ts`)
+### The engine has no user-facing commands
 
-| Command         | Flags implemented                                                                                                  |
-| --------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `doctor`        | `--bench`                                                                                                          |
-| `devices`       | —                                                                                                                  |
-| `scan` / `plan` | `--device` `--show` `--since`                                                                                      |
-| `pull`          | `--device` `--show` `--since` `--jobs` `--transport` `--dry-run` `--keep-source` `--delete-source` `--verify-hash` |
-| `tui`           | (mounts the dashboard)                                                                                             |
-| `status`        | `--run` (limit)                                                                                                    |
-| `dupes`         | `--tier 1\|2` `--no-auto` `--apply <path…>` `--dry-run`                                                            |
-| `purge`         | `--dry-run` `--verify-hash`                                                                                        |
-| `config`        | `get` `set` `keys`                                                                                                 |
-| `db`            | `info` `vacuum` `export`                                                                                           |
-| global          | `--plain` `--json` `--no-tui` `--verbose` `--quiet` `--yes` `--config` `--dest-root` `--version` `--help`          |
+The product is the desktop app plus `scripts/apull.sh`. `dist/portage` is the
+sidecar the app spawns; it speaks a JSON line protocol on stdin/stdout and does
+nothing else. Settings live in the config file (the app's Settings screen writes
+it), not in flags.
 
----
 
 ## ⏭️ Do these next (short list)
 

@@ -30,7 +30,7 @@ import type {
   FileRow,
   Overall,
   ScreenName,
-} from "#lib/tui/state.svelte.ts";
+} from "#lib/serve/view.svelte.ts";
 import type { EngineSummary, FileEvent } from "#lib/xfer/engine.ts";
 import type { PurgeCandidate } from "#lib/xfer/purge.ts";
 
