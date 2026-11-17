@@ -9,12 +9,12 @@
  * Nothing here prints. stdout IS the protocol; a stray debug print in this
  * directory would corrupt a frame rather than log something.
  */
-import { view, type DeviceRow, type FileRow, type Overall } from "../tui/state.svelte.ts";
-import type { PortageConfig } from "../config/schema.ts";
-import type { DeviceInfo } from "../device/adb.ts";
-import type { Volume } from "../device/volumes.ts";
-import type { PlanResult } from "../plan/plan.ts";
-import type { EngineSummary } from "../xfer/engine.ts";
+import { view, type DeviceRow, type FileRow, type Overall } from "#lib/tui/state.svelte.ts";
+import type { PortageConfig } from "#lib/config/schema.ts";
+import type { DeviceInfo } from "#lib/device/adb.ts";
+import type { Volume } from "#lib/device/volumes.ts";
+import type { PlanResult } from "#lib/plan/plan.ts";
+import type { EngineSummary } from "#lib/xfer/engine.ts";
 
 import {
   PROTOCOL_VERSION,
@@ -31,7 +31,8 @@ import {
   type ScanFramePayload,
   type StatePayload,
   type StatusFramePayload,
-} from "./protocol.ts";
+  type TrashFramePayload,
+} from "#lib/serve/protocol.ts";
 
 /** Where a frame line goes. `process.stdout.write` in the real loop. */
 export type Sink = (line: string) => void;
@@ -77,6 +78,7 @@ export interface Frames {
   dupes(payload: DupesFramePayload): void;
   purgePlan(payload: PurgePlanFramePayload): void;
   doctor(payload: DoctorFramePayload): void;
+  trash(payload: TrashFramePayload): void;
   status(payload: StatusFramePayload): void;
   browse(payload: BrowseFramePayload): void;
   needsConfirm(payload: NeedsConfirmFramePayload): void;
@@ -110,6 +112,7 @@ export function connect(sink: Sink): Frames {
     dupes: (payload) => write({ ...head("dupes"), ...payload }),
     purgePlan: (payload) => write({ ...head("purgePlan"), ...payload }),
     doctor: (payload) => write({ ...head("doctor"), ...payload }),
+    trash: (payload) => write({ ...head("trash"), ...payload }),
     status: (payload) => write({ ...head("status"), ...payload }),
     browse: (payload) => write({ ...head("browse"), ...payload }),
     needsConfirm: (payload) => write({ ...head("needsConfirm"), ...payload }),

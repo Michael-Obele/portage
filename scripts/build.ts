@@ -32,10 +32,15 @@ if (!result.success) {
   process.exit(1);
 }
 
-const { version } = await import("@opentui/core/package.json", {
-  with: { type: "json" },
-}).catch(() => ({ version: "unknown" }) as { version: string });
+// Read the version from the installed package rather than importing
+// `@opentui/core/package.json`: its `exports` map does not expose that file, so
+// `tsc` cannot resolve the specifier even though Bun can at runtime. A build log
+// line is not worth a type error in the script that ships the binary.
+const openTuiVersion: string = await Bun.file("node_modules/@opentui/core/package.json")
+  .json()
+  .then((pkg: { version?: string }) => pkg.version ?? "unknown")
+  .catch(() => "unknown");
 
 process.stdout.write(
-  `built dist/portage — binary renders the TUI (OpenTUI core ${version})\n`,
+  `built dist/portage — binary renders the TUI (OpenTUI core ${openTuiVersion})\n`,
 );

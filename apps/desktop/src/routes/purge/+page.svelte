@@ -24,16 +24,16 @@
 	 * person asks for it.
 	 */
 
-	import ConfirmSheet from '../../lib/components/app/confirm-sheet.svelte';
+	import ConfirmSheet from '#lib/components/app/confirm-sheet.svelte';
 	import {
 		EmptyState,
 		ErrorBand,
 		PageHeader,
 		SkeletonRows
-	} from '../../lib/components/app/index.ts';
-	import StatStrip from '../../lib/components/app/stat-strip.svelte';
-	import { CONTROL } from '../../lib/components/app/tokens.ts';
-	import { failureBand, type Band } from '../../lib/components/app/transfer-band.ts';
+	} from '#lib/components/app/index.ts';
+	import StatStrip from '#lib/components/app/stat-strip.svelte';
+	import { CONTROL } from '#lib/components/app/tokens.ts';
+	import { failureBand, type Band } from '#lib/components/app/transfer-band.ts';
 	import {
 		allKeys,
 		confirmFacts,
@@ -43,15 +43,17 @@
 		refusalSentence,
 		toggleKey,
 		totalsFor
-	} from '../../lib/components/app/purge-view.ts';
-	import { Button } from '../../lib/components/ui/button/index.js';
-	import { Checkbox } from '../../lib/components/ui/checkbox/index.js';
-	import { Spinner } from '../../lib/components/ui/spinner/index.js';
-	import { ToggleGroup, ToggleGroupItem } from '../../lib/components/ui/toggle-group/index.js';
-	import type { NeedsConfirmFrame, PurgePlanFrame } from '../../lib/engine/protocol.ts';
-	import { app } from '../../lib/state/app.svelte.ts';
-	import { screens } from '../../lib/state/screens.svelte.ts';
-	import { formatBytes, plural, truncateFront } from '../../lib/util/format.ts';
+	} from '#lib/components/app/purge-view.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import { Spinner } from '#lib/components/ui/spinner/index.js';
+	import { ToggleGroup, ToggleGroupItem } from '#lib/components/ui/toggle-group/index.js';
+	import type { NeedsConfirmFrame, PurgePlanFrame } from '#lib/engine/protocol.ts';
+	import { app } from '#lib/state/app.svelte.ts';
+	import { screens } from '#lib/state/screens.svelte.ts';
+	import { formatBytes, plural, truncateFront } from '#lib/util/format.ts';
+	import { createNow } from '#lib/util/now.svelte.ts';
+	import { relativeTime } from '#lib/util/relative-time.ts';
 
 	/**
 	 * The plan lives in a module store (see `lib/state/screens.svelte.ts`), so a
@@ -108,8 +110,22 @@
 
 	const band = $derived(stoppedBand ?? failure);
 
+	const clockNow = createNow();
+
+	/**
+	 * `2 minutes ago` — the question a re-check answers.
+	 *
+	 * The wall clock is still here, in the row's `title`: "checked at 14:32:07"
+	 * reads as a fact but answers nothing, while "checked 2 minutes ago" is what
+	 * decides whether pressing Check again is worth it. It ticks, so it cannot
+	 * drift into a lie while the screen sits open.
+	 */
+	const checkedAge = $derived(
+		plannedAt === null ? '' : relativeTime(plannedAt.getTime(), clockNow.now)
+	);
+
 	/** `14:32:07` — local time, seconds, because a re-check is seconds apart. */
-	const clock = $derived(
+	const clockText = $derived(
 		plannedAt === null
 			? ''
 			: plannedAt.toLocaleTimeString(undefined, {
@@ -305,8 +321,8 @@
 				</span>
 				<!-- The clock is what proves a re-check happened. The counts cannot:
 				     they are identical by design when nothing on either end changed. -->
-				<span class="text-caption text-muted-foreground" data-numeric title={clock}>
-					checked at {clock}
+				<span class="text-caption text-muted-foreground" data-numeric title={clockText}>
+					checked {checkedAge}
 				</span>
 				<div class="ms-auto">
 					<Button

@@ -19,16 +19,16 @@
 	 * because a state has nothing to be done *to* it, only something to be done
 	 * about it. One action: two competing buttons mean the screen has none.
 	 */
-	import { Button } from '../ui/button/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import {
 		Empty,
 		EmptyContent,
 		EmptyDescription,
 		EmptyHeader,
 		EmptyTitle
-	} from '../ui/empty/index.js';
-	import { CONTROL } from './tokens.ts';
-	import { cn } from '../../utils.ts';
+	} from '#lib/components/ui/empty/index.js';
+	import { CONTROL } from '#lib/components/app/tokens.ts';
+	import { cn } from '#lib/utils.ts';
 
 	let {
 		title,

@@ -5,6 +5,12 @@
  * host triple when it resolves the file, so the staged copy must carry it.
  * Run from apps/desktop: `bun run sidecar`, or `SKIP_BUILD=1 bun run sidecar`
  * to restage a binary that is already in dist/.
+ *
+ * TWO binaries are staged: the engine (`portage`) and the Rust scanner
+ * (`portage-scan`). The scanner is not optional — it is what makes a whole-drive
+ * scan take 4 s instead of 3 minutes — so a build that silently omits it would
+ * ship a product that feels broken. Its absence is therefore a FAILURE here, and
+ * Doctor reports it if it is somehow missing at runtime.
  */
 /// <reference types="bun" />
 import { chmodSync, existsSync, mkdirSync, statSync } from 'node:fs';
@@ -56,3 +62,24 @@ chmodSync(staged, 0o755);
 
 console.log(`sidecar: staged ${staged} (${statSync(staged).size} bytes)`);
 console.log('sidecar: externalBin stays "binaries/portage", with no triple');
+
+// --- the scanner ------------------------------------------------------------
+// Built by `bun run build:scanner` (or restaged with SKIP_BUILD=1). It must sit
+// beside the engine so `process.execPath`'s directory finds it in the bundle.
+if (process.env.SKIP_BUILD !== '1') {
+	console.log(`sidecar: building the scanner (bun run build:scanner in ${repoRoot})`);
+	run(['bun', 'run', 'build:scanner'], repoRoot);
+}
+
+const scannerBuilt = join(repoRoot, 'dist', 'portage-scan');
+if (!existsSync(scannerBuilt)) {
+	fail(
+		`${scannerBuilt} is missing; run \`bun run build:scanner\` (needs cargo), or unset SKIP_BUILD=1`
+	);
+}
+const scannerStaged = join(stagedDir, `portage-scan-${triple}`);
+await Bun.write(scannerStaged, Bun.file(scannerBuilt));
+chmodSync(scannerStaged, 0o755);
+
+console.log(`sidecar: staged ${scannerStaged} (${statSync(scannerStaged).size} bytes)`);
+console.log('sidecar: externalBin is "binaries/portage" + "binaries/portage-scan", no triples');

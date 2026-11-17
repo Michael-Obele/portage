@@ -19,9 +19,9 @@
  * (the denominator) plus this sink's own clock. `--json` calls the same
  * `snapshot()`, so the screen and the script can never disagree (gates B1, D4).
  */
-import type { DeviceInfo } from "../device/adb.ts";
-import type { PlanResult, PlannedFile } from "../plan/plan.ts";
-import type { EngineSummary, FileEvent } from "../xfer/engine.ts";
+import type { DeviceInfo } from "#lib/device/adb.ts";
+import type { PlanResult, PlannedFile } from "#lib/plan/plan.ts";
+import type { EngineSummary, FileEvent } from "#lib/xfer/engine.ts";
 
 import {
   EWMA_ALPHA,
@@ -30,7 +30,7 @@ import {
   view,
   type FileRow,
   type RowState,
-} from "./state.svelte.ts";
+} from "#lib/tui/state.svelte.ts";
 
 /** The interface docs/tui-impl/01-architecture.md specifies. */
 export interface ViewSink {

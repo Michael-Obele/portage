@@ -15,7 +15,7 @@
 	import ShieldCheck from '@lucide/svelte/icons/shield-check';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import X from '@lucide/svelte/icons/x';
-	import { cn } from '../../utils.ts';
+	import { cn } from '#lib/utils.ts';
 
 	export type StateChipState =
 		| 'will-copy'

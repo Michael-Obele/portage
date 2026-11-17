@@ -15,7 +15,7 @@
  * is not". Refused volumes keep their row and lose their button — hiding the
  * row would leave a person wondering where their disk went.
  */
-import type { Volume } from '../../engine/protocol.ts';
+import type { Volume } from '#lib/engine/protocol.ts';
 
 const BOOT_PATHS = ['/boot', '/efi', '/boot/efi'];
 

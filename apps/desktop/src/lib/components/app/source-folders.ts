@@ -10,9 +10,9 @@
  *
  * No Svelte import: `bun test` drives every rule here directly.
  */
-import type { BrowseEntry } from '../../engine/protocol.ts';
-import { plural } from '../../util/format.ts';
-import { isInsideMount } from '../../util/mount.ts';
+import type { BrowseEntry } from '#lib/engine/protocol.ts';
+import { plural } from '#lib/util/format.ts';
+import { isInsideMount } from '#lib/util/mount.ts';
 
 /**
  * As high as the browser goes.

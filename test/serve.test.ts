@@ -263,6 +263,8 @@ describe("the one-answer rule", () => {
         ["dupes.apply", { scanId: "nope", keys: ["k0"] }],
         ["purge.plan", {}],
         ["purge.apply", { planId: "nope", keys: ["k0"] }],
+        ["trash.status", {}],
+        ["trash.empty", { trashId: "nope" }],
         ["shutdown", {}],
       ];
       // The command list is exactly the protocol's, so a new command cannot
@@ -712,6 +714,107 @@ function fixtureRegister(): PendingRegister {
     () => "scan-fixed",
   );
 }
+
+describe("trash.empty — the one permanent delete", () => {
+  const trashOf = (root: string): string => join(root, ".portage", "trash");
+
+  test("it asks before deleting, then frees the day folders AND the loose files", async () => {
+    const drive = await makeTempDrive("portage-serve-trash-");
+    try {
+      const day = join(trashOf(drive.root), "2026-11-08", "Videos");
+      await mkdir(day, { recursive: true });
+      await Bun.write(join(day, "a.mkv"), new Uint8Array(2048).fill(0x41));
+      // A file outside any day folder: the panel counts its bytes, so the
+      // command has to be able to delete it.
+      await Bun.write(join(trashOf(drive.root), "loose.mkv"), new Uint8Array(11).fill(0x42));
+
+      const { frames } = await runServe(
+        [
+          cmd("t1", "trash.status", {}),
+          cmd("t2", "trash.empty", { trashId: "scan-fixed" }),
+          cmd("t3", "trash.empty", { trashId: "scan-fixed", confirm: "scan-fixed" }),
+        ],
+        { resolveConfig: async () => resolvedFor(drive.root), pending: fixtureRegister() },
+      );
+
+      const trashFrame = frames.find((f) => f.type === "trash");
+      expect(trashFrame?.type === "trash" && trashFrame.totalFiles).toBe(2);
+      expect(trashFrame?.type === "trash" && trashFrame.looseFiles).toBe(1);
+
+      // The first call only asks.
+      const asked = answerFor(frames, "t2");
+      expect(asked.ok).toBe(true);
+      expect((asked.data as Record<string, unknown>).needsConfirm).toBe(true);
+      expect(frames.some((f) => f.type === "needsConfirm")).toBe(true);
+
+      // The confirm frees both.
+      const done = answerFor(frames, "t3");
+      expect(done.ok).toBe(true);
+      const data = done.data as Record<string, unknown>;
+      expect(data.bytesFreed).toBe(2059);
+      expect((data.refused as unknown[]).length).toBe(0);
+      expect(await Bun.file(join(day, "a.mkv")).exists()).toBe(false);
+      expect(await Bun.file(join(trashOf(drive.root), "loose.mkv")).exists()).toBe(false);
+    } finally {
+      await rm(drive.root, { recursive: true, force: true });
+    }
+  });
+
+  test("a file that appeared after the reading makes it ASK again, not delete", async () => {
+    const drive = await makeTempDrive("portage-serve-trash-stale-");
+    try {
+      const day = join(trashOf(drive.root), "2026-11-08");
+      await mkdir(day, { recursive: true });
+      await Bun.write(join(day, "a.mkv"), new Uint8Array(100).fill(0x41));
+
+      const register = fixtureRegister();
+      // 1) read
+      await runServe([cmd("s1", "trash.status", {})], {
+        resolveConfig: async () => resolvedFor(drive.root),
+        pending: register,
+      });
+      // 2) something lands in the folder the reading described
+      await Bun.write(join(day, "late.mkv"), new Uint8Array(50).fill(0x42));
+      // 3) a confirm that was formed against the OLD numbers
+      const { frames } = await runServe(
+        [cmd("s2", "trash.empty", { trashId: "scan-fixed", confirm: "scan-fixed" })],
+        { resolveConfig: async () => resolvedFor(drive.root), pending: register },
+      );
+
+      const answer = answerFor(frames, "s2");
+      expect(answer.ok).toBe(true);
+      expect((answer.data as Record<string, unknown>).needsConfirm).toBe(true);
+      // Nothing was deleted by a sheet that never named `late.mkv`.
+      expect(await Bun.file(join(day, "a.mkv")).exists()).toBe(true);
+      expect(await Bun.file(join(day, "late.mkv")).exists()).toBe(true);
+    } finally {
+      await rm(drive.root, { recursive: true, force: true });
+    }
+  });
+
+  test("a folder outside the reading is refused, and nothing is deleted", async () => {
+    const drive = await makeTempDrive("portage-serve-trash-foreign-");
+    try {
+      const day = join(trashOf(drive.root), "2026-11-08");
+      await mkdir(day, { recursive: true });
+      await Bun.write(join(day, "a.mkv"), new Uint8Array(100).fill(0x41));
+
+      const { frames } = await runServe(
+        [
+          cmd("f1", "trash.status", {}),
+          cmd("f2", "trash.empty", { trashId: "scan-fixed", days: ["/etc"], confirm: "scan-fixed" }),
+        ],
+        { resolveConfig: async () => resolvedFor(drive.root), pending: fixtureRegister() },
+      );
+
+      const answer = answerFor(frames, "f2");
+      expect(answer.ok).toBe(false);
+      expect(await Bun.file(join(day, "a.mkv")).exists()).toBe(true);
+    } finally {
+      await rm(drive.root, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("dupes.apply refuses without refusing the wrong thing", () => {
   test("a forged key, a stale scanId and a wrong confirm each move NOTHING", async () => {

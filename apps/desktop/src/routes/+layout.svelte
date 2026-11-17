@@ -24,22 +24,22 @@
 	import { onMount } from 'svelte';
 
 	import './layout.css';
-	import favicon from '../lib/assets/favicon.svg';
-	import { ErrorBand, KeyHint, ToastHost } from '../lib/components/app/index.ts';
-	import { CONTROL } from '../lib/components/app/tokens.ts';
-	import { Button } from '../lib/components/ui/button/index.js';
+	import favicon from '#lib/assets/favicon.svg';
+	import { ErrorBand, KeyHint, ToastHost } from '#lib/components/app/index.ts';
+	import { CONTROL } from '#lib/components/app/tokens.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import {
 		Dialog,
 		DialogContent,
 		DialogDescription,
 		DialogHeader,
 		DialogTitle
-	} from '../lib/components/ui/dialog/index.js';
-	import { app, type ThemeChoice } from '../lib/state/app.svelte.ts';
-	import { run } from '../lib/state/run.svelte.ts';
-	import { screens } from '../lib/state/screens.svelte.ts';
-	import { startScreenRouting } from '../lib/state/screens-routing.ts';
-	import { cn } from '../lib/utils.ts';
+	} from '#lib/components/ui/dialog/index.js';
+	import { app, type ThemeChoice } from '#lib/state/app.svelte.ts';
+	import { run } from '#lib/state/run.svelte.ts';
+	import { screens } from '#lib/state/screens.svelte.ts';
+	import { startScreenRouting } from '#lib/state/screens-routing.ts';
+	import { cn } from '#lib/utils.ts';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();

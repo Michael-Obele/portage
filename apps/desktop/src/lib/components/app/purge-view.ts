@@ -17,7 +17,7 @@
  *    screen's job; deciding that a specific file leaves the phone is the
  *    person's. There is one click to take all of them, and it is a click.
  */
-import type { NeedsConfirmFrame, PurgePlanFrame, WirePurgeCandidate } from '../../engine/protocol.ts';
+import type { NeedsConfirmFrame, PurgePlanFrame, WirePurgeCandidate } from '#lib/engine/protocol.ts';
 
 export interface PurgeTotals {
 	count: number;

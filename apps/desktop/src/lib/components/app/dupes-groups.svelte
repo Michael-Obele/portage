@@ -11,13 +11,13 @@
 	 * A keeper is marked with a chip that carries a word, not a colour: delete
 	 * the palette and the row still says "kept".
 	 */
-	import { Button } from '../ui/button/index.js';
-	import { Checkbox } from '../ui/checkbox/index.js';
-	import { formatBytes, plural, truncateFront } from '../../util/format.ts';
-	import { groupKeys, groupSelectionState, memberTone } from './dupes-view.ts';
-	import type { WireDupeGroup } from '../../engine/protocol.ts';
-	import StateChip from './state-chip.svelte';
-	import { CONTROL } from './tokens.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import { formatBytes, plural, truncateFront } from '#lib/util/format.ts';
+	import { groupKeys, groupSelectionState, memberTone } from '#lib/components/app/dupes-view.ts';
+	import type { WireDupeGroup } from '#lib/engine/protocol.ts';
+	import StateChip from '#lib/components/app/state-chip.svelte';
+	import { CONTROL } from '#lib/components/app/tokens.ts';
 
 	let {
 		groups,

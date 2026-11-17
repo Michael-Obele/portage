@@ -15,22 +15,22 @@
  * ladder: `portage pull | cat` produces the plain output, byte for byte, with no
  * escape sequence in it.
  */
-import { bool, parseArgs, sinceSeconds, str } from "../cli/args.ts";
-import { Adb } from "../device/adb.ts";
-import { loadConfig } from "../config/load.ts";
-import { createLogger, type LogLevel } from "../util/log.ts";
-import { describeError, ExitCode } from "../util/errors.ts";
-import { realSpawn } from "../util/spawn.ts";
-import { pull } from "../cli/commands/pull.ts";
-import { createOutput } from "../output/output.ts";
+import { bool, parseArgs, sinceSeconds, str } from "#lib/cli/args.ts";
+import { Adb } from "#lib/device/adb.ts";
+import { loadConfig } from "#lib/config/load.ts";
+import { createLogger, type LogLevel } from "#lib/util/log.ts";
+import { describeError, ExitCode } from "#lib/util/errors.ts";
+import { realSpawn } from "#lib/util/spawn.ts";
+import { pull } from "#lib/cli/commands/pull.ts";
+import { createOutput } from "#lib/output/output.ts";
 
-import { detect, refusalReason } from "./degrade.ts";
-import { OpenTuiRenderer } from "./renderer.svelte.ts";
-import { TransferSink } from "./sink.ts";
-import { view } from "./state.svelte.ts";
-import { createControl, startPull } from "./runner.ts";
-import { DashboardScreen } from "./screens/dashboard.ts";
-import { deferred } from "./deferred.ts";
+import { detect, refusalReason } from "#lib/tui/degrade.ts";
+import { OpenTuiRenderer } from "#lib/tui/renderer.svelte.ts";
+import { TransferSink } from "#lib/tui/sink.ts";
+import { view } from "#lib/tui/state.svelte.ts";
+import { createControl, startPull } from "#lib/tui/runner.ts";
+import { DashboardScreen } from "#lib/tui/screens/dashboard.ts";
+import { deferred } from "#lib/tui/deferred.ts";
 
 /** A promise the dashboard settles when the user actually wants out. */
 

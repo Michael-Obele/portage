@@ -11,10 +11,10 @@
 import { statSync } from "node:fs";
 import { join } from "node:path";
 
-import type { Journal } from "../index/journal.ts";
-import type { Candidate } from "../scan/scan.ts";
-import { checkDestination, type DestinationCheck } from "../index/recovery.ts";
-import { formatBytes, formatDuration, normPath } from "../util/paths.ts";
+import type { Journal } from "#lib/index/journal.ts";
+import type { Candidate } from "#lib/scan/scan.ts";
+import { checkDestination, type DestinationCheck } from "#lib/index/recovery.ts";
+import { formatBytes, formatDuration, normPath } from "#lib/util/paths.ts";
 
 export interface PlannedFile {
   candidate: Candidate;

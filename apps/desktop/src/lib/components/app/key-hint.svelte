@@ -7,8 +7,8 @@
 	 * stray letter, and the hints line at the bottom of a screen is a list a
 	 * person can skim.
 	 */
-	import { Kbd } from '../ui/kbd/index.js';
-	import { cn } from '../../utils.ts';
+	import { Kbd } from '#lib/components/ui/kbd/index.js';
+	import { cn } from '#lib/utils.ts';
 
 	let {
 		keys,

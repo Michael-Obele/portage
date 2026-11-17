@@ -12,8 +12,8 @@
 	 */
 	import { goto } from '$app/navigation';
 
-	import { EmptyState, PageHeader } from '../../lib/components/app/index.ts';
-	import SummaryReceipt from '../../lib/components/app/summary-receipt.svelte';
+	import { EmptyState, PageHeader } from '#lib/components/app/index.ts';
+	import SummaryReceipt from '#lib/components/app/summary-receipt.svelte';
 	import {
 		nothingMoved,
 		proofLine,
@@ -21,9 +21,9 @@
 		receiptFailures,
 		receiptHeadline,
 		retryDeviceId
-	} from '../../lib/components/app/summary-receipt.ts';
-	import { app } from '../../lib/state/app.svelte.ts';
-	import { run } from '../../lib/state/run.svelte.ts';
+	} from '#lib/components/app/summary-receipt.ts';
+	import { app } from '#lib/state/app.svelte.ts';
+	import { run } from '#lib/state/run.svelte.ts';
 
 	const summary = $derived(run.view.summary);
 	/** Null unless exactly one ready device is known — see `retryDeviceId`. */

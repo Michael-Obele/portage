@@ -7,28 +7,28 @@
  * off unless `delete_source` says so.
  */
 
-import { Adb } from "../../device/adb.ts";
-import type { DeviceInfo } from "../../device/adb.ts";
-import type { ResolvedConfig } from "../../config/load.ts";
-import { requireDestRoot } from "../../config/load.ts";
-import { Journal } from "../../index/journal.ts";
-import { reconcile, checkDestination } from "../../index/recovery.ts";
-import { buildPlan } from "../../plan/plan.ts";
-import { scanDevice, type Candidate } from "../../scan/scan.ts";
-import { AdbTransport } from "../../xfer/adb.ts";
-import { runTransfer, type FileEvent } from "../../xfer/engine.ts";
-import { planPurge, applyPurge } from "../../xfer/purge.ts";
-import { ensureStateDirs } from "../../util/fs.ts";
+import { Adb } from "#lib/device/adb.ts";
+import type { DeviceInfo } from "#lib/device/adb.ts";
+import type { ResolvedConfig } from "#lib/config/load.ts";
+import { requireDestRoot } from "#lib/config/load.ts";
+import { Journal } from "#lib/index/journal.ts";
+import { reconcile, checkDestination } from "#lib/index/recovery.ts";
+import { buildPlan } from "#lib/plan/plan.ts";
+import { scanDevice, type Candidate } from "#lib/scan/scan.ts";
+import { AdbTransport } from "#lib/xfer/adb.ts";
+import { runTransfer, type FileEvent } from "#lib/xfer/engine.ts";
+import { planPurge, applyPurge } from "#lib/xfer/purge.ts";
+import { ensureStateDirs } from "#lib/util/fs.ts";
 import {
   formatBytes,
   formatDuration,
   formatRate,
   truncateMiddle,
-} from "../../util/paths.ts";
-import type { Output } from "../../output/output.ts";
-import type { Logger } from "../../util/log.ts";
-import { preconditionError, ExitCode } from "../../util/errors.ts";
-import type { DeleteSource } from "../../config/schema.ts";
+} from "#lib/util/paths.ts";
+import type { Output } from "#lib/output/output.ts";
+import type { Logger } from "#lib/util/log.ts";
+import { preconditionError, ExitCode } from "#lib/util/errors.ts";
+import type { DeleteSource } from "#lib/config/schema.ts";
 
 export interface PullContext {
   resolved: ResolvedConfig;

@@ -16,22 +16,22 @@
  * That is the whole seam. One engine, two sinks: the plain renderer gets lines,
  * this gets `view`.
  */
-import type { Adb, DeviceInfo } from "../device/adb.ts";
-import type { ResolvedConfig } from "../config/load.ts";
-import { requireDestRoot } from "../config/load.ts";
-import { ensureStateDirs } from "../util/fs.ts";
-import { checkDestination, reconcile } from "../index/recovery.ts";
-import { Journal } from "../index/journal.ts";
-import { buildPlan, type PlanResult } from "../plan/plan.ts";
-import { eligible, scanDevice, type Candidate } from "../scan/scan.ts";
-import { isMarkerFile } from "../util/paths.ts";
-import { AdbTransport } from "../xfer/adb.ts";
-import { runTransfer, type EngineSummary } from "../xfer/engine.ts";
-import type { DeleteSource } from "../config/schema.ts";
-import { preconditionError } from "../util/errors.ts";
-import type { Logger } from "../util/log.ts";
+import type { Adb, DeviceInfo } from "#lib/device/adb.ts";
+import type { ResolvedConfig } from "#lib/config/load.ts";
+import { requireDestRoot } from "#lib/config/load.ts";
+import { ensureStateDirs } from "#lib/util/fs.ts";
+import { checkDestination, reconcile } from "#lib/index/recovery.ts";
+import { Journal } from "#lib/index/journal.ts";
+import { buildPlan, type PlanResult } from "#lib/plan/plan.ts";
+import { eligible, scanDevice, type Candidate } from "#lib/scan/scan.ts";
+import { isMarkerFile } from "#lib/util/paths.ts";
+import { AdbTransport } from "#lib/xfer/adb.ts";
+import { runTransfer, type EngineSummary } from "#lib/xfer/engine.ts";
+import type { DeleteSource } from "#lib/config/schema.ts";
+import { preconditionError } from "#lib/util/errors.ts";
+import type { Logger } from "#lib/util/log.ts";
 
-import { TransferSink } from "./sink.ts";
+import { TransferSink } from "#lib/tui/sink.ts";
 
 /**
  * Pause and stop.

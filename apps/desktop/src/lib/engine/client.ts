@@ -24,7 +24,7 @@ import {
 	type Envelope,
 	type EngineError,
 	type Frame
-} from './protocol.ts';
+} from '#lib/engine/protocol.ts';
 
 /** Event names, mirrored from `src-tauri/src/engine.rs`. */
 export const EVENT_FRAME = 'engine://frame';

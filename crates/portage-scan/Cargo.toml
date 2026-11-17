@@ -1,0 +1,28 @@
+[package]
+name = "portage-scan"
+version = "0.1.15"
+edition = "2021"
+rust-version = "1.85"
+description = "Filesystem walker and digester for Portage's duplicate and reclaim scans"
+license = "MIT"
+
+# Three dependencies, all already in the local cargo cache. The walker is
+# std-only on purpose: the one thing it must get right (short-path descent) is
+# something no crate does, and it is 120 lines. The hash is sha256 rather than a
+# faster algorithm because the engine already records sha256 in its journal and
+# a scan must not change its answer depending on which binary ran it.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[[bin]]
+name = "portage-scan"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = true

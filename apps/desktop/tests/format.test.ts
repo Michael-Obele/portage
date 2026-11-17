@@ -9,7 +9,6 @@ import { describe, expect, test } from "bun:test";
 
 import {
 	DASH,
-	etaWords,
 	formatBytes,
 	formatDuration,
 	formatPercent,
@@ -17,7 +16,7 @@ import {
 	plural,
 	truncateFront,
 	truncateMiddle,
-} from "../src/lib/util/format.ts";
+} from "#lib/util/format.ts";
 
 describe("formatBytes", () => {
 	test("renders zero as bytes, not as an empty unit", () => {
@@ -84,12 +83,7 @@ describe("formatDuration and the ETA", () => {
 	});
 
 	test("says the ETA is unknown when it is unknown", () => {
-		expect(etaWords(null)).toBe("ETA —");
 		expect(formatDuration(null)).toBe(DASH);
-	});
-
-	test("gives the ETA as a duration once the engine has one", () => {
-		expect(etaWords(222)).toBe("ETA 3 min 42 s");
 	});
 });
 

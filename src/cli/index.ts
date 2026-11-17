@@ -12,20 +12,20 @@
  *   0 success · 1 usage/config · 2 precondition · 3 transfer · 4 verification · 5 interrupted
  */
 
-import { bool, int, parseArgs, sinceSeconds, str } from "./args.ts";
-import { Adb } from "../device/adb.ts";
-import { loadConfig, requireDestRoot } from "../config/load.ts";
-import { CONFIG_KEYS } from "../config/schema.ts";
-import { createOutput, type OutputMode } from "../output/output.ts";
-import { createLogger, type LogLevel } from "../util/log.ts";
-import { describeError, ExitCode, usageError } from "../util/errors.ts";
-import { realSpawn } from "../util/spawn.ts";
-import { doctor } from "./commands/doctor.ts";
-import { plan, scan } from "./commands/scan.ts";
-import { pull, purge, requestStop } from "./commands/pull.ts";
-import { config, db, status } from "./commands/status.ts";
-import { dupes } from "./commands/dupes.ts";
-import { refusalReason } from "../tui/degrade.ts";
+import { bool, int, parseArgs, sinceSeconds, str } from "#lib/cli/args.ts";
+import { Adb } from "#lib/device/adb.ts";
+import { loadConfig, requireDestRoot } from "#lib/config/load.ts";
+import { CONFIG_KEYS } from "#lib/config/schema.ts";
+import { createOutput, type OutputMode } from "#lib/output/output.ts";
+import { createLogger, type LogLevel } from "#lib/util/log.ts";
+import { describeError, ExitCode, usageError } from "#lib/util/errors.ts";
+import { realSpawn } from "#lib/util/spawn.ts";
+import { doctor } from "#lib/cli/commands/doctor.ts";
+import { plan, scan } from "#lib/cli/commands/scan.ts";
+import { pull, purge, requestStop } from "#lib/cli/commands/pull.ts";
+import { config, db, status } from "#lib/cli/commands/status.ts";
+import { dupes } from "#lib/cli/commands/dupes.ts";
+import { refusalReason } from "#lib/tui/degrade.ts";
 
 // One source of truth for the version: the root package.json, which
 // release-please bumps and which also feeds the desktop installer. A second
@@ -167,14 +167,14 @@ async function main(): Promise<number> {
 
     case "tui": {
       // Imported lazily so the plain CLI never loads OpenTUI's native library.
-      const { tui } = await import("../tui/main.svelte.ts");
+      const { tui } = await import("#lib/tui/main.svelte.ts");
       return await tui(Bun.argv);
     }
 
     case "serve": {
       // The desktop app's sidecar. Imported lazily: the plain CLI never needs
       // the protocol, and stdout here is the wire, not a report.
-      const { serve } = await import("../serve/index.ts");
+      const { serve } = await import("#lib/serve/index.ts");
       return await serve({ engineVersion: VERSION, logger });
     }
 
@@ -183,7 +183,7 @@ async function main(): Promise<number> {
       // (a pipe, --json, --plain, TERM=dumb) this falls through to the plain
       // renderer, which is the whole degradation ladder.
       if (wantsTui) {
-        const { tui } = await import("../tui/main.svelte.ts");
+        const { tui } = await import("#lib/tui/main.svelte.ts");
         return await tui(Bun.argv);
       }
       return await pull({

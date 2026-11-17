@@ -426,6 +426,36 @@ describe("§6 rules 3, 5 and 6 — the apply path", () => {
     }
   });
 
+  test("a SECOND apply against the same scan cannot move the last copy", async () => {
+    // The report is a snapshot. After the first apply, the moved copy is still
+    // listed as a member, so "the group has another member" was true while the
+    // file it named was already in the trash — and the second apply moved the
+    // ONLY surviving copy. The rule is about copies on disk, not rows in a
+    // report, so survivors are re-checked against the filesystem.
+    const root = await drive();
+    try {
+      await put(root, "Anime/x.mkv", 4096);
+      await put(root, "Anime/y.mkv", 4096);
+      const report = await scanDuplicates({ roots: [root] });
+      const [first, second] = report.groups[0]!.members.map((m) => m.path);
+
+      const one = await applySelection(report, [first!], { destRoot: root });
+      expect(one.moved).toHaveLength(1);
+      expect(await Bun.file(first!).exists()).toBe(false);
+
+      // The report is now stale: it still lists `first` as a member.
+      const two = await applySelection(report, [second!], { destRoot: root });
+      expect(two.moved).toHaveLength(0);
+      expect(
+        two.refused.some((r) => r.reason === "would remove the last copy"),
+      ).toBe(true);
+      // And the last copy is still where it was.
+      expect(await Bun.file(second!).exists()).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test("a scan rooted at a FOLDER INSIDE the drive still moves the real file", async () => {
     // The regression: `relative` is relative to the scan root, so a report
     // rooted at `<drive>/sub` used to compute `<drive>/<relative>` as the

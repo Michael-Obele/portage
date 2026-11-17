@@ -14,15 +14,19 @@ import {
   maxLinkSpeed,
   parseLsusbTree,
   type DeviceInfo,
-} from "../../device/adb.ts";
-import { diskSpace, isDirectory } from "../../util/fs.ts";
-import { formatBytes } from "../../util/paths.ts";
-import type { Output } from "../../output/output.ts";
-import type { ResolvedConfig } from "../../config/load.ts";
+} from "#lib/device/adb.ts";
+import { diskSpace, isDirectory } from "#lib/util/fs.ts";
+import { formatBytes } from "#lib/util/paths.ts";
+import type { Output } from "#lib/output/output.ts";
+import type { ResolvedConfig } from "#lib/config/load.ts";
+import { ALWAYS_EXCLUDED_DIRS } from "#lib/config/schema.ts";
+import { defaultScanIo } from "#lib/dedupe/scan-io.ts";
+import { probeScanner, resolveScanner, scannerWalk } from "#lib/dedupe/scanner.ts";
+import { readTrash } from "#lib/dedupe/trash.ts";
 
-import { Journal } from "../../index/journal.ts";
+import { Journal } from "#lib/index/journal.ts";
 
-import { realSpawn } from "../../util/spawn.ts";
+import { realSpawn } from "#lib/util/spawn.ts";
 
 export interface DoctorContext {
   resolved: ResolvedConfig;
@@ -47,46 +51,43 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
   // --- adb --------------------------------------------------------------------
   if (!ctx.adb) {
     rows.push({
-      mark: "fail",
+      mark: "warn",
       label: "adb",
       value: "not found on PATH or in an Android SDK folder",
-      fix: "install Android platform-tools, then set adb_path in config (or symlink adb into /usr/local/bin)",
+      fix: "only transfers need adb — install Android platform-tools for those, or carry on with the drive",
     });
-    render(rows);
-    output.fail("adb is required — nothing else can work without it");
-    return 2;
-  }
-
-  rows.push({
-    mark: "ok",
-    label: "adb",
-    value: `${await ctx.adb.version()}  ${ctx.adb.bin}${
-      ctx.adb.source === "search" ? "  (found by search, not on PATH)" : ""
-    }`,
-  });
-
-  // A configured path that does not resolve is worth saying out loud: the
-  // engine kept going with another adb, which is not what the config asked for.
-  const configuredAdb = ctx.resolved.config.adb_path;
-  if (configuredAdb && ctx.adb.source !== "config") {
+  } else {
     rows.push({
-      mark: "warn",
-      label: "adb_path",
-      value: `${configuredAdb} is not an executable — ignored`,
-      fix: `point adb_path at ${ctx.adb.bin}, or clear it and let the search run`,
+      mark: "ok",
+      label: "adb",
+      value: `${await ctx.adb.version()}  ${ctx.adb.bin}${
+        ctx.adb.source === "search" ? "  (found by search, not on PATH)" : ""
+      }`,
     });
+
+    // A configured path that does not resolve is worth saying out loud: the
+    // engine kept going with another adb, which is not what the config asked for.
+    const configuredAdb = ctx.resolved.config.adb_path;
+    if (configuredAdb && ctx.adb.source !== "config") {
+      rows.push({
+        mark: "warn",
+        label: "adb_path",
+        value: `${configuredAdb} is not an executable — ignored`,
+        fix: `point adb_path at ${ctx.adb.bin}, or clear it and let the search run`,
+      });
+    }
   }
 
   // --- devices ----------------------------------------------------------------
-  const devices = await ctx.adb.devices();
+  const devices = ctx.adb ? await ctx.adb.devices() : [];
   const usable = devices.filter((d) => d.state === "device");
 
   if (devices.length === 0) {
     rows.push({
-      mark: "fail",
+      mark: "warn",
       label: "devices",
-      value: "none attached",
-      fix: "plug in a phone, enable USB debugging, and accept the RSA prompt on the device",
+      value: ctx.adb ? "none attached" : "not checked — adb is not installed",
+      fix: "a transfer needs one: plug in a phone, enable USB debugging, and accept the RSA prompt on the device",
     });
   } else {
     rows.push({
@@ -122,8 +123,10 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
   }
 
   // --- phone-side hasher ------------------------------------------------------
-  for (const device of usable.slice(0, 1)) {
-    const hasher = await ctx.adb.hasHasher(device.serial);
+  const phoneAdb = ctx.adb;
+  for (const device of phoneAdb ? usable.slice(0, 1) : []) {
+    if (!phoneAdb) break;
+    const hasher = await phoneAdb.hasHasher(device.serial);
     rows.push({
       mark: hasher ? "ok" : "fail",
       label: "phone sha256sum",
@@ -133,7 +136,7 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
         : "verification needs a phone-side hash; without it nothing can be deleted safely",
     });
 
-    const free = await ctx.adb.deviceFreeBytes(device.serial);
+    const free = await phoneAdb.deviceFreeBytes(device.serial);
     if (free !== null) {
       rows.push({
         mark: free > 5e9 ? "ok" : "warn",
@@ -220,9 +223,92 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
     }
   }
 
+  // --- the scanner ------------------------------------------------------------
+  //
+  // A scan's speed is a property of this machine, not of the drive's contents,
+  // and the difference is 43x (178 s against 4 s on the real archive). So the
+  // walker is a thing doctor checks, not a detail it assumes.
+  const probe = await probeScanner();
+  if (probe === null) {
+    rows.push({
+      mark: "warn",
+      label: "scanner",
+      value: "portage-scan not found — scans fall back to the slow built-in walker",
+      fix: "cargo build --release --manifest-path crates/portage-scan/Cargo.toml   (bundled builds ship it)",
+    });
+  } else {
+    rows.push({ mark: "ok", label: "scanner", value: `${probe.version}  ${probe.path}` });
+  }
+
+  // --- the archive's own walk -------------------------------------------------
+  const driveReady = destRoot !== "" && (await isDirectory(destRoot));
+  if (driveReady && probe !== null) {
+    const walked = await scannerWalk(probe.path, [destRoot], [
+      ...ALWAYS_EXCLUDED_DIRS,
+    ]).catch(() => null);
+    if (walked === null) {
+      rows.push({
+        mark: "warn",
+        label: "walk",
+        value: "the scanner could not finish a walk of the destination",
+        fix: "a mount that has stopped answering does this — replug the drive",
+      });
+    } else {
+      rows.push({
+        mark: "ok",
+        label: "walk",
+        value: `${walked.files.length} files in ${(walked.elapsedMs / 1000).toFixed(1)} s`,
+      });
+      if (walked.errorCount > 0) {
+        const first = walked.errors[0];
+        rows.push({
+          mark: "warn",
+          label: "  unreadable",
+          value: `${walked.errorCount} path(s) — ${first ? `${first.path}: ${first.reason}` : "no detail"}`,
+          fix: "an unreadable file cannot be a duplicate candidate; on NTFS this is usually a damaged sector",
+        });
+      }
+      if (walked.depthLimited > 0) {
+        rows.push({
+          mark: "warn",
+          label: "  too deep",
+          value: `${walked.depthLimited} folder(s) were not descended`,
+        });
+      }
+      // A path this deep is what makes a full-path walker quadratic on a FUSE
+      // mount; the scanner copes, and knowing it exists explains the odd slow
+      // tool that does not.
+      if (walked.deepest !== null && walked.deepest.depth >= 64) {
+        rows.push({
+          mark: "warn",
+          label: "  deep path",
+          value: `${walked.deepest.depth} segments — ${walked.deepest.relative.slice(0, 80)}`,
+          fix: "a path this deep is usually a symlink loop or a copy-of-copy folder; it slows every tool that resolves full paths",
+        });
+      }
+    }
+  }
+
+  // --- the trash --------------------------------------------------------------
+  if (driveReady) {
+    const trash = await readTrash(destRoot, defaultScanIo()).catch(() => null);
+    if (trash === null) {
+      rows.push({ mark: "info", label: "trash", value: "could not be read" });
+    } else if (trash.totalBytes > 0) {
+      rows.push({
+        mark: "warn",
+        label: "trash",
+        value: `${trash.totalFiles} files · ${formatBytes(trash.totalBytes)} — still on the drive`,
+        fix: "Duplicates → Empty the trash. Moving a duplicate frees nothing until the trash is emptied",
+      });
+    } else {
+      rows.push({ mark: "ok", label: "trash", value: "empty" });
+    }
+  }
+
   // --- benchmark --------------------------------------------------------------
   if (ctx.bench) {
-    const result = await benchmark(ctx.adb, usable[0]);
+    const result = ctx.adb ? await benchmark(ctx.adb, usable[0]) : null;
     rows.push({
       mark: "info",
       label: "throughput",
@@ -240,8 +326,18 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
   render(rows);
 
   const hasFailure = rows.some((r) => r.mark === "fail");
-  if (hasFailure && usable.length === 0) {
-    output.fail("no usable device — fix the ✗ lines above and re-run doctor");
+  // A phone-less machine is a SUPPORTED state: tidying the archive drive needs
+  // no device at all. So a failure only fails the exit code when it is about the
+  // drive, or when a phone is actually attached and broken.
+  const driveBroken = rows.some(
+    (r) => r.mark === "fail" && (r.label.trim() === "destination" || r.label.trim() === "journal"),
+  );
+  if (driveBroken) {
+    output.fail("the destination is not usable — fix the ✗ lines above and re-run doctor");
+    return 2;
+  }
+  if (hasFailure && usable.length > 0) {
+    output.fail("the phone is not ready — fix the ✗ lines above and re-run doctor");
     return 2;
   }
   return 0;

@@ -128,6 +128,14 @@ jobs:
       - name: Build the SPA
         run: bun run build
 
+      # Drives the built SPA in headless Chrome over CDP: the confirm sheet,
+      # the reclaim panel and the purge flow, asserted as a person would meet
+      # them. It proves the SCREENS against the fixture — the engine has its own
+      # suites — and it is the only thing that exercises the wiring between a
+      # frame and a button.
+      - name: UI journey
+        run: bun run ui:sweep
+
   rust:
     # Skip the generated release PR: it only changes version
     # strings and the changelog. GitHub does not run workflows for
@@ -164,15 +172,48 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri -> target
 
-      # tauri-build copies the sidecar named in `externalBin` at compile time and
-      # fails if it is missing. This job only compiles and unit-tests the shell,
-      # so a placeholder is enough; the real binary is built by `bun run sidecar`
-      # in the bundle job.
-      - name: Provide the sidecar placeholder
+      # tauri-build copies EVERY binary named in `externalBin` at compile time
+      # and fails if one is missing. This job only compiles and unit-tests the
+      # shell, so a placeholder per name is enough; the real binaries are built
+      # by `bun run sidecar` in the bundle job. Adding a name to
+      # `tauri.conf.json` means adding it here too.
+      - name: Provide the sidecar placeholders
         working-directory: .
         run: |
           mkdir -p apps/desktop/src-tauri/binaries
-          touch "apps/desktop/src-tauri/binaries/portage-$(rustc --print host-tuple)"
+          triple=$(rustc --print host-tuple)
+          touch "apps/desktop/src-tauri/binaries/portage-$triple"
+          touch "apps/desktop/src-tauri/binaries/portage-scan-$triple"
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+  scanner:
+    # The Rust scanner is a separate crate OUTSIDE apps/desktop/src-tauri, so the
+    # `rust` job never sees it: without this job its 29 tests would run only on a
+    # developer's machine.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
+    name: scanner (fmt, clippy, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crates/portage-scan
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: crates/portage-scan -> target
 
       - name: Format
         run: cargo fmt --check

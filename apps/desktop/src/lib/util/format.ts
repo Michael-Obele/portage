@@ -70,11 +70,6 @@ export function formatDuration(seconds: number | null): string {
 	return sec > 0 ? `${m} min ${sec} s` : `${m} min`;
 }
 
-/** `ETA 3 min 42 s`, or `ETA —` until the engine will vouch for a number. */
-export function etaWords(seconds: number | null): string {
-	return `ETA ${formatDuration(seconds)}`;
-}
-
 /** A 0..1 fraction as an integer percent. Never `42.0%`. */
 export function formatPercent(fraction: number): string {
 	if (!Number.isFinite(fraction)) return DASH;
@@ -109,8 +104,21 @@ export function truncateFront(path: string, max: number): string {
 	return `…${path.slice(path.length - (max - 1))}`;
 }
 
+/**
+ * An integer count, grouped the way the reader's locale groups it: `4,602`.
+ *
+ * `Intl.NumberFormat` is the platform's own, so there is no library and no
+ * hand-rolled "insert a comma every three digits" that gets India wrong.
+ */
+export function formatNumber(n: number): string {
+	if (!Number.isFinite(n)) return DASH;
+	return numberFormat.format(n);
+}
+
+const numberFormat = new Intl.NumberFormat();
+
 /** `1 file` / `3 files`. Used by every count in the copy. */
 export function plural(n: number, singular: string, plural?: string): string {
 	const word = n === 1 ? singular : (plural ?? `${singular}s`);
-	return `${n} ${word}`;
+	return `${formatNumber(n)} ${word}`;
 }

@@ -8,23 +8,24 @@
  * Every §6 safety rule in docs/dedupe.md is enforced here, in code, and each one
  * has a test. A rule that is "usually true" is not a rule.
  */
-import { ALWAYS_EXCLUDED_DIRS } from "../config/schema.ts";
-import { ensureDir, moveFile, statSafe } from "../util/fs.ts";
-import { dirname, normPath, resolveInside } from "../util/paths.ts";
+import { ALWAYS_EXCLUDED_DIRS } from "#lib/config/schema.ts";
+import { ensureDir, moveFile, statSafe } from "#lib/util/fs.ts";
+import { dirname, localDayKey, normPath, resolveInside } from "#lib/util/paths.ts";
 
 import {
   findByteIdentical,
   suggestKeeper,
   type Candidate,
-} from "./tier1.ts";
-import { RESOLUTION_RANK, isMediaCandidate, resolutionFrom } from "./naming.ts";
-import { findSameEpisode } from "./tier2.ts";
+} from "#lib/dedupe/tier1.ts";
+import { RESOLUTION_RANK, isMediaCandidate, resolutionFrom } from "#lib/dedupe/naming.ts";
+import { findSameEpisode } from "#lib/dedupe/tier2.ts";
+import { defaultScanIo, resilientScanIo, type ScanIo, type WalkOutcome } from "#lib/dedupe/scan-io.ts";
 import type {
   ApplyResult,
   DupeGroup,
   DupeMember,
   DupeReport,
-} from "./types.ts";
+} from "#lib/dedupe/types.ts";
 
 export interface ScanOptions {
   /** Every root the report should span. `config.roots` plus `dest_root`. */
@@ -34,6 +35,12 @@ export interface ScanOptions {
   /** Default true. `--no-auto` turns it off, but it never deletes anything. */
   suggest?: boolean;
   onProgress?: (message: string) => void;
+  /**
+   * How to reach the filesystem. Defaults to the Rust scanner when one is
+   * installed, and the built-in walker otherwise. Injectable so a test can drive
+   * either path without a binary on disk.
+   */
+  io?: ScanIo;
 }
 
 /** Never crossed, never considered. §6 rule 4. */
@@ -62,60 +69,33 @@ function isProtected(relative: string): boolean {
   return KEEP_PATTERNS.some((re) => re.test(relative));
 }
 
-async function statOf(
-  path: string,
-): Promise<{ size: number; mtime: number | null } | null> {
-  // `statSafe`, not Bun.file().stat(): the latter's typings have no
-  // lastModified, and it throws on a dangling path rather than returning null.
-  const st = await statSafe(path);
-  if (!st) return null;
-  return {
-    size: st.size,
-    mtime: st.mtimeMs > 0 ? Math.round(st.mtimeMs / 1000) : null,
-  };
-}
-
 /**
  * Walk every root, collecting media-sized files.
  *
  * `resolveInside` is the gate: a path that escapes its root (via `..`, an
  * absolute path, or a symlink) never becomes a candidate. That is §6 rule 6,
  * applied at DISCOVERY so a bad path cannot even reach the report.
+ *
+ * The walk itself lives behind `ScanIo`. This function's job is the part that
+ * must not differ between walkers: the keep-file filter, and falling back with
+ * a REASON rather than silently costing the person three minutes.
  */
 async function collect(
   roots: string[],
-): Promise<{ candidates: Candidate[]; bytes: number }> {
+  io: ScanIo,
+): Promise<WalkOutcome> {
+  const outcome = await io.walk(roots);
+
   const candidates: Candidate[] = [];
   let bytes = 0;
-
-  for (const root of roots) {
-    const glob = new Bun.Glob("**/*");
-    for await (const relative of glob.scan({
-      cwd: root,
-      dot: false,
-      followSymlinks: false,
-    })) {
-      if (!relative || relative.endsWith("/")) continue;
-      const segments = relative.split("/");
-      if (segments.some((s) => ALWAYS_EXCLUDED_DIRS.includes(s))) continue;
-      if (isProtected(relative)) continue;
-
-      const absolute = resolveInside(root, relative);
-      if (absolute === null) continue; // §6 rule 6
-
-      const stat = await statOf(absolute);
-      if (!stat || stat.size === 0) continue;
-
-      candidates.push({
-        path: absolute,
-        relative,
-        size: stat.size,
-        mtime: stat.mtime,
-      });
-      bytes += stat.size;
-    }
+  for (const candidate of outcome.candidates) {
+    if (candidate.size === 0) continue;
+    if (isProtected(candidate.relative)) continue;
+    if (candidate.relative.split("/").some((s) => ALWAYS_EXCLUDED_DIRS.includes(s))) continue;
+    candidates.push(candidate);
+    bytes += candidate.size;
   }
-  return { candidates, bytes };
+  return { ...outcome, candidates, bytes };
 }
 
 function toGroup(
@@ -257,7 +237,10 @@ function electKeeper(members: DupeMember[], suggest: boolean): void {
 
 /** Read-only. See the header. */
 export async function scanDuplicates(opts: ScanOptions): Promise<DupeReport> {
-  const { candidates, bytes } = await collect(opts.roots);
+  const resilient = resilientScanIo(opts.io ?? defaultScanIo(), opts.onProgress);
+  const io = resilient.io;
+  const walked = await collect(opts.roots, io);
+  const { candidates, bytes } = walked;
   const suggest = opts.suggest !== false;
 
   // Computed first, so the finding is reported even when it forms no group.
@@ -266,13 +249,13 @@ export async function scanDuplicates(opts: ScanOptions): Promise<DupeReport> {
   const truncated: string[] = [];
   const groups: DupeGroup[] = [];
   let nextId = 1;
+  let unreadableFiles = 0;
 
   if (opts.tier !== 2) {
     opts.onProgress?.("tier 1: looking for byte-identical files");
-    for (const members of await findByteIdentical(
-      candidates,
-      opts.onProgress,
-    )) {
+    const identical = await findByteIdentical(candidates, opts.onProgress, io);
+    unreadableFiles += identical.unreadable;
+    for (const members of identical.groups) {
       if (!suggest) members.forEach((m) => (m.keep = false));
       for (const m of members) {
         if (truncatedPaths.has(m.path)) m.suspicious = "truncated";
@@ -350,6 +333,19 @@ export async function scanDuplicates(opts: ScanOptions): Promise<DupeReport> {
     scannedBytes: bytes,
     unparsed,
     truncated,
+    unreadableFiles,
+    io: {
+      // If either stage fell back, this scan was on the slow path, whatever the
+      // walk itself managed.
+      via: resilient.degraded ? "glob" : walked.via,
+      elapsedMs: walked.elapsedMs,
+      dirs: walked.dirs,
+      errors: walked.errors,
+      errorCount: walked.errorCount,
+      deepest: walked.deepest,
+      depthLimited: walked.depthLimited,
+      scannerError: resilient.error ?? walked.scannerError,
+    },
   };
 }
 
@@ -386,7 +382,7 @@ export async function applySelection(
 
   const trashRoot =
     opts.trashRoot ??
-    `${opts.destRoot}/.portage/trash/${new Date(opts.now ?? Date.now()).toISOString().slice(0, 10)}`;
+    `${opts.destRoot}/.portage/trash/${localDayKey(new Date(opts.now ?? Date.now()))}`;
 
   for (const raw of selected) {
     const member = known.get(raw);
@@ -421,14 +417,23 @@ export async function applySelection(
       .slice(opts.destRoot.replace(/\/+$/, "").length)
       .replace(/^\/+/, "");
     // §6 rule 5 — never delete the last copy of anything.
+    //
+    // The survivors are checked ON DISK, not in the report. The report is a
+    // snapshot: a previous `dupes.apply` against the same scan already moved one
+    // copy to the trash while still listing it as a member, so trusting the list
+    // let a second apply move the last surviving copy — the report said there was
+    // another, and there was not. A file that has gone is not a survivor.
     const group = report.groups.find((g) =>
       g.members.some((m) => m.path === raw),
     );
     if (group) {
-      const survivors = group.members.filter(
-        (m) => m.path !== raw && !pathsIncludes(selected, m.path),
-      );
-      if (survivors.length === 0) {
+      let survivors = 0;
+      for (const other of group.members) {
+        if (other.path === raw) continue;
+        if (pathsIncludes(selected, other.path)) continue;
+        if ((await statSafe(other.path)) !== null) survivors += 1;
+      }
+      if (survivors === 0) {
         result.refused.push({
           path: raw,
           reason: "would remove the last copy",
@@ -465,4 +470,4 @@ function pathsIncludes(paths: Iterable<string>, candidate: string): boolean {
   return false;
 }
 
-export * from "./types.ts";
+export * from "#lib/dedupe/types.ts";

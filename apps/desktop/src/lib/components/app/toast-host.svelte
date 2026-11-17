@@ -10,8 +10,8 @@
 	 * from both rather than reappearing.
 	 */
 	import { toast, type ExternalToast } from 'svelte-sonner';
-	import type { Notice } from '../../state/app.svelte.ts';
-	import { Toaster } from '../ui/sonner/index.js';
+	import type { Notice } from '#lib/state/app.svelte.ts';
+	import { Toaster } from '#lib/components/ui/sonner/index.js';
 
 	let {
 		notices,
@@ -58,6 +58,15 @@
 	visibleToasts={3}
 	closeButton
 	richColors={false}
+	/*
+	 * Clears the sticky action bar on Plan, Purge and Duplicates.
+	 *
+	 * The CSS rule in layout.css sets the same thing, but sonner positions the
+	 * stack itself and wins over it — a bottom-right toast landed on the move
+	 * button on the real Duplicates screen. This is the prop sonner actually
+	 * reads, so it is the one that works.
+	 */
+	offset={{ bottom: '5.5rem' }}
 	toastOptions={{
 		class: density === 'compact' ? 'text-label' : 'text-body'
 	}}

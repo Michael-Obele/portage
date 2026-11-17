@@ -20,10 +20,10 @@
 	 */
 	import { LineChart } from 'layerchart';
 
-	import { DASH, formatDuration, formatRate } from '../../util/format.ts';
-	import { cn } from '../../utils.ts';
-	import { ChartContainer, type ChartConfig } from '../ui/chart/index.js';
-	import { seriesDrift, seriesSummary, type RateSample } from './transfer-series.ts';
+	import { DASH, formatDuration, formatRate } from '#lib/util/format.ts';
+	import { cn } from '#lib/utils.ts';
+	import { ChartContainer, type ChartConfig } from '#lib/components/ui/chart/index.js';
+	import { seriesDrift, seriesSummary, type RateSample } from '#lib/components/app/transfer-series.ts';
 
 	let {
 		series,

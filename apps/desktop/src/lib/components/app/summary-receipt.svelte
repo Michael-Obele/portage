@@ -11,13 +11,13 @@
 	 * each failure carries the exact command line to run, with a copy button —
 	 * labelled as a copy, because that is what it does.
 	 */
-	import { plural } from '../../util/format.ts';
-	import { cn } from '../../utils.ts';
-	import { Button } from '../ui/button/index.js';
-	import DataTable, { type TableColumn } from './data-table.svelte';
-	import * as Table from '../ui/table/index.js';
-	import { CONTROL, IDENTIFIER, ROW_NAME } from './tokens.ts';
-	import type { ReceiptFailure, ReceiptHeadline, ProofLine } from './summary-receipt.ts';
+	import { plural } from '#lib/util/format.ts';
+	import { cn } from '#lib/utils.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import DataTable, { type TableColumn } from '#lib/components/app/data-table.svelte';
+	import * as Table from '#lib/components/ui/table/index.js';
+	import { CONTROL, IDENTIFIER, ROW_NAME } from '#lib/components/app/tokens.ts';
+	import type { ReceiptFailure, ReceiptHeadline, ProofLine } from '#lib/components/app/summary-receipt.ts';
 
 	let {
 		headline,

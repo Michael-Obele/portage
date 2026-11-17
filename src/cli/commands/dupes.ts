@@ -5,15 +5,15 @@
  * automatically, in either tier. There is no `--yes`. The report is free and
  * safe to run whenever; moving a file is an action that names exactly what goes.
  */
-import { requireDestRoot } from "../../config/load.ts";
-import type { ResolvedConfig } from "../../config/load.ts";
-import { applySelection, scanDuplicates } from "../../dedupe/index.ts";
-import type { DupeReport } from "../../dedupe/types.ts";
-import { detect } from "../../tui/degrade.ts";
-import type { Output } from "../../output/output.ts";
-import { ExitCode, usageError } from "../../util/errors.ts";
-import type { Logger } from "../../util/log.ts";
-import { formatBytes } from "../../util/paths.ts";
+import { requireDestRoot } from "#lib/config/load.ts";
+import type { ResolvedConfig } from "#lib/config/load.ts";
+import { applySelection, scanDuplicates } from "#lib/dedupe/index.ts";
+import type { DupeReport } from "#lib/dedupe/types.ts";
+import { detect } from "#lib/tui/degrade.ts";
+import type { Output } from "#lib/output/output.ts";
+import { ExitCode, usageError } from "#lib/util/errors.ts";
+import type { Logger } from "#lib/util/log.ts";
+import { formatBytes } from "#lib/util/paths.ts";
 
 export interface DupesContext {
   resolved: ResolvedConfig;
@@ -143,7 +143,7 @@ export async function dupes(ctx: DupesContext): Promise<number> {
   const review =
     caps.tui && ctx.flags.apply === undefined && ctx.flags.apply === false;
   if (review) {
-    const { runDupesTui } = await import("../../tui/dupes.svelte.ts");
+    const { runDupesTui } = await import("#lib/tui/dupes.svelte.ts");
     return await runDupesTui({
       roots,
       tier,
@@ -222,7 +222,9 @@ export async function dupes(ctx: DupesContext): Promise<number> {
       "moved",
       `${result.moved.length} files · ${formatBytes(result.bytesMoved)}`,
     );
-    o.bullet("restore with `portage trash`");
+    // `portage trash` does not exist yet. Naming it sent a person to
+    // "unknown command: trash", so the copy says where the files went instead.
+    o.bullet("they are in the trash directory above — move them back by hand to restore");
   }
   return result.refused.length > 0 ? ExitCode.transfer : 0;
 }

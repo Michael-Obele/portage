@@ -16,7 +16,7 @@ import type {
 	RunFrame,
 	ScreenName,
 	StateFrame
-} from '../engine/protocol.ts';
+} from '#lib/engine/protocol.ts';
 
 /**
  * How long a `copying` row may go without a byte before it says `stalled`.

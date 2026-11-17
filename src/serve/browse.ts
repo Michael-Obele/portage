@@ -12,11 +12,11 @@
  * handing that mount to adb is the single most common "failed to stat remote
  * object" mistake.
  */
-import type { Adb } from "../device/adb.ts";
-import { stripCR } from "../util/spawn.ts";
-import { basename } from "../util/paths.ts";
-import { preconditionError, usageError } from "../util/errors.ts";
-import type { BrowseEntry } from "./protocol.ts";
+import type { Adb } from "#lib/device/adb.ts";
+import { stripCR } from "#lib/util/spawn.ts";
+import { basename } from "#lib/util/paths.ts";
+import { preconditionError, usageError } from "#lib/util/errors.ts";
+import type { BrowseEntry } from "#lib/serve/protocol.ts";
 
 /** Entries returned for one call. Beyond this the frame says it truncated. */
 export const BROWSE_LIMIT = 500;

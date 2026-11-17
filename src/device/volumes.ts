@@ -7,8 +7,8 @@
  */
 
 import { join } from "node:path";
-import { diskSpaceAsync, isDirectory, withTimeout } from "../util/fs.ts";
-import type { SpawnFn } from "../util/spawn.ts";
+import { diskSpaceAsync, isDirectory, withTimeout } from "#lib/util/fs.ts";
+import type { SpawnFn } from "#lib/util/spawn.ts";
 
 /** One row of `lsblk` output, before any judgement about whether it is useful. */
 export interface RawBlock {

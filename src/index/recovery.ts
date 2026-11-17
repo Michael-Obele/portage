@@ -21,9 +21,9 @@
 import { readdir } from "node:fs/promises";
 import { join, basename } from "node:path";
 
-import { diskSpace } from "../util/fs.ts";
-import { statSyncSafe } from "../util/fs.ts";
-import type { Journal } from "./journal.ts";
+import { diskSpace } from "#lib/util/fs.ts";
+import { statSyncSafe } from "#lib/util/fs.ts";
+import type { Journal } from "#lib/index/journal.ts";
 
 export interface RecoveryReport {
   /** Transfer rows moved out of a live state by reconciliation. */

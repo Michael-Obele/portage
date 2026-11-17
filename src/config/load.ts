@@ -17,7 +17,7 @@ import { mkdir } from "node:fs/promises";
 import { parse as parseToml } from "smol-toml";
 import * as v from "valibot";
 
-import { usageError } from "../util/errors.ts";
+import { usageError } from "#lib/util/errors.ts";
 import {
   DEFAULT_CONFIG,
   PortageConfigSchema,
@@ -26,7 +26,7 @@ import {
   CONFIG_KEYS,
   FIELD_SCHEMAS,
   type PortageConfig,
-} from "./schema.ts";
+} from "#lib/config/schema.ts";
 
 export interface ConfigSources {
   userPath: string;

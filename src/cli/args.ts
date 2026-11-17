@@ -9,7 +9,7 @@
  * aliases. Everything after a bare `--` is a positional.
  */
 
-import { usageError } from "../util/errors.ts";
+import { usageError } from "#lib/util/errors.ts";
 
 export interface ParsedArgs {
   command: string | null;

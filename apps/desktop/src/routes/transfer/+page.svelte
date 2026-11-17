@@ -22,14 +22,14 @@
 		ErrorBand,
 		PageHeader,
 		SkeletonRows
-	} from '../../lib/components/app/index.ts';
-	import StateChip from '../../lib/components/app/state-chip.svelte';
-	import TransferChart from '../../lib/components/app/transfer-chart.svelte';
-	import TransferControls from '../../lib/components/app/transfer-controls.svelte';
-	import TransferHero from '../../lib/components/app/transfer-hero.svelte';
-	import TransferRows from '../../lib/components/app/transfer-rows.svelte';
-	import { failureBand, type Band } from '../../lib/components/app/transfer-band.ts';
-	import { browserStore, consentGiven } from '../../lib/components/app/pull-consent.ts';
+	} from '#lib/components/app/index.ts';
+	import StateChip from '#lib/components/app/state-chip.svelte';
+	import TransferChart from '#lib/components/app/transfer-chart.svelte';
+	import TransferControls from '#lib/components/app/transfer-controls.svelte';
+	import TransferHero from '#lib/components/app/transfer-hero.svelte';
+	import TransferRows from '#lib/components/app/transfer-rows.svelte';
+	import { failureBand, type Band } from '#lib/components/app/transfer-band.ts';
+	import { browserStore, consentGiven } from '#lib/components/app/pull-consent.ts';
 	import {
 		deviceLabel,
 		filtersFromIntent,
@@ -38,7 +38,7 @@
 		planArgs,
 		pullStartArgs,
 		type PullIntent
-	} from '../../lib/components/app/plan-filters.ts';
+	} from '#lib/components/app/plan-filters.ts';
 	import {
 		SAMPLE_INTERVAL_MS,
 		nextFirstVerify,
@@ -47,11 +47,11 @@
 		stalledSentence,
 		viewIsLive,
 		type RateSample
-	} from '../../lib/components/app/transfer-series.ts';
-	import { plural } from '../../lib/util/format.ts';
-	import { app } from '../../lib/state/app.svelte.ts';
-	import { run } from '../../lib/state/run.svelte.ts';
-	import { screens } from '../../lib/state/screens.svelte.ts';
+	} from '#lib/components/app/transfer-series.ts';
+	import { plural } from '#lib/util/format.ts';
+	import { app } from '#lib/state/app.svelte.ts';
+	import { run } from '#lib/state/run.svelte.ts';
+	import { screens } from '#lib/state/screens.svelte.ts';
 
 	/**
 	 * Everything except the clock lives in a module store (see

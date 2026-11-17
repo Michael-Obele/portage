@@ -13,8 +13,8 @@ import type {
 	Overall,
 	RunFrame,
 	StateFrame,
-} from "../src/lib/engine/protocol.ts";
-import { PROTOCOL_VERSION } from "../src/lib/engine/protocol.ts";
+} from "#lib/engine/protocol.ts";
+import { PROTOCOL_VERSION } from "#lib/engine/protocol.ts";
 import {
 	STALL_MS,
 	emptyOverall,
@@ -29,7 +29,7 @@ import {
 	stalledRows,
 	startRun,
 	type RunView,
-} from "../src/lib/state/run.ts";
+} from "#lib/state/run.ts";
 
 function overall(patch: Partial<Overall> = {}): Overall {
 	return { ...emptyOverall(), ...patch };

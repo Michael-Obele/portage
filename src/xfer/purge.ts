@@ -13,10 +13,10 @@
  * that loses data, so that path does not exist.
  */
 
-import type { Adb, DeviceInfo } from "../device/adb.ts";
-import type { Journal } from "../index/journal.ts";
-import { sha256File } from "../util/hash.ts";
-import type { Transport } from "../xfer/transport.ts";
+import type { Adb, DeviceInfo } from "#lib/device/adb.ts";
+import type { Journal } from "#lib/index/journal.ts";
+import { sha256File } from "#lib/util/hash.ts";
+import type { Transport } from "#lib/xfer/transport.ts";
 
 export interface PurgeCandidate {
   deviceId: string;

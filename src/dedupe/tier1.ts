@@ -20,12 +20,22 @@
  * Never size alone — two different episodes from the same encode can share a
  * size, and a size match is the false positive that destroys the good copy.
  */
-import { sampleHash, sha256File } from "../util/hash.ts";
+import { sampleHash, sha256File } from "#lib/util/hash.ts";
 
-import type { DupeMember } from "./types.ts";
+import type { ScanIo } from "#lib/dedupe/scan-io.ts";
+import type { DupeMember } from "#lib/dedupe/types.ts";
 
 /** A file as discovered, before any hashing. */
 export interface Candidate {
+  /**
+   * The root this file was found under.
+   *
+   * The Rust digester opens files RELATIVE to their root, because a full path
+   * costs a FUSE lookup per component and one folder on the real archive is 462
+   * segments deep. So the root travels with the candidate rather than being
+   * reconstructed by splitting an absolute path.
+   */
+  root: string;
   path: string;
   relative: string;
   size: number;
@@ -94,7 +104,9 @@ function eligibleForKeep(members: DupeMember[]): DupeMember[] {
 /** Hash every candidate fully. Separate so a test can drive the stages alone. */
 export async function fullHashes(
   candidates: Candidate[],
+  io?: ScanIo,
 ): Promise<Map<string, string | null>> {
+  if (io) return io.digests(candidates, "full");
   const out = new Map<string, string | null>();
   for (const c of candidates) out.set(c.path, await sha256File(c.path));
   return out;
@@ -113,6 +125,20 @@ function buckets<T>(items: T[], key: (item: T) => string | null): T[][] {
   return [...map.values()].filter((g) => g.length > 1);
 }
 
+/** What tier 1 found, and what it could not look at. */
+export interface ByteIdenticalResult {
+  groups: DupeMember[][];
+  /**
+   * Files the hasher could not read.
+   *
+   * They were NOT compared, so a report that omits this number claims a
+   * completeness it does not have. A drive unplugged mid-scan lands here: the
+   * walk saw the files, the hasher could not open them, and "0 duplicates" would
+   * otherwise be the whole story.
+   */
+  unreadable: number;
+}
+
 /**
  * The three stages. Returns groups of members that are byte-identical.
  *
@@ -122,35 +148,50 @@ function buckets<T>(items: T[], key: (item: T) => string | null): T[][] {
 export async function findByteIdentical(
   candidates: Candidate[],
   onProgress?: (message: string) => void,
-): Promise<DupeMember[][]> {
-  if (candidates.length === 0) return [];
+  io?: ScanIo,
+): Promise<ByteIdenticalResult> {
+  if (candidates.length === 0) return { groups: [], unreadable: 0 };
 
   // Stage 1 — by size. Files of different sizes cannot be identical, and this
   // removes the vast majority of comparisons on its own.
   onProgress?.(`grouping ${candidates.length} files by size`);
   const bySize = buckets(candidates, (c) => String(c.size));
   const sized = bySize.flat();
-  if (sized.length === 0) return [];
+  if (sized.length === 0) return { groups: [], unreadable: 0 };
 
   // Stage 2 — sample hash. REJECTS ONLY; it can never confirm a duplicate.
   onProgress?.(`sampling ${sized.length} same-size files`);
+  const samples = io
+    ? await io.digests(sized, "sample")
+    : new Map(
+        await Promise.all(
+          sized.map(async (c) => [c.path, await sampleHash(c.path)] as const),
+        ),
+      );
+  let unreadable = 0;
   const withSample: Array<Candidate & { sample: string }> = [];
   for (const c of sized) {
-    const s = await sampleHash(c.path);
-    if (s !== null) withSample.push({ ...c, sample: s });
+    const sample = samples.get(c.path);
+    if (sample) withSample.push({ ...c, sample });
+    else unreadable += 1;
   }
   const bySample = buckets(withSample, (c) => c.sample);
   const sampled2 = bySample.flat();
-  if (sampled2.length === 0) return [];
+  if (sampled2.length === 0) return { groups: [], unreadable };
 
   // Stage 3 — full hash. THIS is what makes "identical" true.
   onProgress?.(`verifying ${sampled2.length} candidates byte for byte`);
-  const hashes = await fullHashes(sampled2);
+  const hashes = await fullHashes(sampled2, io);
 
   const confirmed = buckets(
     sampled2.map((c) => ({ candidate: c, hash: hashes.get(c.path) ?? null })),
     (c) => c.hash,
   );
+  // A file that was readable at the sample stage and is not now is one the
+  // drive stopped answering for — counted, never quietly treated as unique.
+  for (const c of sampled2) {
+    if (!hashes.get(c.path)) unreadable += 1;
+  }
 
   const groups: DupeMember[][] = [];
   for (const group of confirmed) {
@@ -173,5 +214,5 @@ export async function findByteIdentical(
     }
     groups.push(members);
   }
-  return groups;
+  return { groups, unreadable };
 }

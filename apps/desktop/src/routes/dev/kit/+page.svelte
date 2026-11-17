@@ -13,15 +13,15 @@
 	 */
 	import { toast } from 'svelte-sonner';
 
-	import { Badge } from '../../../lib/components/ui/badge/index.js';
-	import { Button } from '../../../lib/components/ui/button/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import {
 		Card,
 		CardContent,
 		CardHeader,
 		CardTitle
-	} from '../../../lib/components/ui/card/index.js';
-	import { Checkbox } from '../../../lib/components/ui/checkbox/index.js';
+	} from '#lib/components/ui/card/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 	import {
 		Dialog,
 		DialogContent,
@@ -29,32 +29,32 @@
 		DialogHeader,
 		DialogTitle,
 		DialogTrigger
-	} from '../../../lib/components/ui/dialog/index.js';
-	import { Input } from '../../../lib/components/ui/input/index.js';
-	import { Label } from '../../../lib/components/ui/label/index.js';
-	import { Progress } from '../../../lib/components/ui/progress/index.js';
-	import { ScrollArea } from '../../../lib/components/ui/scroll-area/index.js';
+	} from '#lib/components/ui/dialog/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import { Progress } from '#lib/components/ui/progress/index.js';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
 	import {
 		Select,
 		SelectContent,
 		SelectItem,
 		SelectTrigger,
 		SelectValue
-	} from '../../../lib/components/ui/select/index.js';
-	import { Separator } from '../../../lib/components/ui/separator/index.js';
-	import { Skeleton } from '../../../lib/components/ui/skeleton/index.js';
+	} from '#lib/components/ui/select/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
+	import { Skeleton } from '#lib/components/ui/skeleton/index.js';
 	import {
 		Tabs,
 		TabsContent,
 		TabsList,
 		TabsTrigger
-	} from '../../../lib/components/ui/tabs/index.js';
+	} from '#lib/components/ui/tabs/index.js';
 	import {
 		Tooltip,
 		TooltipContent,
 		TooltipProvider,
 		TooltipTrigger
-	} from '../../../lib/components/ui/tooltip/index.js';
+	} from '#lib/components/ui/tooltip/index.js';
 
 	import {
 		ConfirmSheet,
@@ -68,11 +68,11 @@
 		StateChip,
 		type StateChipState,
 		type TableColumn
-	} from '../../../lib/components/app/index.ts';
-	import { CONTROL } from '../../../lib/components/app/tokens.ts';
-	import { formatBytes } from '../../../lib/util/format.ts';
-	import type { ProofCounts } from '../../../lib/state/run.ts';
-	import { cn } from '../../../lib/utils.ts';
+	} from '#lib/components/app/index.ts';
+	import { CONTROL } from '#lib/components/app/tokens.ts';
+	import { formatBytes } from '#lib/util/format.ts';
+	import type { ProofCounts } from '#lib/state/run.ts';
+	import { cn } from '#lib/utils.ts';
 
 	const TYPES = [
 		{ name: 'caption', cls: 'text-caption', size: '11 px' },

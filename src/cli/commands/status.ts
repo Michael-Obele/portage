@@ -7,17 +7,17 @@
  * one you need to see after any `--keep-source` run.
  */
 
-import { Journal } from "../../index/journal.ts";
-import type { ResolvedConfig } from "../../config/load.ts";
+import { Journal } from "#lib/index/journal.ts";
+import type { ResolvedConfig } from "#lib/config/load.ts";
 import {
   requireDestRoot,
   coerceConfigValue,
   writeConfigFile,
-} from "../../config/load.ts";
-import { CONFIG_KEYS } from "../../config/schema.ts";
-import { formatBytes } from "../../util/paths.ts";
-import type { Output } from "../../output/output.ts";
-import { usageError } from "../../util/errors.ts";
+} from "#lib/config/load.ts";
+import { CONFIG_KEYS } from "#lib/config/schema.ts";
+import { formatBytes } from "#lib/util/paths.ts";
+import type { Output } from "#lib/output/output.ts";
+import { usageError } from "#lib/util/errors.ts";
 
 export async function status(ctx: {
   resolved: ResolvedConfig;

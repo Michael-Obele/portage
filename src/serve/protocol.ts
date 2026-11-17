@@ -19,20 +19,20 @@
  */
 import * as v from "valibot";
 
-import type { PortageConfig } from "../config/schema.ts";
-import type { DeviceInfo } from "../device/adb.ts";
-import type { Volume } from "../device/volumes.ts";
-import type { RunRow, TransferRow } from "../index/journal.ts";
-import type { PlanResult } from "../plan/plan.ts";
-import type { Candidate, Verdict } from "../scan/scan.ts";
+import type { PortageConfig } from "#lib/config/schema.ts";
+import type { DeviceInfo } from "#lib/device/adb.ts";
+import type { Volume } from "#lib/device/volumes.ts";
+import type { RunRow, TransferRow } from "#lib/index/journal.ts";
+import type { PlanResult } from "#lib/plan/plan.ts";
+import type { Candidate, Verdict } from "#lib/scan/scan.ts";
 import type {
   DeviceRow,
   FileRow,
   Overall,
   ScreenName,
-} from "../tui/state.svelte.ts";
-import type { EngineSummary, FileEvent } from "../xfer/engine.ts";
-import type { PurgeCandidate } from "../xfer/purge.ts";
+} from "#lib/tui/state.svelte.ts";
+import type { EngineSummary, FileEvent } from "#lib/xfer/engine.ts";
+import type { PurgeCandidate } from "#lib/xfer/purge.ts";
 
 export const PROTOCOL_VERSION = 1;
 
@@ -173,6 +173,28 @@ export const ArgsSchemas = {
       v.array(v.string()),
       v.minLength(1, "purge.apply needs at least one key"),
     ),
+    confirm: v.optional(v.string()),
+  }),
+
+  /**
+   * What the drive's trash is still holding.
+   *
+   * A duplicate is MOVED to `.portage/trash/<date>/`, which frees nothing on the
+   * same drive. This is the read that lets a screen say how much space is
+   * waiting to be freed, and `trash.empty` is the one permanent delete.
+   */
+  "trash.status": EmptyArgs,
+  "trash.empty": v.strictObject({
+    trashId: v.pipe(v.string(), v.minLength(1, "trash.empty needs a trashId")),
+    /**
+     * Which day folders to empty.
+     *
+     * Omitted means EVERY day folder; an array (even an empty one) means exactly
+     * those, so `{ days: [], loose: true }` is "the files loose in the trash".
+     */
+    days: v.optional(v.array(v.string())),
+    /** Include files sitting directly in the trash root, outside any day. */
+    loose: v.optional(v.boolean(), false),
     confirm: v.optional(v.string()),
   }),
 
@@ -317,6 +339,25 @@ export const WireDupeGroupSchema = v.strictObject({
 });
 export type WireDupeGroup = v.InferOutput<typeof WireDupeGroupSchema>;
 
+/**
+ * How a scan reached the filesystem.
+ *
+ * `via: "glob"` is the built-in walker: correct, and 40x slower on a FUSE mount
+ * (`Bun.Glob` over the real archive measured 178 s against 4 s for relative
+ * descent). A screen that shows a three-minute scan must be able to say why.
+ */
+export const ScanIoSummarySchema = v.strictObject({
+  via: v.picklist(["scanner", "glob"]),
+  elapsedMs: v.number(),
+  dirs: v.number(),
+  errors: v.array(v.strictObject({ path: v.string(), reason: v.string() })),
+  errorCount: v.number(),
+  deepest: v.nullable(v.strictObject({ relative: v.string(), depth: v.number() })),
+  depthLimited: v.number(),
+  scannerError: v.nullable(v.string()),
+});
+export type WireScanIoSummary = v.InferOutput<typeof ScanIoSummarySchema>;
+
 export const DupesFrameSchema = v.strictObject({
   ...frameHeader("dupes"),
   scanId: v.string(),
@@ -328,6 +369,10 @@ export const DupesFrameSchema = v.strictObject({
   scannedBytes: v.number(),
   truncated: v.array(v.string()),
   unparsed: v.array(v.string()),
+  /** Files the hasher could not read, so they were never compared. */
+  unreadableFiles: v.number(),
+  /** How the tree was walked, so a slow scan can explain itself. */
+  io: ScanIoSummarySchema,
 });
 
 /** Purge candidates with their proof, and a key per candidate. */
@@ -408,13 +453,42 @@ export const BrowseFrameSchema = v.strictObject({
 export const NeedsConfirmFrameSchema = v.strictObject({
   ...frameHeader("needsConfirm"),
   actionId: v.string(),
-  action: v.picklist(["dupes.apply", "purge.apply"]),
+  action: v.picklist(["dupes.apply", "purge.apply", "trash.empty"]),
   paths: v.array(v.string()),
   count: v.number(),
   bytes: v.number(),
   /** Where a move goes; null for a purge, which deletes rather than moves. */
   trashDir: v.nullable(v.string()),
 });
+
+/**
+ * The drive's trash, as one frame.
+ *
+ * Every number a screen shows comes from here, so "reclaimable" and "in the
+ * trash" can never drift from what emptying would actually free.
+ */
+export const TrashFrameSchema = v.strictObject({
+  ...frameHeader("trash"),
+  trashId: v.string(),
+  root: v.string(),
+  exists: v.boolean(),
+  days: v.array(
+    v.strictObject({
+      date: v.string(),
+      path: v.string(),
+      files: v.number(),
+      bytes: v.number(),
+    }),
+  ),
+  looseFiles: v.number(),
+  looseBytes: v.number(),
+  totalFiles: v.number(),
+  totalBytes: v.number(),
+});
+export type TrashFramePayload = Omit<
+  v.InferOutput<typeof TrashFrameSchema>,
+  "v" | "type"
+>;
 
 /** Exactly one per command id, always — including on failure. */
 export const AnswerFrameSchema = v.strictObject({
@@ -442,6 +516,7 @@ export const FRAME_SCHEMAS = {
   dupes: DupesFrameSchema,
   purgePlan: PurgePlanFrameSchema,
   doctor: DoctorFrameSchema,
+  trash: TrashFrameSchema,
   status: StatusFrameSchema,
   browse: BrowseFrameSchema,
   needsConfirm: NeedsConfirmFrameSchema,

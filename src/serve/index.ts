@@ -12,20 +12,20 @@
  * This is ADDITIVE (D38). The CLI, the TUI, `--json` and every exit code are
  * unchanged; `serve` is a fourth way into the same functions.
  */
-import type { Adb } from "../device/adb.ts";
-import type { ResolvedConfig } from "../config/load.ts";
-import { silentLogger, type Logger } from "../util/log.ts";
+import type { Adb } from "#lib/device/adb.ts";
+import type { ResolvedConfig } from "#lib/config/load.ts";
+import { silentLogger, type Logger } from "#lib/util/log.ts";
 
 import {
   createContext,
   dispatch,
   type DispatchOutcome,
   type ServeContext,
-} from "./dispatch.ts";
-import { connect, type Frames, type Sink } from "./frames.ts";
-import { PendingRegister } from "./pending.ts";
-import { PROTOCOL_VERSION } from "./protocol.ts";
-import { RunController } from "./run.ts";
+} from "#lib/serve/dispatch.ts";
+import { connect, type Frames, type Sink } from "#lib/serve/frames.ts";
+import { PendingRegister } from "#lib/serve/pending.ts";
+import { PROTOCOL_VERSION } from "#lib/serve/protocol.ts";
+import { RunController } from "#lib/serve/run.ts";
 
 export interface ServeOptions {
   /** Lines to consume. Defaults to stdin; tests pass an array. */

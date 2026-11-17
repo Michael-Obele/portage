@@ -9,7 +9,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 
-import type { BrowseEntry } from '../src/lib/engine/protocol.ts';
+import type { BrowseEntry } from '#lib/engine/protocol.ts';
 import {
 	PHONE_ROOT,
 	addRoot,
@@ -23,7 +23,7 @@ import {
 	replaceRoot,
 	rootVerdict,
 	rootsSentence
-} from '../src/lib/components/app/source-folders.ts';
+} from '#lib/components/app/source-folders.ts';
 
 function entry(name: string, kind: 'dir' | 'file'): BrowseEntry {
 	return {

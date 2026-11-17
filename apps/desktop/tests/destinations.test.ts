@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
-import { destinationRefusal } from '../src/lib/components/app/destinations.ts';
-import type { Volume } from '../src/lib/engine/protocol.ts';
+import { destinationRefusal } from '#lib/components/app/destinations.ts';
+import type { Volume } from '#lib/engine/protocol.ts';
 
 function volume(over: Partial<Volume> = {}): Volume {
 	return {

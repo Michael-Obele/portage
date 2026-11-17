@@ -15,7 +15,7 @@ import {
   readPref,
   writePref,
   type PrefStore
-} from '../src/lib/state/prefs.ts';
+} from '#lib/state/prefs.ts';
 
 function fakeStore(initial: Record<string, string> = {}) {
   const data: Record<string, string> = { ...initial };

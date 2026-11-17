@@ -9,7 +9,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 
-import { seriesDrift, type RateSample } from '../src/lib/components/app/transfer-series.ts';
+import { seriesDrift, type RateSample } from '#lib/components/app/transfer-series.ts';
 
 function samples(averages: number[]): RateSample[] {
 	return averages.map((average, index) => ({ t: index + 1, instant: average, average }));

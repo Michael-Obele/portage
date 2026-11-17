@@ -15,7 +15,7 @@ import {
 	parseIntent,
 	planArgs,
 	pullStartArgs
-} from '../src/lib/components/app/plan-filters.ts';
+} from '#lib/components/app/plan-filters.ts';
 
 describe('the pull intent', () => {
 	test('carries removals through the URL, exactly', () => {

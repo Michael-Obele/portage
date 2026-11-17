@@ -11,17 +11,17 @@
 	 * narrow one. It used to sit below a 62dvh scroll box, which put it off the
 	 * screen: clicking a row looked like it did nothing.
 	 */
-	import { DASH, formatBytes, truncateMiddle } from '../../util/format.ts';
-	import { cn } from '../../utils.ts';
-	import { Button } from '../ui/button/index.js';
-	import * as Card from '../ui/card/index.js';
-	import { ScrollArea } from '../ui/scroll-area/index.js';
-	import * as Table from '../ui/table/index.js';
-	import CopyButton from './copy-button.svelte';
-	import DataTable, { type TableColumn } from './data-table.svelte';
-	import type { PlanRow } from './plan-filters.ts';
-	import StateChip from './state-chip.svelte';
-	import { CONTROL, IDENTIFIER, NUMERIC, ROW_NAME } from './tokens.ts';
+	import { DASH, formatBytes, truncateMiddle } from '#lib/util/format.ts';
+	import { cn } from '#lib/utils.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
+	import * as Table from '#lib/components/ui/table/index.js';
+	import CopyButton from '#lib/components/app/copy-button.svelte';
+	import DataTable, { type TableColumn } from '#lib/components/app/data-table.svelte';
+	import type { PlanRow } from '#lib/components/app/plan-filters.ts';
+	import StateChip from '#lib/components/app/state-chip.svelte';
+	import { CONTROL, IDENTIFIER, NUMERIC, ROW_NAME } from '#lib/components/app/tokens.ts';
 
 	let {
 		rows,

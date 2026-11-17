@@ -26,18 +26,19 @@
  * issued, and a report whose `scanId` has expired is still refused by the
  * engine. Nothing in this file can make a stale id look fresh.
  */
-import { selectionFor } from "../components/app/dupes-view.ts";
-import { emptyFilters, type PlanFilters, type PlanRow } from "../components/app/plan-filters.ts";
-import type { DoctorFilter } from "../components/app/doctor-view.ts";
-import type { Band } from "../components/app/transfer-band.ts";
+import { selectionFor } from "#lib/components/app/dupes-view.ts";
+import { emptyFilters, type PlanFilters, type PlanRow } from "#lib/components/app/plan-filters.ts";
+import type { DoctorFilter } from "#lib/components/app/doctor-view.ts";
+import type { Band } from "#lib/components/app/transfer-band.ts";
 import type {
 	DupesFrame,
 	DoctorFrame,
 	Frame,
 	NeedsConfirmFrame,
 	PlanResult,
-	PurgePlanFrame
-} from "../engine/protocol.ts";
+	PurgePlanFrame,
+	TrashFrame
+} from "#lib/engine/protocol.ts";
 
 import {
 	PREF_KEYS,
@@ -48,7 +49,7 @@ import {
 	readPref,
 	writePref,
 	type PrefStore
-} from "./prefs.ts";
+} from "#lib/state/prefs.ts";
 
 /** A scan scope: the engine's own roots, or everything on the destination drive. */
 export type ScanScope = "configured" | "drive";
@@ -102,6 +103,27 @@ export class DupesScreen {
 	pendingConfirm = $state<NeedsConfirmFrame | null>(null);
 	sheetOpen = $state(false);
 	scope = $state<ScanScope>("configured");
+	/**
+	 * What the drive's trash is still holding.
+	 *
+	 * A duplicate is MOVED to `<destRoot>/.portage/trash/<date>/`, and on the same
+	 * drive that frees nothing. This is the number that becomes real space when
+	 * the trash is emptied, so it is kept beside the report rather than being
+	 * re-derived from `reclaimableBytes` (which would be a lie by exactly one
+	 * step).
+	 */
+	trash = $state.raw<TrashFrame | null>(null);
+	trashBusy = $state(false);
+	emptying = $state(false);
+	/**
+	 * What the open empty-sheet is about: `null` = the whole trash, an array =
+	 * those day folders. Remembered because the CONFIRM must not widen the scope
+	 * the sheet just described.
+	 */
+	emptyDays = $state<string[] | null>(null);
+	emptyLoose = $state(false);
+	/** When the report in hand arrived. What "scanned 4 min ago" is read from. */
+	scannedAt = $state<Date | null>(null);
 
 	#prefs: PrefStore | null;
 
@@ -153,6 +175,14 @@ export class DoctorScreen {
 	running = $state(false);
 	filter = $state<DoctorFilter>("all");
 	failure = $state<Band | null>(null);
+	/**
+	 * When these checks ran.
+	 *
+	 * A report card with no date is a claim you cannot act on: "destination ok"
+	 * five minutes after unplugging the drive is a different statement from the
+	 * same words now.
+	 */
+	checkedAt = $state<Date | null>(null);
 
 	#prefs: PrefStore | null;
 
@@ -310,6 +340,7 @@ export function routeFrame(
 		}
 		case "dupes": {
 			into.dupes.scan = frame;
+			into.dupes.scannedAt = new Date();
 			// A fresh report re-derives the default selection: tier 1 inside,
 			// tier 2 out. Keeping an old selection across a new scan would point
 			// keys at a report the engine no longer holds.
@@ -324,8 +355,15 @@ export function routeFrame(
 			into.purge.staleSelection = false;
 			return;
 		}
+		case "trash": {
+			// A `trash.empty` must echo back THIS frame's id, so the reading is
+			// captured whether or not the screen is mounted.
+			into.dupes.trash = frame;
+			return;
+		}
 		case "doctor": {
 			into.doctor.report = frame;
+			into.doctor.checkedAt = new Date();
 			return;
 		}
 		case "needsConfirm": {
@@ -336,6 +374,12 @@ export function routeFrame(
 			} else if (frame.action === "purge.apply") {
 				into.purge.pendingConfirm = frame;
 				into.purge.sheetOpen = true;
+			} else if (frame.action === "trash.empty") {
+				// Emptying the trash is the second half of "reclaim": it belongs to
+				// the screen that found the duplicates, not to a screen with no
+				// context for it.
+				into.dupes.pendingConfirm = frame;
+				into.dupes.sheetOpen = true;
 			}
 			return;
 		}

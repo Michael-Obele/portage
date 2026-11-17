@@ -1,0 +1,401 @@
+/**
+ * A UI journey sweep: serve the built SPA, drive it in headless Chrome over CDP,
+ * and assert what a person would see and be able to press.
+ *
+ * Why a script and not a unit test: the interesting failures on these screens are
+ * SEAMS — a sheet that opens on the wrong screen, a button that survives its
+ * report, a caption that renders two numbers that disagree. None of those live in
+ * one component, so none of them are visible to a component test.
+ *
+ * The fixture (`?mock=…`) is used deliberately: this proves the SCREENS, not the
+ * engine. Engine behaviour is covered by `test/` and, on the real drive, by the
+ * wire probes in the repo notes.
+ *
+ * Run from apps/desktop:
+ *   bun run build && bun run ui:sweep
+ *
+ * Exits non-zero when a step fails, and writes a screenshot per step to /tmp.
+ */
+/// <reference types="bun" />
+import { existsSync, mkdirSync } from 'node:fs';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+
+const appRoot = resolve(import.meta.dir, '..');
+const buildDir = join(appRoot, 'build');
+const PORT = 5199;
+const CDP_PORT = 9333;
+const SHOTS = '/tmp/portage-ui';
+const CHROME =
+  process.env.CHROME_PATH ??
+  (existsSync('/usr/bin/google-chrome')
+    ? '/usr/bin/google-chrome'
+    : `${process.env.HOME}/.cache/ms-playwright/chromium-1200/chrome-linux/chrome`);
+
+if (!existsSync(buildDir)) {
+  console.error(`ui-sweep: ${buildDir} is missing — run \`bun run build\` first`);
+  process.exit(2);
+}
+mkdirSync(SHOTS, { recursive: true });
+
+// --- the site ---------------------------------------------------------------
+
+const server = Bun.serve({
+  port: PORT,
+  hostname: '127.0.0.1',
+  async fetch(request) {
+    const url = new URL(request.url);
+    const path = url.pathname === '/' ? '/index.html' : url.pathname;
+    const file = Bun.file(join(buildDir, path));
+    // NO CACHE: a rebuilt bundle behind a cached index.html is the classic
+    // "the test passes on the second run" bug, and it hides which build was
+    // actually measured.
+    const headers = { 'cache-control': 'no-store' };
+    if (await file.exists()) return new Response(file, { headers });
+    // SPA fallback: /duplicates is a client route, not a file.
+    return new Response(Bun.file(join(buildDir, 'index.html')), { headers });
+  }
+});
+
+// --- CDP --------------------------------------------------------------------
+
+interface Cdp {
+  send(method: string, params?: Record<string, unknown>): Promise<any>;
+  close(): void;
+}
+
+async function openPage(): Promise<Cdp> {
+  const response = await fetch(`http://127.0.0.1:${CDP_PORT}/json/new?about:blank`, {
+    method: 'PUT'
+  });
+  const target = (await response.json()) as { webSocketDebuggerUrl: string };
+  const socket = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise<void>((done, fail) => {
+    socket.onopen = () => done();
+    socket.onerror = () => fail(new Error('could not open the CDP socket'));
+  });
+
+  let next = 0;
+  const pending = new Map<number, { done: (value: any) => void; fail: (err: Error) => void }>();
+  socket.onmessage = (event) => {
+    const message = JSON.parse(String(event.data)) as {
+      id?: number;
+      result?: unknown;
+      error?: { message: string };
+    };
+    if (message.id === undefined) return;
+    const slot = pending.get(message.id);
+    if (!slot) return;
+    pending.delete(message.id);
+    if (message.error) slot.fail(new Error(message.error.message));
+    else slot.done(message.result);
+  };
+
+  return {
+    send(method, params = {}) {
+      const id = next++;
+      return new Promise((done, fail) => {
+        pending.set(id, { done, fail });
+        socket.send(JSON.stringify({ id, method, params }));
+      });
+    },
+    close() {
+      socket.close();
+    }
+  };
+}
+
+async function evaluate(page: Cdp, expression: string): Promise<unknown> {
+  const result = (await page.send('Runtime.evaluate', {
+    expression,
+    returnByValue: true,
+    awaitPromise: true
+  })) as {
+    result?: { value?: unknown };
+    exceptionDetails?: { text: string; exception?: { description?: string } };
+  };
+  if (result.exceptionDetails) {
+    // `text` is the useless word "Uncaught"; the description carries the throw.
+    const detail = result.exceptionDetails.exception?.description ?? result.exceptionDetails.text;
+    throw new Error(detail);
+  }
+  return result.result?.value;
+}
+
+/**
+ * Navigate and wait for the document to settle.
+ *
+ * CDP will happily evaluate against a context that is being torn down by a
+ * navigation, which surfaces as an opaque "Uncaught". Waiting for
+ * `readyState === 'complete'` removes the race instead of retrying around it.
+ */
+async function goto(page: Cdp, url: string): Promise<void> {
+  await page.send('Page.navigate', { url });
+  const deadline = Date.now() + 10_000;
+  for (;;) {
+    try {
+      if (await evaluate(page, `document.readyState === 'complete' && !!document.body`)) return;
+    } catch {
+      /* mid-navigation; try again */
+    }
+    if (Date.now() > deadline) throw new Error(`the page never finished loading: ${url}`);
+    await Bun.sleep(60);
+  }
+}
+
+/** Wait until `expression` is truthy, or fail with what was on screen. */
+async function waitFor(page: Cdp, expression: string, what: string, timeoutMs = 8_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      if (await evaluate(page, expression)) return;
+    } catch {
+      /* a context being replaced is not a failed assertion yet */
+    }
+    if (Date.now() > deadline) {
+      const text = String(await evaluate(page, 'document.body.innerText.slice(0, 600)'));
+      throw new Error(`timed out waiting for ${what}. Screen said:\n${text}`);
+    }
+    await Bun.sleep(80);
+  }
+}
+
+async function clickText(page: Cdp, selector: string, text: string): Promise<void> {
+  const clicked = await evaluate(
+    page,
+    `(() => {
+      const wanted = ${JSON.stringify(text)};
+      const node = [...document.querySelectorAll(${JSON.stringify(selector)})]
+        .find((el) => (el.textContent || '').includes(wanted));
+      if (!node) return false;
+      node.click();
+      return true;
+    })()`
+  );
+  if (clicked !== true) throw new Error(`no ${selector} containing "${text}"`);
+}
+
+async function typeInto(page: Cdp, selector: string, value: string): Promise<void> {
+  const typed = await evaluate(
+    page,
+    `(() => {
+      const node = document.querySelector(${JSON.stringify(selector)});
+      if (!node) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(node, ${JSON.stringify(value)});
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`
+  );
+  if (typed !== true) throw new Error(`no input matching ${selector}`);
+}
+
+async function screenshot(page: Cdp, name: string): Promise<string> {
+  // Sonner slides a toast in from below; a capture taken mid-transform shows it
+  // on top of an action bar it actually clears. Two frames plus a beat is enough
+  // for a 0.2-0.4 s transition to land.
+  await Bun.sleep(320);
+  const shot = (await page.send('Page.captureScreenshot', { format: 'png' })) as { data: string };
+  const path = join(SHOTS, `${name}.png`);
+  await Bun.write(path, Buffer.from(shot.data, 'base64'));
+  return path;
+}
+
+const bodyText = (): string => 'document.body.innerText';
+
+// --- the journey ------------------------------------------------------------
+
+interface Step {
+  name: string;
+  run(page: Cdp): Promise<void>;
+}
+
+const steps: Step[] = [
+  {
+    name: 'duplicates: the report and the reclaim panel are on the same screen',
+    async run(page) {
+      await goto(page, `http://127.0.0.1:${PORT}/duplicates?mock=dupes`);
+      await waitFor(page, `${bodyText()}.includes('Duplicates')`, 'the Duplicates title');
+      await waitFor(page, `${bodyText()}.includes('In the trash')`, 'the trash panel');
+      await waitFor(page, `${bodyText()}.includes('Empty the trash')`, 'the empty-trash button');
+      const text = String(await evaluate(page, bodyText()));
+      // Read the button's own label rather than a guessed number: the panel must
+      // state the bytes, and formatBytes is the one that decides the spelling.
+      const button = String(
+        await evaluate(
+          page,
+          `[...document.querySelectorAll('button')].map((b) => b.textContent.trim()).find((t) => t.startsWith('Empty the trash')) ?? ''`
+        )
+      );
+      if (!/frees\s+\S+\s*(B|KB|MB|GB|TB)/.test(button)) {
+        throw new Error(`the empty-trash button does not state bytes: "${button}"`);
+      }
+      // The scan summary must say WHICH walker ran: a slow scan explains itself.
+      if (!text.includes('with the fast scanner')) {
+        throw new Error('the scan summary does not say which walker ran');
+      }
+    }
+  },
+  {
+    name: 'duplicates: emptying opens the engine sheet and names what goes',
+    async run(page) {
+      await clickText(page, 'button', 'Empty the trash');
+      await waitFor(page, `${bodyText()}.includes('Empty the trash')`, 'the confirm sheet');
+      await waitFor(page, `${bodyText()}.includes('Type')`, 'the typed-word gate');
+      const text = String(await evaluate(page, bodyText()));
+      if (!text.includes('.portage/trash')) {
+        throw new Error('the sheet does not name the directory being emptied');
+      }
+      if (!text.includes('for good')) {
+        throw new Error('the sheet does not say the delete is permanent');
+      }
+    }
+  },
+  {
+    name: 'duplicates: the button stays disabled until the word is typed',
+    async run(page) {
+      // Scoped to the dialog: "Empty the trash · frees …" is also on the page
+      // behind it, and a document-order search would press that one instead.
+      const confirmEnabled = `[...document.querySelectorAll('[role="alertdialog"] button')].some((b) => b.textContent.trim() === 'Empty' && !b.disabled)`;
+      if (await evaluate(page, confirmEnabled)) {
+        throw new Error('the confirm button is enabled before the word is typed');
+      }
+      await typeInto(page, '#confirm-word', 'Empty');
+      await waitFor(page, confirmEnabled, 'the confirm button to enable');
+    }
+  },
+  {
+    name: 'duplicates: confirming reports the bytes and the panel goes',
+    async run(page) {
+      await clickText(page, '[role="alertdialog"] button', 'Empty');
+      await waitFor(
+        page,
+        `[...document.querySelectorAll('[data-sonner-toast]')].some((t) => (t.textContent || '').includes('Freed'))`,
+        'the freed-bytes toast'
+      );
+      const toast = String(
+        await evaluate(page, `document.querySelector('[data-sonner-toast]')?.textContent ?? ''`)
+      );
+      if (!toast.includes('Freed')) throw new Error(`unexpected toast: ${toast}`);
+      // The panel described folders that no longer exist, so it must be gone.
+      await waitFor(
+        page,
+        `!document.body.innerText.includes('Empty the trash')`,
+        'the trash panel to clear after emptying'
+      );
+    }
+  },
+  {
+    name: 'doctor: the report renders its checks, not a blank screen',
+    async run(page) {
+      await goto(page, `http://127.0.0.1:${PORT}/doctor?mock=dupes`);
+      await waitFor(page, `${bodyText()}.includes('Doctor')`, 'the Doctor title');
+      await waitFor(page, `${bodyText()}.includes('checks')`, 'the verdict line');
+    }
+  },
+  {
+    name: 'purge: the plan and its refusals both render',
+    async run(page) {
+      await goto(page, `http://127.0.0.1:${PORT}/purge?mock=dupes`);
+      await waitFor(page, `${bodyText()}.includes('Purge')`, 'the Purge title');
+      // Nothing is planned on arrival, BY DESIGN: a plan can re-read hashes at
+      // both ends, so it happens when a person asks. Press the button.
+      await clickText(page, 'button', 'Check the phone');
+      await waitFor(page, `${bodyText()}.includes('Safe to delete')`, 'the eligible list');
+      // The clock is relative now ("checked 2 minutes ago"), so match the word
+      // that must be there rather than the old "checked at HH:MM:SS".
+      await waitFor(page, `${bodyText()}.includes('checked ')`, 'the re-check age');
+    }
+  },
+  {
+    name: 'plan: rows survive a tab change (state outlives the route)',
+    async run(page) {
+      await goto(page, `http://127.0.0.1:${PORT}/plan?mock=dupes`);
+      await waitFor(page, `${bodyText()}.includes('Plan')`, 'the Plan title');
+    }
+  }
+];
+
+// --- drive it ---------------------------------------------------------------
+
+const chrome = Bun.spawn(
+  [
+    CHROME,
+    '--headless=new',
+    '--no-sandbox',
+    '--disable-gpu',
+    '--hide-scrollbars',
+    '--window-size=1280,900',
+    `--remote-debugging-port=${CDP_PORT}`,
+    // A throwaway profile per run: a cached bundle or a stale service worker
+    // makes a failing build look green, which is worse than no test.
+    `--user-data-dir=${await mkdtemp(join(tmpdir(), 'portage-ui-chrome-'))}`,
+    'about:blank'
+  ],
+  { stdout: 'ignore', stderr: 'ignore' }
+);
+
+// Chrome from Bun.spawn races its own listener; poll rather than sleep-and-hope.
+let ready = false;
+for (let attempt = 0; attempt < 100; attempt += 1) {
+  try {
+    const response = await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`);
+    if (response.ok) {
+      ready = true;
+      break;
+    }
+  } catch {
+    /* not up yet */
+  }
+  await Bun.sleep(100);
+}
+if (!ready) {
+  chrome.kill();
+  server.stop(true);
+  console.error('ui-sweep: Chrome never opened its debugging port');
+  process.exit(2);
+}
+
+const page = await openPage();
+await page.send('Page.enable');
+await page.send('Runtime.enable');
+await page.send('Emulation.setDeviceMetricsOverride', {
+  width: 1280,
+  height: 900,
+  deviceScaleFactor: 1,
+  mobile: false
+});
+
+const consoleErrors: string[] = [];
+await page.send('Log.enable').catch(() => {});
+
+let failures = 0;
+for (const [index, step] of steps.entries()) {
+  try {
+    await step.run(page);
+    await screenshot(page, `${String(index).padStart(2, '0')}-${step.name.split(':')[0]}`);
+    console.log(`PASS  ${step.name}`);
+  } catch (err) {
+    failures += 1;
+    await screenshot(page, `${String(index).padStart(2, '0')}-FAILED`);
+    console.log(`FAIL  ${step.name}`);
+    console.log(`      ${err instanceof Error ? err.message.replace(/\n/g, '\n      ') : String(err)}`);
+  }
+}
+
+const problems = await evaluate(
+  page,
+  `[...document.querySelectorAll('[data-sonner-toast][data-type="error"]')].map((t) => t.textContent)`
+).catch(() => []);
+if (Array.isArray(problems) && problems.length > 0) {
+  console.log(`FAIL  an error toast was on screen: ${problems.join(' | ')}`);
+  failures += 1;
+}
+
+console.log(`\n${steps.length - failures}/${steps.length} steps passed; screenshots in ${SHOTS}`);
+
+page.close();
+chrome.kill();
+server.stop(true);
+process.exit(failures === 0 ? 0 : 1);

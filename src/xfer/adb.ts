@@ -21,10 +21,10 @@ import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { finished } from "node:stream/promises";
 
-import type { Adb } from "../device/adb.ts";
-import { ensureDir, fsyncPath, statSyncSafe } from "../util/fs.ts";
-import { dirname } from "../util/paths.ts";
-import type { CopyOutcome, CopyRequest, Transport } from "./transport.ts";
+import type { Adb } from "#lib/device/adb.ts";
+import { ensureDir, fsyncPath, statSyncSafe } from "#lib/util/fs.ts";
+import { dirname } from "#lib/util/paths.ts";
+import type { CopyOutcome, CopyRequest, Transport } from "#lib/xfer/transport.ts";
 
 export class AdbTransport implements Transport {
   readonly name = "adb" as const;

@@ -7,9 +7,9 @@
  * for the "20 of 23" headline) the combination is arithmetic on values the
  * engine sent, and the sentence says which two.
  */
-import type { DeviceInfo, EngineSummary } from "../../engine/protocol.ts";
-import { DASH, formatBytes, formatDuration, formatRate, plural } from "../../util/format.ts";
-import { baseName } from "./plan-filters.ts";
+import type { DeviceInfo, EngineSummary } from "#lib/engine/protocol.ts";
+import { DASH, formatBytes, formatDuration, formatRate, plural } from "#lib/util/format.ts";
+import { baseName } from "#lib/components/app/plan-filters.ts";
 
 export interface ReceiptHeadline {
 	/** "23 files" or "20 of 23 files" — never a number the engine did not send. */

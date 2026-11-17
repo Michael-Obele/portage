@@ -26,8 +26,8 @@ import {
   MAX_ROWS,
   type Screen,
   type ScreenContext,
-} from "../renderer.svelte.ts";
-import { bindingRows, resolve } from "../input.ts";
+} from "#lib/tui/renderer.svelte.ts";
+import { bindingRows, resolve } from "#lib/tui/input.ts";
 import {
   deviceLine,
   frame,
@@ -38,8 +38,8 @@ import {
   view,
   type Capabilities,
   type FileRow,
-} from "../state.svelte.ts";
-import { glyphs } from "../theme.ts";
+} from "#lib/tui/state.svelte.ts";
+import { glyphs } from "#lib/tui/theme.ts";
 
 /** Rows shown in the confirmation prompt before it will act. */
 const CONFIRM_LIMIT = 8;

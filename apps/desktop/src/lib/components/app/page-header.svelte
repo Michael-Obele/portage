@@ -5,7 +5,7 @@
 	 * belongs to the screen — not here.
 	 */
 	import type { Snippet } from 'svelte';
-	import { cn } from '../../utils.ts';
+	import { cn } from '#lib/utils.ts';
 
 	let {
 		title,

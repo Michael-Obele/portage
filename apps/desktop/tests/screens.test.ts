@@ -17,10 +17,10 @@ import type {
   NeedsConfirmFrame,
   PlanResult,
   PurgePlanFrame
-} from '../src/lib/engine/protocol.ts';
-import { PROTOCOL_VERSION } from '../src/lib/engine/protocol.ts';
-import { freshScreens, routeFrame } from '../src/lib/state/screens.svelte.ts';
-import { PREF_KEYS, type PrefStore } from '../src/lib/state/prefs.ts';
+} from '#lib/engine/protocol.ts';
+import { PROTOCOL_VERSION } from '#lib/engine/protocol.ts';
+import { freshScreens, routeFrame } from '#lib/state/screens.svelte.ts';
+import { PREF_KEYS, type PrefStore } from '#lib/state/prefs.ts';
 
 function fakePrefs(initial: Record<string, string> = {}) {
   const data: Record<string, string> = { ...initial };

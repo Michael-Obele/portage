@@ -15,10 +15,11 @@
  * Exported so a test can inspect the register directly, and so the register can
  * be injected rather than reachable only through a live scan.
  */
-import type { DupeReport } from "../dedupe/types.ts";
-import type { PurgePlan } from "../xfer/purge.ts";
+import type { DupeReport } from "#lib/dedupe/types.ts";
+import type { TrashDay } from "#lib/dedupe/trash.ts";
+import type { PurgePlan } from "#lib/xfer/purge.ts";
 
-export type PendingKind = "dupes" | "purge";
+export type PendingKind = "dupes" | "purge" | "trash";
 
 /** Ten minutes: long enough to read a confirm sheet, short enough to be stale. */
 export const PENDING_TTL_MS = 10 * 60 * 1000;
@@ -43,6 +44,16 @@ export interface PendingEntry {
   report?: DupeReport;
   /** The engine object the purge keys came from. */
   plan?: PurgePlan;
+  /**
+   * The trash reading an empty call was issued against.
+   *
+   * Held here for the same reason a scan is: `trash.empty` must act on the day
+   * folders the engine itself listed, not on a path the caller typed, and it must
+   * refuse a folder that appeared after the person looked.
+   */
+  trashDays?: TrashDay[];
+  /** Files sitting directly in the trash root — outside any day folder. */
+  trashLoose?: string[];
 }
 
 /** What `insert` needs — the id, `createdAt` and `expiresAt` are the register's. */
@@ -60,6 +71,10 @@ export class PendingRegister {
   /** Issue a fresh id for a new record. The id is opaque: it is not a path. */
   insert(draft: PendingDraft): PendingEntry {
     const createdAt = this.now();
+    // Expired records are dropped here as well as in `get`, because a caller
+    // that only ever inserts (a screen polling `trash.status`) would otherwise
+    // grow this map for the life of the engine.
+    this.evictExpired(createdAt);
     const entry: PendingEntry = {
       ...draft,
       id: this.newId(),
@@ -68,6 +83,24 @@ export class PendingRegister {
     };
     this.entries.set(entry.id, entry);
     return entry;
+  }
+
+  /**
+   * Drop ONE record.
+   *
+   * Never `clear()`. Emptying the trash used to wipe the whole register, which
+   * also killed the duplicate scan the person was still working through — the
+   * second pass over Duplicates then failed with "that duplicate scan is not
+   * available any more".
+   */
+  delete(id: string): boolean {
+    return this.entries.delete(id);
+  }
+
+  private evictExpired(now: number): void {
+    for (const [id, entry] of this.entries) {
+      if (entry.expiresAt <= now) this.entries.delete(id);
+    }
   }
 
   /**

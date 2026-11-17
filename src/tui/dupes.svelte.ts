@@ -10,15 +10,16 @@
  * destination before Enter is pressed. The screen owns those rules; this file
  * only wires the scan and then waits.
  */
-import { applySelection, scanDuplicates } from "../dedupe/index.ts";
-import type { DupeReport } from "../dedupe/types.ts";
-import { ExitCode } from "../util/errors.ts";
-import { createLogger } from "../util/log.ts";
+import { applySelection, scanDuplicates } from "#lib/dedupe/index.ts";
+import type { DupeReport } from "#lib/dedupe/types.ts";
+import { ExitCode } from "#lib/util/errors.ts";
+import { createLogger } from "#lib/util/log.ts";
+import { localDayKey } from "#lib/util/paths.ts";
 
-import { OpenTuiRenderer } from "./renderer.svelte.ts";
-import { view } from "./state.svelte.ts";
-import { DupesScreen, type DupesIntent } from "./screens/dupes.ts";
-import { deferred } from "./deferred.ts";
+import { OpenTuiRenderer } from "#lib/tui/renderer.svelte.ts";
+import { view } from "#lib/tui/state.svelte.ts";
+import { DupesScreen, type DupesIntent } from "#lib/tui/screens/dupes.ts";
+import { deferred } from "#lib/tui/deferred.ts";
 
 export interface DupesTuiOptions {
   roots: string[];
@@ -57,7 +58,7 @@ export async function runDupesTui(opts: DupesTuiOptions): Promise<number> {
   view.selected = 0;
   view.scrollTop = 0;
   view.screen = "dupes";
-  const date = new Date().toISOString().slice(0, 10);
+  const date = localDayKey();
   view.trashDir = `${opts.destRoot}/.portage/trash/${date}/`;
   view.trashBytes = report.groups.reduce(
     (n, g) =>

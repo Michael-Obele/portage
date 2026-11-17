@@ -16,8 +16,8 @@ import type {
 	NeedsConfirmFrame,
 	WireDupeGroup,
 	WireDupeMember
-} from '../src/lib/engine/protocol.ts';
-import { PROTOCOL_VERSION } from '../src/lib/engine/protocol.ts';
+} from '#lib/engine/protocol.ts';
+import { PROTOCOL_VERSION } from '#lib/engine/protocol.ts';
 import {
 	applySummary,
 	clearKeys,
@@ -32,7 +32,7 @@ import {
 	selectedPaths,
 	selectionFor,
 	toggle
-} from '../src/lib/components/app/dupes-view.ts';
+} from '#lib/components/app/dupes-view.ts';
 
 function member(key: string, patch: Partial<WireDupeMember> = {}): WireDupeMember {
 	return {
@@ -102,6 +102,19 @@ function dupesFrame(patch: Partial<DupesFrame> = {}): DupesFrame {
 		scannedBytes: 1_402_000_000_000,
 		truncated: ['Frieren/S01/k3.mkv'],
 		unparsed: ['Frieren/Bonus/artwork.zip'],
+		// The fixture claims the fast walker. A report without a walk summary
+		// cannot tell a slow scan from a stuck one, so it is part of the shape.
+		unreadableFiles: 0,
+		io: {
+			via: 'scanner',
+			elapsedMs: 4_265,
+			dirs: 4_602,
+			errors: [],
+			errorCount: 0,
+			deepest: { relative: 'a/b/c.mkv', depth: 3 },
+			depthLimited: 0,
+			scannerError: null
+		},
 		...patch
 	};
 }
@@ -282,7 +295,7 @@ describe('memberTone', () => {
 describe('scanSentence', () => {
 	test('names the files, the bytes, the groups and what could be freed', () => {
 		const sentence = scanSentence(dupesFrame({ groups: [], reclaimableBytes: 0 }));
-		expect(sentence).toContain('3412 files');
+			expect(sentence).toContain('3,412 files');
 		expect(sentence).toContain('1.3 TB');
 		expect(sentence).toContain('0 groups');
 		expect(sentence).toContain('0 B reclaimable');

@@ -3,20 +3,21 @@
 	 * The run's headline: how far along, how fast, and how long.
 	 *
 	 * Every number is copied from the frame. Nothing here divides bytes by a
-	 * UI clock, and the ETA is `etaWords(overall.etaSeconds)`, which draws `—`
-	 * until the engine will vouch for a figure.
+	 * UI clock, and "Time left" is `formatDuration(overall.etaSeconds)`, which
+	 * draws `—` until the engine will vouch for a figure. The label carries the
+	 * "left"; repeating it in the value ("ETA 3 min 42 s") said it twice.
 	 *
 	 * The two rates are deliberately two numbers with two names. "Speed" is not
 	 * a word this screen uses: an instant rate and a run average differ by a
 	 * factor of two on a bad cable, and collapsing them into one reading is the
 	 * mistake that makes a person trust a transfer that is failing.
 	 */
-	import type { Overall } from '../../engine/protocol.ts';
-	import { etaWords, formatBytes, formatDuration, formatRate } from '../../util/format.ts';
-	import { Progress } from '../ui/progress/index.js';
-	import { cn } from '../../utils.ts';
-	import { pct, rates, type ProofCounts } from '../../state/run.ts';
-	import ProofStrip from './proof-strip.svelte';
+	import type { Overall } from '#lib/engine/protocol.ts';
+    import { formatBytes, formatDuration, formatRate } from '#lib/util/format.ts';
+	import { Progress } from '#lib/components/ui/progress/index.js';
+	import { cn } from '#lib/utils.ts';
+	import { pct, rates, type ProofCounts } from '#lib/state/run.ts';
+	import ProofStrip from '#lib/components/app/proof-strip.svelte';
 
 	let {
 		overall,
@@ -82,9 +83,9 @@
 			<span class="font-mono text-lead text-foreground tabular-nums">{elapsed}</span>
 		</div>
 		<div class="flex flex-col">
-			<span class="text-caption text-muted-foreground">Remaining</span>
+			<span class="text-caption text-muted-foreground">Time left</span>
 			<span class="font-mono text-lead text-foreground tabular-nums">
-				{etaWords(overall.etaSeconds)}
+				{formatDuration(overall.etaSeconds)}
 			</span>
 		</div>
 	</div>

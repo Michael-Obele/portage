@@ -10,8 +10,8 @@
 	import Check from '@lucide/svelte/icons/check';
 	import Copy from '@lucide/svelte/icons/copy';
 
-	import { app } from '../../state/app.svelte.ts';
-	import { cn } from '../../utils.ts';
+	import { app } from '#lib/state/app.svelte.ts';
+	import { cn } from '#lib/utils.ts';
 
 	let {
 		value,

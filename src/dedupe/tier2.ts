@@ -29,10 +29,10 @@
  *  - a `Dual` copy and a `Sub` copy are never grouped against each other, because
  *    owning both is a choice a person makes.
  */
-import { basename } from "../util/paths.ts";
+import { basename } from "#lib/util/paths.ts";
 
-import type { Candidate } from "./tier1.ts";
-import type { DupeMember } from "./types.ts";
+import type { Candidate } from "#lib/dedupe/tier1.ts";
+import type { DupeMember } from "#lib/dedupe/types.ts";
 import {
   describeEpisode,
   episodeKey,
@@ -45,7 +45,7 @@ import {
   SOURCE_RANK,
   type NameKey,
   type Variant,
-} from "./naming.ts";
+} from "#lib/dedupe/naming.ts";
 
 /** The identity of one episode, as read from a filename and its folder. */
 export type EpisodeKey = NameKey;

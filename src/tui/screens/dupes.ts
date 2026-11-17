@@ -21,15 +21,15 @@ import {
   TextRenderable,
   type Screen,
   type ScreenContext,
-} from "../renderer.svelte.ts";
-import { formatBytes, truncateMiddle } from "../../util/paths.ts";
-import { resolve } from "../input.ts";
-import { glyphs } from "../theme.ts";
+} from "#lib/tui/renderer.svelte.ts";
+import { formatBytes, truncateMiddle } from "#lib/util/paths.ts";
+import { resolve } from "#lib/tui/input.ts";
+import { glyphs } from "#lib/tui/theme.ts";
 import {
   view,
   type DuplicateMember,
   type DuplicateGroup,
-} from "../state.svelte.ts";
+} from "#lib/tui/state.svelte.ts";
 
 /** One navigable line: either a group header or one of its members. */
 type Line =

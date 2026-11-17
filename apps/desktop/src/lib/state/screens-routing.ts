@@ -6,8 +6,8 @@
  * virtual module the test runner cannot resolve. The store is the state; this is
  * the plug.
  */
-import { app } from "./app.svelte.ts";
-import { routeFrame } from "./screens.svelte.ts";
+import { app } from "#lib/state/app.svelte.ts";
+import { routeFrame } from "#lib/state/screens.svelte.ts";
 
 let started = false;
 

@@ -18,43 +18,46 @@
 import { join } from "node:path";
 import * as v from "valibot";
 
-import { Adb, selectReady, type DeviceInfo } from "../device/adb.ts";
-import { listVolumes } from "../device/volumes.ts";
+import { Adb, selectReady, type DeviceInfo } from "#lib/device/adb.ts";
+import { listVolumes } from "#lib/device/volumes.ts";
 import {
   coerceConfigValue,
   loadConfig,
   requireDestRoot,
   writeConfigFile,
   type ResolvedConfig,
-} from "../config/load.ts";
-import { CONFIG_KEYS, FIELD_SCHEMAS, STATE_DIR } from "../config/schema.ts";
-import { Journal } from "../index/journal.ts";
-import { isMarkerFile } from "../util/paths.ts";
-import { buildPlan, type PlanResult } from "../plan/plan.ts";
-import { scanDevice, summarise, type Candidate } from "../scan/scan.ts";
-import { AdbTransport } from "../xfer/adb.ts";
-import { applyPurge, planPurge, type PurgePlan } from "../xfer/purge.ts";
-import { applySelection, scanDuplicates } from "../dedupe/index.ts";
-import type { Output } from "../output/output.ts";
-import { doctor as doctorCommand } from "../cli/commands/doctor.ts";
-import { db as dbCommand } from "../cli/commands/status.ts";
-import { silentLogger, type Logger } from "../util/log.ts";
-import { realSpawn } from "../util/spawn.ts";
+} from "#lib/config/load.ts";
+import { CONFIG_KEYS, FIELD_SCHEMAS, STATE_DIR } from "#lib/config/schema.ts";
+import { Journal } from "#lib/index/journal.ts";
+import { isMarkerFile, localDayKey } from "#lib/util/paths.ts";
+import { buildPlan, type PlanResult } from "#lib/plan/plan.ts";
+import { scanDevice, summarise, type Candidate } from "#lib/scan/scan.ts";
+import { AdbTransport } from "#lib/xfer/adb.ts";
+import { applyPurge, planPurge, type PurgePlan } from "#lib/xfer/purge.ts";
+import { applySelection, scanDuplicates } from "#lib/dedupe/index.ts";
+import { defaultScanIo, resilientScanIo } from "#lib/dedupe/scan-io.ts";
+import { emptyTrash, readTrash } from "#lib/dedupe/trash.ts";
+import { diskSpaceAsync } from "#lib/util/fs.ts";
+import type { Output } from "#lib/output/output.ts";
+import { doctor as doctorCommand } from "#lib/cli/commands/doctor.ts";
+import { db as dbCommand } from "#lib/cli/commands/status.ts";
+import { silentLogger, type Logger } from "#lib/util/log.ts";
+import { realSpawn } from "#lib/util/spawn.ts";
 import {
   describeError,
   preconditionError,
   usageError,
-} from "../util/errors.ts";
+} from "#lib/util/errors.ts";
 
 import {
   BROWSE_LIMIT,
   browseLevel,
   browseTree,
   refuseMountPath,
-} from "./browse.ts";
-import type { Frames } from "./frames.ts";
-import { PendingRegister } from "./pending.ts";
-import { RunController, type PullRunArgs } from "./run.ts";
+} from "#lib/serve/browse.ts";
+import type { Frames } from "#lib/serve/frames.ts";
+import { PendingRegister } from "#lib/serve/pending.ts";
+import { RunController, type PullRunArgs } from "#lib/serve/run.ts";
 import {
   ArgsSchemas,
   COMMAND_TYPES,
@@ -64,7 +67,7 @@ import {
   type ArgsFor,
   type WireDupeGroup,
   type WireError,
-} from "./protocol.ts";
+} from "#lib/serve/protocol.ts";
 
 /** What a caller sees when a line is not a command. */
 export const COMMAND_HINT =
@@ -705,7 +708,7 @@ const handlerTable = {
       destRoot,
       STATE_DIR,
       "trash",
-      new Date().toISOString().slice(0, 10),
+      localDayKey(),
     );
 
     const paths = new Map<string, string>();
@@ -756,6 +759,21 @@ const handlerTable = {
       scannedBytes: report.scannedBytes,
       truncated: report.truncated,
       unparsed: report.unparsed,
+      unreadableFiles: report.unreadableFiles ?? 0,
+      // Which walker ran, and how long it took. `via: "glob"` is the honest
+      // explanation for a scan that took three minutes. `scanDuplicates` always
+      // sets `io`; the fallback exists only so a hand-built report cannot crash
+      // the wire, and it SAYS it does not know rather than blaming a walker.
+      io: report.io ?? {
+        via: "glob",
+        elapsedMs: 0,
+        dirs: 0,
+        errors: [],
+        errorCount: 0,
+        deepest: null,
+        depthLimited: 0,
+        scannerError: "this report did not say which walker ran",
+      },
     });
     return {
       scanId: entry.id,
@@ -956,6 +974,165 @@ const handlerTable = {
     } finally {
       journal.close();
     }
+  },
+
+  /**
+   * What the DRIVE's trash is still holding.
+   *
+   * This is the missing half of "reclaimable": `dupes.apply` moves a duplicate
+   * to `.portage/trash/<date>/`, and on the same drive that frees nothing. The
+   * number this returns is the space that is actually waiting to be freed, so a
+   * screen can stop implying a move is a reclaim.
+   */
+  "trash.status": async (_args: unknown, ctx: ServeContext) => {
+    const resolved = await ctx.resolveConfig();
+    const destRoot = requireDestRoot(resolved.config);
+    // The scanner is what makes this cheap, and a broken one must not turn a
+    // read-only inventory into a refusal: `resilientScanIo` falls back and says
+    // nothing, because a trash reading is not worth a failure band.
+    const status = await readTrash(destRoot, resilientScanIo(defaultScanIo()).io);
+
+    const entry = ctx.pending.insert({
+      kind: "trash",
+      paths: new Map(),
+      sizes: new Map(),
+      bytes: status.totalBytes,
+      trashDir: status.root,
+      destRoot,
+      trashDays: status.days,
+      trashLoose: status.loose,
+    });
+
+    ctx.frames.trash({
+      trashId: entry.id,
+      root: status.root,
+      exists: status.exists,
+      days: status.days,
+      looseFiles: status.looseFiles,
+      looseBytes: status.looseBytes,
+      totalFiles: status.totalFiles,
+      totalBytes: status.totalBytes,
+    });
+
+    const space = await diskSpaceAsync(realSpawn, destRoot);
+    return {
+      trashId: entry.id,
+      root: status.root,
+      // `dayCount`, not `days`: the frame's `days` is a LIST, and one key
+      // meaning a count in the answer and a list in the frame is how the next
+      // change gets it wrong.
+      dayCount: status.days.length,
+      totalFiles: status.totalFiles,
+      totalBytes: status.totalBytes,
+      // Null means "the filesystem would not say", never zero.
+      freeBytes: space?.free ?? null,
+    };
+  },
+
+  /**
+   * Permanently delete the trash. THE one irreversible delete in this app.
+   *
+   * The same spine as every other destructive call: the day folders come from a
+   * pending record the engine issued, the whole call is refused if any requested
+   * folder is not in that record, and `confirm` must equal the record id. A
+   * mismatched confirm re-asks rather than acting.
+   */
+  "trash.empty": async (args: ArgsFor<"trash.empty">, ctx: ServeContext) => {
+    const entry = ctx.pending.get(args.trashId);
+    if (!entry || entry.kind !== "trash") {
+      throw preconditionError(
+        "that trash reading is not available any more",
+        "run trash.status again — a reading expires after 10 minutes, and folders listed before a delete must not be deleted after one",
+      );
+    }
+
+    const known = entry.trashDays ?? [];
+    const loose = entry.trashLoose ?? [];
+    // Omitted `days` means the whole trash; an array (even empty) means exactly
+    // those days, so `{ days: [], loose: true }` addresses the loose files.
+    const wholeTrash = args.days === undefined;
+    const wantedDays = args.days ?? [];
+    const wanted = wholeTrash ? known.map((day) => day.path) : wantedDays;
+    const unknown = wanted.filter((path) => !known.some((day) => day.path === path));
+    if (unknown.length > 0) {
+      throw preconditionError(
+        `refused: ${unknown.length} folder(s) are not part of this reading`,
+        "run trash.status again and pick again; nothing was deleted",
+      );
+    }
+
+    // Loose files are only in scope when they were asked for: the whole trash, or
+    // an explicit `loose: true`. Emptying one day must not take them.
+    const takeLoose = wholeTrash || args.loose === true;
+    if (wanted.length === 0 && !takeLoose) {
+      throw preconditionError(
+        "refused: nothing was chosen to empty",
+        "pick a day folder, or leave the choice out to empty the whole trash",
+      );
+    }
+    const storedDays = known.filter((day) => wanted.includes(day.path));
+    const storedCount = storedDays.reduce((total, day) => total + day.files, 0) + (takeLoose ? loose.length : 0);
+    const storedBytes =
+      storedDays.reduce((total, day) => total + day.bytes, 0) +
+      (takeLoose ? Math.max(0, entry.bytes - known.reduce((total, day) => total + day.bytes, 0)) : 0);
+
+    // Act on a FRESH reading. Deleting a folder by name also deletes anything
+    // moved into it after the person looked, and the sheet is the only thing
+    // that told them what would go — so a changed reading re-asks instead.
+    const io = resilientScanIo(defaultScanIo()).io;
+    const fresh = await readTrash(entry.destRoot, io);
+    const freshDays = fresh.days.filter((day) => wanted.includes(day.path));
+    const freshCount = freshDays.reduce((total, day) => total + day.files, 0) + (takeLoose ? fresh.looseFiles : 0);
+    const freshBytes = freshDays.reduce((total, day) => total + day.bytes, 0) + (takeLoose ? fresh.looseBytes : 0);
+    const targets = [...freshDays.map((day) => day.path), ...(takeLoose ? fresh.loose : [])];
+
+    const stale = freshCount !== storedCount || freshBytes !== storedBytes;
+    if (args.confirm !== entry.id || stale) {
+      // Keep the record truthful for the confirm that follows.
+      entry.trashDays = fresh.days;
+      entry.trashLoose = fresh.loose;
+      entry.bytes = fresh.totalBytes;
+      ctx.frames.needsConfirm({
+        actionId: entry.id,
+        action: "trash.empty",
+        // The DAY FOLDERS (and loose files), not every file: a trash can hold
+        // thousands of files, and a sheet is a decision aid, not a log.
+        paths: targets,
+        count: freshCount,
+        bytes: freshBytes,
+        trashDir: entry.trashDir,
+      });
+      return {
+        needsConfirm: true,
+        actionId: entry.id,
+        count: freshCount,
+        bytes: freshBytes,
+        trashDir: entry.trashDir,
+      };
+    }
+
+    const before = await diskSpaceAsync(realSpawn, entry.destRoot);
+    const result = await emptyTrash(entry.destRoot, targets, io);
+    const after = await diskSpaceAsync(realSpawn, entry.destRoot);
+
+    ctx.frames.notice(
+      result.refused.length > 0 ? "warn" : "info",
+      `emptied ${result.removedDays} day folder(s): ${result.removedFiles} file(s), ${result.bytesFreed} byte(s) freed`,
+    );
+
+    // Drop THIS record only. `clear()` also wiped the duplicate scan the person
+    // was still working through, so the second move on the screen failed with
+    // "that duplicate scan is not available any more".
+    ctx.pending.delete(entry.id);
+
+    return {
+      removedDays: result.removedDays,
+      removedFiles: result.removedFiles,
+      bytesFreed: result.bytesFreed,
+      refused: result.refused,
+      freeBytesBefore: before?.free ?? null,
+      freeBytesAfter: after?.free ?? null,
+    };
   },
 
   shutdown: async (_args: unknown, ctx: ServeContext) => {

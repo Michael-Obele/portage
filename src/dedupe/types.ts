@@ -63,6 +63,45 @@ export interface DupeReport {
   unparsed: string[];
   /** Files flagged truncated. Reported as a problem, never as a duplicate. */
   truncated: string[];
+  /**
+   * Files the hasher could not read, so they were never compared.
+   *
+   * Zero is a fact worth printing: it is the difference between "nothing repeats"
+   * and "nothing I could look at repeats". A drive unplugged mid-scan lands
+   * here, which is exactly the case a silent zero hides.
+   *
+   * Optional only so a hand-built report (a test, a fixture) stays valid;
+   * `scanDuplicates` always sets it.
+   */
+  unreadableFiles?: number;
+  /**
+   * How the scan was performed, so a screen can say when it was slow.
+   *
+   * `via: "glob"` means the Rust scanner was unavailable and the built-in
+   * walker ran — correct, and 40x slower on a FUSE mount. Sweeping that under
+   * the rug would make "the scan took three minutes" look like a product bug
+   * instead of a missing binary.
+   *
+   * Optional ONLY because a hand-built report (a test, a fixture) has no walk
+   * behind it. `scanDuplicates` always fills it in.
+   */
+  io?: ScanIoSummary;
+}
+
+/** What walked the tree, and how long it took. */
+export interface ScanIoSummary {
+  via: "scanner" | "glob";
+  elapsedMs: number;
+  dirs: number;
+  /** Unreadable paths the walker met, with the reason it recorded. */
+  errors: Array<{ path: string; reason: string }>;
+  errorCount: number;
+  /** The deepest path the walker reached, and how many segments it had. */
+  deepest: { relative: string; depth: number } | null;
+  /** Directories the walker refused to descend. Never silent. */
+  depthLimited: number;
+  /** Why the fast path did not run, when it did not. */
+  scannerError: string | null;
 }
 
 /** Where a move went, so the answer can be printed and journalled. */

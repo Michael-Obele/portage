@@ -43,7 +43,8 @@
       "icons/128x128@2x.png"
     ],
     "externalBin": [
-      "binaries/portage"
+      "binaries/portage",
+      "binaries/portage-scan"
     ]
   }
 }

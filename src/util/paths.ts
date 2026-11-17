@@ -100,6 +100,21 @@ export function truncateMiddle(s: string, max: number): string {
   return `${s.slice(0, head)}…${tail > 0 ? s.slice(s.length - tail) : ""}`;
 }
 
+/**
+ * A LOCAL calendar day as `YYYY-MM-DD`.
+ *
+ * NOT `toISOString().slice(0, 10)`, which is the UTC day. This machine runs at
+ * UTC+1, so a file moved to the trash at 00:30 local was filed under YESTERDAY —
+ * and the trash folder is a date a person recognises.
+ *
+ * Mirrored in `apps/desktop/src/lib/util/relative-time.ts`: the desktop is a
+ * separate SvelteKit app and cannot import from here. Keep the two identical.
+ */
+export function localDayKey(date: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 /** Render a byte count the way a human reads it. */
 export function formatBytes(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "—";

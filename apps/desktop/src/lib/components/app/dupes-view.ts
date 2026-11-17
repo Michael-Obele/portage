@@ -25,8 +25,8 @@ import type {
 	NeedsConfirmFrame,
 	WireDupeGroup,
 	WireDupeMember
-} from '../../engine/protocol.ts';
-import { formatBytes, plural } from '../../util/format.ts';
+} from '#lib/engine/protocol.ts';
+import { formatBytes, plural } from '#lib/util/format.ts';
 
 // --- the member chip --------------------------------------------------------
 

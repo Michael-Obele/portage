@@ -13,8 +13,8 @@
  *  - The default view puts problems first. A report is read to find what is
  *    wrong, and a wall of green is the fastest way to hide the one red line.
  */
-import { plural } from '../../util/format.ts';
-import type { DoctorCheck, DoctorFrame, DoctorStatus } from '../../engine/protocol.ts';
+import { plural } from '#lib/util/format.ts';
+import type { DoctorCheck, DoctorFrame, DoctorStatus } from '#lib/engine/protocol.ts';
 
 export type DoctorFilter = 'all' | 'problems';
 

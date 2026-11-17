@@ -15,12 +15,12 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { createMockEngine } from "../src/lib/engine/mock.ts";
+import { createMockEngine } from "#lib/engine/mock.ts";
 import {
 	ANSWER_KEYS,
 	type CommandType,
 	type Frame,
-} from "../src/lib/engine/protocol.ts";
+} from "#lib/engine/protocol.ts";
 
 /**
  * The args each command needs to reach its success answer. A command missing
@@ -45,6 +45,8 @@ const ARGS: Record<CommandType, Record<string, unknown> | undefined> = {
 	"dupes.apply": { scanId: "dupes-2026-11-08-01", keys: ["k0"] },
 	"purge.plan": undefined,
 	"purge.apply": { planId: "purge-2026-11-08-01", keys: ["p0"] },
+	"trash.status": undefined,
+	"trash.empty": { trashId: "trash-2026-11-08-01", confirm: "trash-2026-11-08-01" },
 	shutdown: undefined,
 };
 

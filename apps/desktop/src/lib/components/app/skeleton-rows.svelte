@@ -10,8 +10,8 @@
 	 * The widths mirror a real row — chip, name, size — so the eye learns the
 	 * layout before the first byte arrives.
 	 */
-	import { Skeleton } from '../ui/skeleton/index.js';
-	import { cn } from '../../utils.ts';
+	import { Skeleton } from '#lib/components/ui/skeleton/index.js';
+	import { cn } from '#lib/utils.ts';
 
 	let {
 		rows = 3,

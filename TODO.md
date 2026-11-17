@@ -27,6 +27,38 @@ Back to [README](./README.md) · Spec: [docs/](./docs/README.md) · Milestones: 
 
 ---
 
+## Snapshot — 2026-11-17 (desktop reclaim + Rust scanner)
+
+| Thing | State |
+| ----- | ----- |
+| Tests | **496 pass / 1 skip / 0 fail** (`bun run test`) · desktop **212 pass / 0 fail** · crate **28 pass** (`cargo test`) |
+| Typecheck | **clean** — now includes `scripts/**` (`tsc --noEmit`) |
+| Build | `bun run build` → `dist/portage` **renders**; `bun run build:scanner` → `dist/portage-scan` |
+| UI journey | `bun run ui:sweep` **7/7** in headless Chrome; wired into CI. Fixture engine, real screens |
+| Scans | **Rust**: 4.1 s over the 2 TB archive vs 175 s for the JS walker (measured 2026-11-17, `crates/portage-scan`) |
+| Reclaim | `[x]` move to trash **and** empty it; per-day and loose-file scope; real free-space delta |
+
+**Closed this pass**
+
+- `[x]` Reclaiming space on the archive drive **without a phone**: Duplicates → "In the trash" → empty (all / one day / loose files), typed-word gate, pending-record gate.
+- `[x]` Scans walk by relative descent in Rust (`crates/portage-scan`), with a fallback that says when it ran.
+- `[x]` `statSafe` fixed: `Bun.file().exists()` is false for directories, so `isDirectory()` was false for **every** directory and Doctor called a present destination missing.
+- `[x]` Doctor survives a phone-less machine (adb missing = warn, not exit 2) and reports scanner / walk / trash / deep-path / unreadable checks.
+- `[x]` Trash folders are named by the **local** day (`localDayKey`), not the UTC one; `portage` writes and the app reads the same key.
+- `[x]` `dupes.apply` re-checks survivors **on disk**: a second apply on one scan could move the last surviving copy (`docs/dedupe.md` §6 rule 5).
+- `[x]` `#lib` subpath imports in both packages (553 specifiers over 98 files); root `package.json` `imports` + desktop `imports`/`paths`.
+- `[x]` Relative time via `Intl.RelativeTimeFormat` ("5 minutes ago", "yesterday"), day ages in the trash panel, "Time left" on the transfer hero, `Intl.NumberFormat` grouping.
+
+**Still open**
+
+- `[!]` Real-drive end-to-end: the 2 TB drive **dropped off the USB bus mid-scan** (block device gone, still on `lsusb`). Needs a physical replug, then: whole-drive scan → move → empty → confirm `df` moved.
+- `[!]` Real Tauri window: `driver_session` connects, but every `webview_*` / `ipc_*` tool on that MCP server is disabled here, so no DOM/screenshot/click of the actual window. Enable those tools to close this.
+- `[ ]` `portage trash` does not exist. The CLI's `dupes` output no longer names it, but there is no CLI/TUI path to empty the trash — reclaim is desktop-only today.
+- `[ ]` Purge happy path needs a phone; only refusals are covered by tests.
+- `[ ]` No benchmark artefact for the 4.1 s / 175 s claim; `doctor --bench` does not measure a walk.
+
+---
+
 ## Snapshot — 2026-10-04
 
 | Thing            | State                                                                                                                                                                                                                                                  |

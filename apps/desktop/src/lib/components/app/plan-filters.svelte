@@ -19,13 +19,13 @@
 	 */
 	import { Search, X } from '@lucide/svelte';
 
-	import type { DeviceInfo } from '../../engine/protocol.ts';
-	import { cn } from '../../utils.ts';
-	import { Button } from '../ui/button/index.js';
-	import { Input } from '../ui/input/index.js';
-	import { Select, SelectContent, SelectItem, SelectTrigger } from '../ui/select/index.js';
+	import type { DeviceInfo } from '#lib/engine/protocol.ts';
+	import { cn } from '#lib/utils.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Select, SelectContent, SelectItem, SelectTrigger } from '#lib/components/ui/select/index.js';
 
-	import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group/index.js';
+	import { ToggleGroup, ToggleGroupItem } from '#lib/components/ui/toggle-group/index.js';
 	import {
 		ALL_DEVICES,
 		SINCE_OPTIONS,
@@ -33,8 +33,8 @@
 		filtersActive,
 		type PlanFilters,
 		type SinceWindow
-	} from './plan-filters.ts';
-	import { CONTROL } from './tokens.ts';
+	} from '#lib/components/app/plan-filters.ts';
+	import { CONTROL } from '#lib/components/app/tokens.ts';
 
 	let {
 		filters,

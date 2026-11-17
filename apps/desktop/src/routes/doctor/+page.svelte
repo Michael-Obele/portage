@@ -13,16 +13,16 @@
 	 * never re-judges a status and never invents a check.
 	 */
 
-	import CopyButton from '../../lib/components/app/copy-button.svelte';
+	import CopyButton from '#lib/components/app/copy-button.svelte';
 	import {
 		EmptyState,
 		ErrorBand,
 		PageHeader,
 		SkeletonRows
-	} from '../../lib/components/app/index.ts';
-	import StatStrip from '../../lib/components/app/stat-strip.svelte';
-	import { CONTROL } from '../../lib/components/app/tokens.ts';
-	import { failureBand, type Band } from '../../lib/components/app/transfer-band.ts';
+	} from '#lib/components/app/index.ts';
+	import StatStrip from '#lib/components/app/stat-strip.svelte';
+	import { CONTROL } from '#lib/components/app/tokens.ts';
+	import { failureBand, type Band } from '#lib/components/app/transfer-band.ts';
 	import {
 		doctorVerdict,
 		failureCount,
@@ -35,14 +35,16 @@
 		unreadable,
 		visibleChecks,
 		type DoctorFilter
-	} from '../../lib/components/app/doctor-view.ts';
-	import { Button } from '../../lib/components/ui/button/index.js';
-	import { ToggleGroup, ToggleGroupItem } from '../../lib/components/ui/toggle-group/index.js';
-	import type { DoctorCheck, DoctorFrame, DoctorStatus } from '../../lib/engine/protocol.ts';
-	import { app } from '../../lib/state/app.svelte.ts';
-	import { screens } from '../../lib/state/screens.svelte.ts';
-	import { plural } from '../../lib/util/format.ts';
-	import { cn } from '../../lib/utils.ts';
+	} from '#lib/components/app/doctor-view.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { ToggleGroup, ToggleGroupItem } from '#lib/components/ui/toggle-group/index.js';
+	import type { DoctorCheck, DoctorFrame, DoctorStatus } from '#lib/engine/protocol.ts';
+	import { app } from '#lib/state/app.svelte.ts';
+	import { screens } from '#lib/state/screens.svelte.ts';
+	import { plural } from '#lib/util/format.ts';
+	import { createNow } from '#lib/util/now.svelte.ts';
+	import { relativeTime } from '#lib/util/relative-time.ts';
+	import { cn } from '#lib/utils.ts';
 
 	/**
 	 * The report lives in a module store (see `lib/state/screens.svelte.ts`), so
@@ -60,6 +62,19 @@
 	const engineStopped = $derived(app.connection === 'stopped');
 	const busy = $derived(running && !engineStopped);
 	const verdict = $derived(doctorVerdict(report));
+	const clockNow = createNow();
+	/**
+	 * `checked 2 minutes ago` — the report's own age.
+	 *
+	 * Doctor used to show no timestamp at all, so pressing Run again produced an
+	 * identical screen and looked like a dead button. The age makes a re-run
+	 * visible, and it ticks so it cannot go stale.
+	 */
+	const summary = $derived.by(() => {
+		const at = screen.checkedAt;
+		if (at === null) return verdict.detail;
+		return `${verdict.detail} · checked ${relativeTime(at.getTime(), clockNow.now)}`;
+	});
 	const checks = $derived(report === null ? [] : visibleChecks(report.checks, filter));
 	const isUnreadable = $derived(report !== null && unreadable(report));
 
@@ -135,7 +150,7 @@
 
 </script>
 
-<PageHeader title="Doctor" summary={verdict.detail}>
+<PageHeader title="Doctor" summary={summary}>
 	{#snippet actions()}
 		<div class="flex items-center gap-2">
 			<Button

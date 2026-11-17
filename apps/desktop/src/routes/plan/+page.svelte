@@ -18,17 +18,17 @@
 		ErrorBand,
 		PageHeader,
 		SkeletonRows
-	} from '../../lib/components/app/index.ts';
-	import PlanFilters from '../../lib/components/app/plan-filters.svelte';
-	import PlanTable from '../../lib/components/app/plan-table.svelte';
-	import StatStrip from '../../lib/components/app/stat-strip.svelte';
-	import CopyButton from '../../lib/components/app/copy-button.svelte';
+	} from '#lib/components/app/index.ts';
+	import PlanFilters from '#lib/components/app/plan-filters.svelte';
+	import PlanTable from '#lib/components/app/plan-table.svelte';
+	import StatStrip from '#lib/components/app/stat-strip.svelte';
+	import CopyButton from '#lib/components/app/copy-button.svelte';
 	import {
 		browserStore,
 		consentGiven,
 		recordConsent
-	} from '../../lib/components/app/pull-consent.ts';
-	import { isInsideMount } from '../../lib/util/mount.ts';
+	} from '#lib/components/app/pull-consent.ts';
+	import { isInsideMount } from '#lib/util/mount.ts';
 	import {
 		deviceLabel,
 		emptyFilters,
@@ -41,13 +41,13 @@
 		type PlanFilters as Filters,
 		type PlanRow,
 		type PullMode
-	} from '../../lib/components/app/plan-filters.ts';
-	import { CONTROL } from '../../lib/components/app/tokens.ts';
-	import { Button } from '../../lib/components/ui/button/index.js';
-	import { failureBand, type Band } from '../../lib/components/app/transfer-band.ts';
-	import { app } from '../../lib/state/app.svelte.ts';
-	import { screens } from '../../lib/state/screens.svelte.ts';
-	import { formatBytes, plural } from '../../lib/util/format.ts';
+	} from '#lib/components/app/plan-filters.ts';
+	import { CONTROL } from '#lib/components/app/tokens.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { failureBand, type Band } from '#lib/components/app/transfer-band.ts';
+	import { app } from '#lib/state/app.svelte.ts';
+	import { screens } from '#lib/state/screens.svelte.ts';
+	import { formatBytes, plural } from '#lib/util/format.ts';
 
 	/**
 	 * The screen's state lives in a module store, not here — see

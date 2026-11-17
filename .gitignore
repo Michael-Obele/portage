@@ -5,6 +5,9 @@
 /node_modules/
 *.tsbuildinfo
 
+# Rust build output (the scanner's binary is staged into dist/)
+/crates/*/target/
+
 # Portage's own state — never commit a journal
 .portage/
 

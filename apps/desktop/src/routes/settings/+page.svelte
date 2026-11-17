@@ -14,14 +14,14 @@
 	 * The rest of the config groups in `screens.md` (destination, transfer,
 	 * devices, journal) are not here yet; the engine already exposes every key.
 	 */
-	import { CONTROL, PageHeader, PROSE, SURFACE } from '../../lib/components/app/index.ts';
-	import { Button } from '../../lib/components/ui/button/index.js';
-	import { Input } from '../../lib/components/ui/input/index.js';
-	import { Label } from '../../lib/components/ui/label/index.js';
-	import { EngineFailure } from '../../lib/engine/client.ts';
-	import { app, scalePercent, UI_SCALES, type ThemeChoice } from '../../lib/state/app.svelte.ts';
-	import { screens } from '../../lib/state/screens.svelte.ts';
-	import { cn } from '../../lib/utils.ts';
+	import { CONTROL, PageHeader, PROSE, SURFACE } from '#lib/components/app/index.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import { EngineFailure } from '#lib/engine/client.ts';
+	import { app, scalePercent, UI_SCALES, type ThemeChoice } from '#lib/state/app.svelte.ts';
+	import { screens } from '#lib/state/screens.svelte.ts';
+	import { cn } from '#lib/utils.ts';
 
 	const THEMES: ReadonlyArray<{ value: ThemeChoice; label: string }> = [
 		{ value: 'light', label: 'Light' },

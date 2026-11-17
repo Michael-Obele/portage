@@ -21,8 +21,8 @@ import type {
 	PlanResult,
 	PlannedFile,
 	Verdict
-} from '../../engine/protocol.ts';
-import { plural } from '../../util/format.ts';
+} from '#lib/engine/protocol.ts';
+import { plural } from '#lib/util/format.ts';
 
 // --- filters ----------------------------------------------------------------
 

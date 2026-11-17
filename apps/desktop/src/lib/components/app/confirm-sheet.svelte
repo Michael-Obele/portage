@@ -19,11 +19,11 @@
 		AlertDialogFooter,
 		AlertDialogHeader,
 		AlertDialogTitle
-	} from '../ui/alert-dialog/index.js';
-	import { Button } from '../ui/button/index.js';
-	import { Input } from '../ui/input/index.js';
-	import { formatBytes, plural, truncateFront } from '../../util/format.ts';
-	import { CONTROL } from './tokens.ts';
+	} from '#lib/components/ui/alert-dialog/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { formatBytes, plural, truncateFront } from '#lib/util/format.ts';
+	import { CONTROL } from '#lib/components/app/tokens.ts';
 
 	let {
 		open = $bindable(false),
@@ -41,7 +41,7 @@
 	}: {
 		open?: boolean;
 		title: string;
-		action: 'dupes.apply' | 'purge.apply' | 'pull.start';
+				action: 'dupes.apply' | 'purge.apply' | 'pull.start' | 'trash.empty';
 		paths: string[];
 		count: number;
 		bytes: number;
@@ -61,10 +61,26 @@
 	const sentence = $derived(
 		action === 'dupes.apply'
 			? `${plural(count, 'file')} · ${formatBytes(bytes)} move to ${trashDir ?? 'the trash folder'}.`
-			: action === 'pull.start'
-				? `${plural(count, 'file')} · ${formatBytes(bytes)} are copied to the drive, verified, and then deleted from the phone. This cannot be undone — afterwards the drive holds the only copy.`
-				: `${plural(count, 'file')} · ${formatBytes(bytes)} leave the phone for good. The drive copies are untouched.`
+			: action === 'trash.empty'
+				? `${plural(count, 'file')} · ${formatBytes(bytes)} are deleted from the drive for good. They are already in the trash, which takes the same space as the files it holds — this is the step that actually frees it.`
+				: action === 'pull.start'
+					? `${plural(count, 'file')} · ${formatBytes(bytes)} are copied to the drive, verified, and then deleted from the phone. This cannot be undone — afterwards the drive holds the only copy.`
+					: `${plural(count, 'file')} · ${formatBytes(bytes)} leave the phone for good. The drive copies are untouched.`
 	);
+
+	/**
+	 * For a trash empty, `paths` are DAY FOLDERS and `count` is files, so the
+	 * "showing N of M" line would compare two different things.
+	 */
+	const pathsHeading = $derived(
+		action === 'trash.empty'
+			? `${plural(paths.length, 'day folder')} · ${plural(count, 'file')}`
+			: paths.length === count
+				? 'Every path'
+				: `Showing ${paths.length} of ${count}`
+	);
+
+	const whereLabel = $derived(action === 'trash.empty' ? 'Deleting from' : 'Where they go');
 
 	function handleOpenChange(next: boolean): void {
 		if (!next && !busy) oncancel();
@@ -90,7 +106,7 @@
 
 		<div class="flex flex-col gap-1">
 			<p class="text-label text-muted-foreground">
-				{paths.length === count ? 'Every path' : `Showing ${paths.length} of ${count}`}
+				{pathsHeading}
 			</p>
 			<ul class="max-h-[38vh] overflow-y-auto rounded-control border border-border bg-muted/40 p-2">
 				{#each paths as path (path)}
@@ -103,7 +119,7 @@
 
 		{#if trashDir}
 			<p class="text-body text-muted-foreground" data-numeric>
-				Where they go: <span class="font-mono text-label text-foreground">{trashDir}</span>
+				{whereLabel}: <span class="font-mono text-label text-foreground">{trashDir}</span>
 			</p>
 		{/if}
 

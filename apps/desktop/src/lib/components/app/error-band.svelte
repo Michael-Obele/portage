@@ -12,8 +12,8 @@
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import type { Snippet } from 'svelte';
 
-	import { Alert, AlertDescription, AlertTitle } from '../ui/alert/index.js';
-	import { cn } from '../../utils.ts';
+	import { Alert, AlertDescription, AlertTitle } from '#lib/components/ui/alert/index.js';
+	import { cn } from '#lib/utils.ts';
 
 	let {
 		what,

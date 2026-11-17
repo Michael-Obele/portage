@@ -21,16 +21,16 @@
 		SkeletonRows,
 		SourceFolders,
 		SURFACE
-	} from '../lib/components/app/index.ts';
-	import { Button } from '../lib/components/ui/button/index.js';
-	import { Spinner } from '../lib/components/ui/spinner/index.js';
-	import { EngineFailure } from '../lib/engine/client.ts';
-	import type { DeviceInfo, DeviceState, Volume } from '../lib/engine/protocol.ts';
-	import { app } from '../lib/state/app.svelte.ts';
-	import { formatBytes, plural } from '../lib/util/format.ts';
-	import { destinationRefusal } from '../lib/components/app/destinations.ts';
-	import { isInsideMount } from '../lib/util/mount.ts';
-	import { cn } from '../lib/utils.ts';
+	} from '#lib/components/app/index.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Spinner } from '#lib/components/ui/spinner/index.js';
+	import { EngineFailure } from '#lib/engine/client.ts';
+	import type { DeviceInfo, DeviceState, Volume } from '#lib/engine/protocol.ts';
+	import { app } from '#lib/state/app.svelte.ts';
+	import { formatBytes, plural } from '#lib/util/format.ts';
+	import { destinationRefusal } from '#lib/components/app/destinations.ts';
+	import { isInsideMount } from '#lib/util/mount.ts';
+	import { cn } from '#lib/utils.ts';
 
 	/** The layers the config can come from, in words rather than config vocabulary. */
 	const ORIGIN_WORDS: Record<string, string> = {

@@ -344,6 +344,18 @@ export interface CommandArgs {
 	'purge.plan': { verifyHash?: boolean | undefined };
 	'purge.apply': { planId: string; keys: string[]; confirm?: string | undefined };
 
+	/** Read what the drive's trash still holds. */
+	'trash.status': Record<string, never>;
+	/** Permanently delete it. `confirm` must echo the `trashId`. */
+	'trash.empty': {
+		trashId: string;
+		/** Omitted means every day folder; an array means exactly those. */
+		days?: string[] | undefined;
+		/** Include files loose in the trash root. */
+		loose?: boolean | undefined;
+		confirm?: string | undefined;
+	};
+
 	shutdown: Record<string, never>;
 }
 
@@ -387,6 +399,11 @@ export const ANSWER_KEYS = {
 	'purge.apply': [
 		['needsConfirm', 'actionId', 'count', 'bytes'],
 		['deleted', 'failed']
+	],
+	'trash.status': [['trashId', 'root', 'dayCount', 'totalFiles', 'totalBytes', 'freeBytes']],
+	'trash.empty': [
+		['needsConfirm', 'actionId', 'count', 'bytes', 'trashDir'],
+		['removedDays', 'removedFiles', 'bytesFreed', 'refused', 'freeBytesBefore', 'freeBytesAfter']
 	],
 	doctor: [
 		['checks', 'failed', 'exitCode'],
@@ -520,6 +537,46 @@ export interface DupesFrame extends Head<'dupes'> {
 	scannedBytes: number;
 	truncated: string[];
 	unparsed: string[];
+	/** Files the hasher could not read, so they were never compared. */
+	unreadableFiles: number;
+    /** Which walker ran, so a slow scan can explain itself instead of looking broken. */
+    io: WireScanIoSummary;
+}
+
+/**
+ * How a scan reached the filesystem.
+ *
+ * `via: 'glob'` is the built-in walker: correct, and measured 178 s against 4 s
+ * for the Rust scanner over the same 2 TB tree. The screen says so rather than
+ * letting a three-minute scan look like a bug.
+ */
+export interface WireScanIoSummary {
+    via: 'scanner' | 'glob';
+    elapsedMs: number;
+    dirs: number;
+    errors: Array<{ path: string; reason: string }>;
+    errorCount: number;
+    deepest: { relative: string; depth: number } | null;
+    depthLimited: number;
+    scannerError: string | null;
+}
+
+/**
+ * What the drive's trash is holding.
+ *
+ * The missing half of `reclaimable`: moving a duplicate to
+ * `<destRoot>/.portage/trash/` frees nothing on the same drive, so this frame is
+ * the number that becomes real space when the trash is emptied.
+ */
+export interface TrashFrame extends Head<'trash'> {
+    trashId: string;
+    root: string;
+    exists: boolean;
+    days: Array<{ date: string; path: string; files: number; bytes: number }>;
+    looseFiles: number;
+    looseBytes: number;
+    totalFiles: number;
+    totalBytes: number;
 }
 
 export interface WirePurgeCandidate {
@@ -582,7 +639,7 @@ export interface BrowseFrame extends Head<'browse'> {
 /** Emitted BEFORE anything moves. `confirm` on the follow-up must equal `actionId`. */
 export interface NeedsConfirmFrame extends Head<'needsConfirm'> {
 	actionId: string;
-	action: 'dupes.apply' | 'purge.apply';
+	action: 'dupes.apply' | 'purge.apply' | 'trash.empty';
 	paths: string[];
 	count: number;
 	bytes: number;
@@ -613,6 +670,7 @@ export type Frame =
 	| DupesFrame
 	| PurgePlanFrame
 	| DoctorFrame
+	| TrashFrame
 	| StatusFrame
 	| BrowseFrame
 	| NeedsConfirmFrame

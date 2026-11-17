@@ -23,10 +23,10 @@
 	 * accessibility and the navigation live.
 	 */
 	import type { Snippet } from 'svelte';
-	import { cn } from '../../utils.ts';
-	import { ScrollArea } from '../ui/scroll-area/index.js';
-	import * as Table from '../ui/table/index.js';
-	import SkeletonRows from './skeleton-rows.svelte';
+	import { cn } from '#lib/utils.ts';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
+	import * as Table from '#lib/components/ui/table/index.js';
+	import SkeletonRows from '#lib/components/app/skeleton-rows.svelte';
 	let {
 		columns,
 		rows,

@@ -14,9 +14,9 @@ import {
   ALWAYS_EXCLUDED_DIRS,
   IN_FLIGHT_SUFFIXES,
   type DeviceConfig,
-} from "../config/schema.ts";
-import type { Adb, DeviceFile, DeviceInfo } from "../device/adb.ts";
-import { extname } from "../util/paths.ts";
+} from "#lib/config/schema.ts";
+import type { Adb, DeviceFile, DeviceInfo } from "#lib/device/adb.ts";
+import { extname } from "#lib/util/paths.ts";
 
 /** Why a file is or isn't a candidate. Shown verbatim by `scan` and `plan`. */
 export type Verdict =

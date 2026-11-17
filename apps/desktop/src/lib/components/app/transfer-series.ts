@@ -8,16 +8,16 @@
  * the sample holds `—` and the chart draws a gap, because a chart that invents a
  * throughput is a chart about nothing.
  */
-import type { FileRow, Overall } from "../../engine/protocol.ts";
+import type { FileRow, Overall } from "#lib/engine/protocol.ts";
 import {
 	isVerifying,
 	rates,
 	rowFraction,
 	stalledFor,
 	type RunView,
-} from "../../state/run.ts";
-import { DASH, formatPercent, formatRate, plural } from "../../util/format.ts";
-import { baseName } from "./plan-filters.ts";
+} from "#lib/state/run.ts";
+import { DASH, formatPercent, formatRate, plural } from "#lib/util/format.ts";
+import { baseName } from "#lib/components/app/plan-filters.ts";
 
 /** One point on the rate chart. `t` is the frame's own elapsed seconds. */
 export interface RateSample {

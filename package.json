@@ -2,8 +2,11 @@
   "name": "portage",
   "version": "0.1.15",
   "private": true,
-  "description": "Move a phone's downloads onto an archive drive safely — verified, resumable, and with the phone copy deleted only after proof.",
+  "description": "Move a phone's downloads onto an archive drive safely \u2014 verified, resumable, and with the phone copy deleted only after proof.",
   "type": "module",
+  "imports": {
+    "#lib/*": "./src/*"
+  },
   "module": "src/cli/index.ts",
   "bin": {
     "portage": "src/cli/index.ts"
@@ -17,6 +20,7 @@
     "test": "bun test --preload ./scripts/preload.ts",
     "typecheck": "tsc --noEmit",
     "build": "bun run scripts/build.ts",
+    "build:scanner": "bun run scripts/scanner.ts",
     "tui": "bun run src/tui/main.svelte.ts",
     "doctor": "bun run src/cli/index.ts doctor"
   },

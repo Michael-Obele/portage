@@ -8,16 +8,16 @@
  * drift.
  */
 
-import { Adb, selectReady, type DeviceInfo } from "../../device/adb.ts";
-import type { ResolvedConfig } from "../../config/load.ts";
-import { requireDestRoot } from "../../config/load.ts";
-import { Journal } from "../../index/journal.ts";
-import { scanDevice, summarise, type Candidate } from "../../scan/scan.ts";
-import { buildPlan, planSummary, type PlanResult } from "../../plan/plan.ts";
+import { Adb, selectReady, type DeviceInfo } from "#lib/device/adb.ts";
+import type { ResolvedConfig } from "#lib/config/load.ts";
+import { requireDestRoot } from "#lib/config/load.ts";
+import { Journal } from "#lib/index/journal.ts";
+import { scanDevice, summarise, type Candidate } from "#lib/scan/scan.ts";
+import { buildPlan, planSummary, type PlanResult } from "#lib/plan/plan.ts";
 
-import { formatBytes, formatDuration } from "../../util/paths.ts";
-import type { Output } from "../../output/output.ts";
-import { preconditionError } from "../../util/errors.ts";
+import { formatBytes, formatDuration } from "#lib/util/paths.ts";
+import type { Output } from "#lib/output/output.ts";
+import { preconditionError } from "#lib/util/errors.ts";
 
 export interface ScanContext {
   resolved: ResolvedConfig;

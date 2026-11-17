@@ -20,8 +20,8 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { DB_FILENAME, EVENTS_FILENAME, STATE_DIR } from "../config/schema.ts";
-import type { Logger } from "../util/log.ts";
+import { DB_FILENAME, EVENTS_FILENAME, STATE_DIR } from "#lib/config/schema.ts";
+import type { Logger } from "#lib/util/log.ts";
 
 /**
  * The per-file state machine, in the order states can occur.

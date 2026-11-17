@@ -7,8 +7,8 @@
  */
 import { browser } from "$app/env";
 
-import type { Frame, RunFrame, StateFrame } from "../engine/protocol.ts";
-import { appendSample, type RateSample } from "../components/app/transfer-series.ts";
+import type { Frame, RunFrame, StateFrame } from "#lib/engine/protocol.ts";
+import { appendSample, type RateSample } from "#lib/components/app/transfer-series.ts";
 import {
 	emptyRunView,
 	reduceRun,
@@ -16,7 +16,7 @@ import {
 	runAnnouncement,
 	startRun,
 	type RunView,
-} from "./run.ts";
+} from "#lib/state/run.ts";
 
 /** The a11y floor: at most one announcement every five seconds. */
 export const ANNOUNCE_INTERVAL_MS = 5_000;

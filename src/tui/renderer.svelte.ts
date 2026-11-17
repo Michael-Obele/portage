@@ -26,10 +26,10 @@ import {
   createCliRenderer,
 } from "@opentui/core";
 
-import { TerminalCursor } from "./cursor.ts";
-import { type Capabilities, detect, sizing, type Sizing } from "./degrade.ts";
-import { type ScreenName } from "./state.svelte.ts";
-import { palette, type Semantic } from "./theme.ts";
+import { TerminalCursor } from "#lib/tui/cursor.ts";
+import { type Capabilities, detect, sizing, type Sizing } from "#lib/tui/degrade.ts";
+import { type ScreenName } from "#lib/tui/state.svelte.ts";
+import { palette, type Semantic } from "#lib/tui/theme.ts";
 
 /**
  * The renderable classes, re-exported so screens can BUILD without ever naming

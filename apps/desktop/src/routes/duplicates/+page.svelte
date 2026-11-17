@@ -21,8 +21,8 @@
 	 * minutes, so it happens when the person asks for it.
 	 */
 
-	import ConfirmSheet from '../../lib/components/app/confirm-sheet.svelte';
-	import DupesGroups from '../../lib/components/app/dupes-groups.svelte';
+	import ConfirmSheet from '#lib/components/app/confirm-sheet.svelte';
+	import DupesGroups from '#lib/components/app/dupes-groups.svelte';
 	import {
 		applySummary,
 		clearKeys,
@@ -33,23 +33,25 @@
 		selectKeys,
 		selectionFor,
 		toggle
-	} from '../../lib/components/app/dupes-view.ts';
+	} from '#lib/components/app/dupes-view.ts';
 	import {
 		EmptyState,
 		ErrorBand,
 		PageHeader,
 		SkeletonRows
-	} from '../../lib/components/app/index.ts';
-	import StatStrip from '../../lib/components/app/stat-strip.svelte';
-	import { CONTROL } from '../../lib/components/app/tokens.ts';
-	import { failureBand, type Band } from '../../lib/components/app/transfer-band.ts';
-	import { Button } from '../../lib/components/ui/button/index.js';
-	import { ToggleGroup, ToggleGroupItem } from '../../lib/components/ui/toggle-group/index.js';
-	import type { DupesFrame, NeedsConfirmFrame } from '../../lib/engine/protocol.ts';
-	import { app } from '../../lib/state/app.svelte.ts';
-	import { screens } from '../../lib/state/screens.svelte.ts';
-	import { isInsideMount } from '../../lib/util/mount.ts';
-	import { formatBytes, plural, truncateFront } from '../../lib/util/format.ts';
+	} from '#lib/components/app/index.ts';
+	import StatStrip from '#lib/components/app/stat-strip.svelte';
+	import { CONTROL } from '#lib/components/app/tokens.ts';
+	import { failureBand, type Band } from '#lib/components/app/transfer-band.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { ToggleGroup, ToggleGroupItem } from '#lib/components/ui/toggle-group/index.js';
+	import type { DupesFrame, NeedsConfirmFrame, TrashFrame } from '#lib/engine/protocol.ts';
+	import { app } from '#lib/state/app.svelte.ts';
+	import { screens } from '#lib/state/screens.svelte.ts';
+	import { isInsideMount } from '#lib/util/mount.ts';
+	import { formatBytes, plural, truncateFront } from '#lib/util/format.ts';
+	import { createNow } from '#lib/util/now.svelte.ts';
+	import { dayAge, relativeTime } from '#lib/util/relative-time.ts';
 
 	/**
 	 * The report, the selection and the scan scope live in a module store (see
@@ -72,12 +74,54 @@
 	/** The engine's `needsConfirm` frame for THIS screen's action. */
 	const pendingConfirm = $derived(screen.pendingConfirm);
 	const sheetOpen = $derived(screen.sheetOpen);
+	/** What the drive's trash is still holding — the bytes a move did NOT free. */
+	const trash = $derived<TrashFrame | null>(screen.trash);
+	const trashBusy = $derived(screen.trashBusy);
+	const emptying = $derived(screen.emptying);
 
 	const groups = $derived(scan?.groups ?? []);
 	const totals = $derived(groupTotals(selection, groups));
-	const facts = $derived(
-		pendingConfirm === null ? null : confirmFacts(pendingConfirm, groups, selection)
+	/** A ticking clock, so "scanned 4 minutes ago" stays true while it is read. */
+	const clockNow = createNow();
+	const scannedAge = $derived(
+		screen.scannedAt === null ? null : relativeTime(screen.scannedAt.getTime(), clockNow.now)
 	);
+
+	/**
+	 * One sheet, two actions.
+	 *
+	 * `dupes.apply` moves the ticked copies to the trash; `trash.empty` deletes
+	 * what is already there for good. Both arrive as the engine's `needsConfirm`
+	 * frame, and both need the same typed word, so they share the component and
+	 * differ only in what it is told — a second sheet would be a second place for
+	 * the wording to drift.
+	 */
+	const sheet = $derived.by(() => {
+		const pending = pendingConfirm;
+		if (pending === null) return null;
+		if (pending.action === 'trash.empty') {
+			return {
+				action: 'trash.empty' as const,
+				title: 'Empty the trash',
+				confirmWord: 'Empty',
+				// The folder NAME, not the full path: the sheet already states
+				// "Deleting from: …/.portage/trash", and a repeated 60-character
+				// prefix wraps at an arbitrary byte — one real sheet broke
+				// "2026-11-07" into "2026-11-0" and "7", which reads as two folders.
+				paths: pending.paths.map((path) => path.split('/').pop() ?? path),
+				count: pending.count,
+				bytes: pending.bytes,
+				trashDir: pending.trashDir
+			};
+		}
+		const moving = confirmFacts(pending, groups, selection);
+		return {
+			action: 'dupes.apply' as const,
+			title: 'Move to the trash',
+			confirmWord: 'Move',
+			...moving
+		};
+	});
 
 	/**
 	 * What a scan covers.
@@ -158,7 +202,7 @@
 				value: plural(current.groups.length, 'group'),
 				hint: `${plural(current.tier1Count, 'byte-identical group')} · ${plural(current.tier2Count, 'same-episode group')}`
 			},
-			{ label: 'Reclaimable', value: formatBytes(current.reclaimableBytes) },
+				{ label: 'Reclaimable', value: formatBytes(current.reclaimableBytes), hint: 'from this report' },
 			{ label: 'Files scanned', value: plural(current.scannedFiles, 'file') },
 			{
 				label: 'Bytes scanned',
@@ -193,6 +237,9 @@
 		asked = true;
 		if (app.config === null) void app.loadConfig().catch(() => {});
 		void app.loadVolumes().catch(() => {});
+		// A drive that already has a trash must say so on arrival: otherwise the
+		// only way to discover it is to press a scan that finds nothing new.
+		void refreshTrash();
 	});
 
 	/**
@@ -217,7 +264,10 @@
 		if (busy) return;
 		screen.scanning = true;
 		screen.failure = null;
-		screen.staleSelection = false;
+		// NOT cleared here. A report is stale until a FRESH one lands (the frame
+		// handler clears the flag), because a failed re-scan after a move must not
+		// leave the old report tickable — that is how the last surviving copy got
+		// offered again.
 		try {
 			// `{}` means "the engine's own roots"; the report arrives as a frame.
 			if (scope === 'drive' && driveMount === null) {
@@ -235,6 +285,9 @@
 			}
 			const roots = scope === 'drive' && driveMount !== null ? [driveMount] : undefined;
 			await app.port.send('dupes.scan', roots === undefined ? {} : { roots });
+			// A scan says nothing about the trash, and "reclaimable" is only half
+			// the story until the person knows what is already waiting to be freed.
+			void refreshTrash();
 		} catch (error) {
 			screen.failure = failureBand(error, 'dupes');
 		} finally {
@@ -283,6 +336,10 @@
 			if (outcome === null) return;
 			screen.sheetOpen = false;
 			screen.pendingConfirm = null;
+			// Files have moved, so the report no longer describes the drive. It stays
+			// stale until the re-scan below produces a report; if that re-scan fails,
+			// the old one must not be ticable.
+			screen.staleSelection = true;
 			// A report whose files have just moved is out of date, so re-scan
 			// before anything else is offered.
 			await scanNow();
@@ -290,8 +347,11 @@
 				outcome.refused > 0 ? 'warn' : 'info',
 				outcome.refused > 0
 					? `Moved ${plural(outcome.moved, 'file')}; ${plural(outcome.refused, 'file')} were refused.`
-					: `Moved ${plural(outcome.moved, 'file')} · ${formatBytes(outcome.bytesMoved)} to the trash.`
+					: `Moved ${plural(outcome.moved, 'file')} · ${formatBytes(outcome.bytesMoved)} to the trash. The space is freed when you empty it.`
 			);
+			// The trash just grew, so the panel that offers to free it must appear
+			// now, not after the next visit.
+			void refreshTrash();
 			if (outcome.refused > 0 && failure === null) {
 				screen.failure = {
 					what: `${plural(outcome.refused, 'file')} were refused and stayed where they were.`,
@@ -307,6 +367,122 @@
 			screen.staleSelection = true;
 		} finally {
 			screen.applying = false;
+		}
+	}
+	/**
+	 * Read the trash.
+	 *
+	 * Cheap (one directory walk) and read-only, so it is safe to call on mount, on
+	 * scope change and after every move. It answers with the bytes a move has NOT
+	 * freed, which is the number this screen used to leave out.
+	 */
+	async function refreshTrash(): Promise<void> {
+		// QUEUED, not dropped. Returning early meant the refresh after a move was
+		// silently lost whenever the previous reading was still in flight, leaving
+		// the panel showing the pre-move numbers under a button that promised them.
+		if (trashBusy) {
+			refreshQueued = true;
+			return;
+		}
+		screen.trashBusy = true;
+		try {
+			await app.port.send('trash.status', {});
+		} catch {
+			// A trash reading is an extra: a scan that worked must not be turned
+			// into a failure band because the drive would not answer this one. The
+			// panel simply does not appear.
+			screen.trash = null;
+		} finally {
+			screen.trashBusy = false;
+			if (refreshQueued) {
+				refreshQueued = false;
+				void refreshTrash();
+			}
+		}
+	}
+
+	/** A queued refresh. Set when a read is asked for while one is in flight. */
+	let refreshQueued = false;
+
+	/**
+	 * The first `trash.empty`: no `confirm`, so the engine answers with the sheet.
+	 *
+	 * `days` is the scope: omitted empties the whole trash, an array empties those
+	 * day folders, and `[]` with `loose` empties the files sitting directly in the
+	 * trash root. The scope is remembered for the confirm, because a confirm that
+	 * forgot it would empty everything the sheet just promised not to.
+	 */
+	async function requestEmpty(days?: string[], loose = false): Promise<void> {
+		const current = trash;
+		if (current === null || emptying || trashBusy) return;
+		screen.emptying = true;
+		screen.failure = null;
+		screen.pendingConfirm = null;
+		screen.emptyDays = days === undefined ? null : days;
+		screen.emptyLoose = loose;
+		try {
+			const scope = days === undefined ? {} : { days, ...(loose ? { loose: true } : {}) };
+			await app.port.send('trash.empty', { trashId: current.trashId, ...scope });
+		} catch (error) {
+			screen.failure = failureBand(error, 'dupes');
+		} finally {
+			screen.emptying = false;
+		}
+	}
+
+	/** The confirmation: the typed word is the sheet's business, the id is ours. */
+	async function confirmEmpty(): Promise<void> {
+		const current = trash;
+		if (current === null || emptying) return;
+		screen.emptying = true;
+		screen.failure = null;
+		try {
+			const scope =
+				screen.emptyDays === null
+					? {}
+					: { days: screen.emptyDays, ...(screen.emptyLoose ? { loose: true } : {}) };
+			const answer = await app.port.send('trash.empty', {
+				trashId: current.trashId,
+				...scope,
+				confirm: current.trashId
+			});
+			const record: Record<string, unknown> = { ...answer };
+			if ('needsConfirm' in record) return; // the engine asked again
+			const freed = typeof record['bytesFreed'] === 'number' ? record['bytesFreed'] : 0;
+			const failed = Array.isArray(record['refused']) ? record['refused'].length : 0;
+
+			screen.sheetOpen = false;
+			screen.pendingConfirm = null;
+			screen.emptyDays = null;
+			screen.emptyLoose = false;
+			// The reading described folders that no longer exist.
+			screen.trash = null;
+			await refreshTrash();
+
+			// The delta is the proof, when the filesystem will report it. NTFS
+			// rounds allocation, so the two numbers never match to the byte — and a
+			// sentence with two different answers to "how much did I free" is worse
+			// than one. The counted bytes are the number we can stand behind.
+			app.pushNotice(
+				failed > 0 ? 'warn' : 'info',
+				failed > 0
+					? `Freed ${formatBytes(freed)}; ${plural(failed, 'folder')} could not be emptied.`
+					: `Freed ${formatBytes(freed)} from the drive.`
+			);
+			if (failed > 0) {
+				screen.failure = {
+					what: `${plural(failed, 'folder')} could not be emptied.`,
+					means: 'What was deleted is gone; what was refused is still in the trash and still taking space.',
+					todo: 'Read the refusal above. A folder another program is holding open cannot be removed.',
+					code: null
+				};
+			}
+		} catch (error) {
+			screen.sheetOpen = false;
+			screen.pendingConfirm = null;
+			screen.failure = failureBand(error, 'dupes');
+		} finally {
+			screen.emptying = false;
 		}
 	}
 </script>
@@ -364,6 +540,47 @@
 <div class="flex flex-col gap-4 px-6 pb-8">
 	<StatStrip items={stats} />
 
+	{#if scan !== null}
+		<!-- Which walker ran, and how long it took. A three-minute scan looks
+		     broken unless the screen can name the reason, and the reason is a
+		     missing binary rather than a slow drive. -->
+		<p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-muted-foreground">
+			<span data-numeric>
+				Walked {plural(scan.io.dirs, 'folder')} in {(
+					Math.max(scan.io.elapsedMs, 0) / 1000
+				).toFixed(1)} s
+				{scan.io.via === 'scanner' ? 'with the fast scanner' : 'with the built-in walker'}.
+			</span>
+			{#if scannedAge !== null}
+				<span data-numeric>Scanned {scannedAge === 'now' ? 'just now' : scannedAge}.</span>
+			{/if}
+			{#if scan.io.errorCount > 0}
+				<span class="text-warning" data-numeric>
+					{plural(scan.io.errorCount, 'path')} could not be read.
+				</span>
+			{/if}
+			{#if scan.unreadableFiles > 0}
+				<!-- The difference between "nothing repeats" and "nothing I could
+				     look at repeats". A drive pulled out mid-scan lands here. -->
+				<span class="text-warning" data-numeric>
+					{plural(scan.unreadableFiles, 'file')} could not be re-read, so they were not compared.
+				</span>
+			{/if}
+			{#if scan.io.depthLimited > 0}
+				<span class="text-warning" data-numeric>
+					{plural(scan.io.depthLimited, 'folder')} were too deep to walk.
+				</span>
+			{/if}
+		</p>
+		{#if scan.io.via === 'glob'}
+			<p class="measure text-caption text-muted-foreground">
+				This scan used the built-in walker, which is correct but far slower on a
+				mounted drive. {scan.io.scannerError ??
+					'The portage-scan binary was not installed next to the engine.'}
+			</p>
+		{/if}
+	{/if}
+
 	{#if band}
 		<ErrorBand what={band.what} means={band.means} todo={band.todo} code={band.code}>
 			{#snippet actions()}
@@ -378,6 +595,75 @@
 				</Button>
 			{/snippet}
 		</ErrorBand>
+	{/if}
+
+	{#if trash !== null && trash.totalFiles > 0}
+		<!-- ABOVE the groups on purpose. "Move to trash" frees NOTHING on the same
+		     drive: the bytes land in .portage/trash and stay there. So the number a
+		     person can act on is the one already waiting, and putting it below a
+		     list of groups hid it behind a scroll on the real drive.
+		     Gated on FILES, not bytes: a trash of zero-byte entries still needs a
+		     way out. -->
+		<section class="flex flex-col gap-3 rounded-surface border border-border bg-card p-4">
+			<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+				<h2 class="text-lead font-medium text-foreground">In the trash</h2>
+				<span class="text-label text-muted-foreground" data-numeric>
+					{plural(trash.totalFiles, 'file')} · {formatBytes(trash.totalBytes)}
+				</span>
+			</div>
+			<p class="measure text-body text-muted-foreground">
+				Moved copies sit in <span class="font-mono text-label text-foreground">{trash.root}</span
+				>, on this same drive, so they still take the space they always did. Emptying the
+				trash is the step that frees it, and it cannot be undone.
+			</p>
+			<div class="flex flex-wrap items-center gap-2">
+				<Button
+					class={CONTROL}
+					size="sm"
+					variant="destructive"
+					disabled={emptying || trashBusy}
+					onclick={() => void requestEmpty()}
+				>
+					Empty the trash{trash.totalBytes > 0 ? ` · frees ${formatBytes(trash.totalBytes)}` : ''}
+				</Button>
+				<!-- Each day by its AGE, not its folder name: "yesterday" is the fact
+				     that decides whether this is stale. Each row can go on its own,
+				     which is what `trash.empty`'s `days` was always for. -->
+				<ul class="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground" data-numeric>
+					{#each trash.days as day (day.date)}
+						<li class="flex items-center gap-1.5">
+							<span class="text-foreground">{dayAge(day.date, clockNow.now)}</span>
+							<span>· {plural(day.files, 'file')} · {formatBytes(day.bytes)}</span>
+							<Button
+								class={CONTROL}
+								size="xs"
+								variant="outline"
+								disabled={emptying || trashBusy}
+								title={`Empty ${day.path}`}
+								onclick={() => void requestEmpty([day.path])}
+							>
+								Empty
+							</Button>
+						</li>
+					{/each}
+					{#if trash.looseFiles > 0}
+						<li class="flex items-center gap-1.5">
+							<span>loose · {plural(trash.looseFiles, 'file')} · {formatBytes(trash.looseBytes)}</span>
+							<Button
+								class={CONTROL}
+								size="xs"
+								variant="outline"
+								disabled={emptying || trashBusy}
+								title="Empty the files sitting directly in the trash folder"
+								onclick={() => void requestEmpty([], true)}
+							>
+								Empty
+							</Button>
+						</li>
+					{/if}
+				</ul>
+			</div>
+		</section>
 	{/if}
 
 	{#if scanning && scan === null}
@@ -477,8 +763,9 @@
 				{#if staleSelection}
 					This selection no longer belongs to a live scan. Scan again before moving anything.
 				{:else}
-					The sheet names every file and where it goes before anything moves. A keeper is only a
-					suggestion — tick it if you disagree.
+				The sheet names every file and where it goes before anything moves. A move frees
+				nothing until you empty the trash. A keeper is only a suggestion — tick it if you
+				disagree.
 				{/if}
 			</p>
 
@@ -489,18 +776,18 @@
 	{/if}
 </div>
 
-{#if facts}
-	<ConfirmSheet
-		bind:open={() => screen.sheetOpen, (next) => (screen.sheetOpen = next)}
-		title="Move to the trash"
-		action="dupes.apply"
-		paths={facts.paths}
-		count={facts.count}
-		bytes={facts.bytes}
-		trashDir={facts.trashDir}
-		confirmWord="Move"
-		busy={applying}
-		onconfirm={() => void confirmMove()}
+{#if sheet}
+		<ConfirmSheet
+			bind:open={() => screen.sheetOpen, (next) => (screen.sheetOpen = next)}
+			title={sheet.title}
+			action={sheet.action}
+			paths={sheet.paths}
+			count={sheet.count}
+			bytes={sheet.bytes}
+			trashDir={sheet.trashDir}
+			confirmWord={sheet.confirmWord}
+			busy={applying || emptying}
+			onconfirm={() => (sheet.action === 'trash.empty' ? void confirmEmpty() : void confirmMove())}
 		oncancel={() => {
 			screen.sheetOpen = false;
 			screen.pendingConfirm = null;

@@ -26,14 +26,14 @@
  *     byte moves, so a crash leaves a recoverable record, not an orphan file.
  */
 
-import type { Adb, DeviceInfo } from "../device/adb.ts";
-import type { Journal, TransferState } from "../index/journal.ts";
-import type { PlanResult, PlannedFile } from "../plan/plan.ts";
-import type { DeleteSource } from "../config/schema.ts";
-import { statSyncSafe } from "../util/fs.ts";
-import { sha256File } from "../util/hash.ts";
-import type { Logger } from "../util/log.ts";
-import type { CopyRequest, Transport } from "./transport.ts";
+import type { Adb, DeviceInfo } from "#lib/device/adb.ts";
+import type { Journal, TransferState } from "#lib/index/journal.ts";
+import type { PlanResult, PlannedFile } from "#lib/plan/plan.ts";
+import type { DeleteSource } from "#lib/config/schema.ts";
+import { statSyncSafe } from "#lib/util/fs.ts";
+import { sha256File } from "#lib/util/hash.ts";
+import type { Logger } from "#lib/util/log.ts";
+import type { CopyRequest, Transport } from "#lib/xfer/transport.ts";
 
 export interface EngineOptions {
   journal: Journal;

@@ -12,7 +12,7 @@ import {
 	consentGiven,
 	recordConsent,
 	type ConsentStore
-} from '../src/lib/components/app/pull-consent.ts';
+} from '#lib/components/app/pull-consent.ts';
 
 function fakeStore(
 	initial: Record<string, string> = {}

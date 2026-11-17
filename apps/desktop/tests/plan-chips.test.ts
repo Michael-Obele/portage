@@ -8,7 +8,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 
-import { chipFor } from '../src/lib/components/app/plan-filters.ts';
+import { chipFor } from '#lib/components/app/plan-filters.ts';
 
 describe('chipFor', () => {
 	test('a prospective file reads as a future action, not a queued one', () => {

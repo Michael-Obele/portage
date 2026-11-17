@@ -14,9 +14,9 @@ import {
   stripCR,
   type RunResult,
   type SpawnFn,
-} from "../util/spawn.ts";
-import { sha1Hex } from "../util/hash.ts";
-import { preconditionError } from "../util/errors.ts";
+} from "#lib/util/spawn.ts";
+import { sha1Hex } from "#lib/util/hash.ts";
+import { preconditionError } from "#lib/util/errors.ts";
 
 /**
  * Why a particular adb binary is being used.

@@ -11,7 +11,7 @@
 	 * Padding is owned by the parent (`px-6` on the page), so the first label
 	 * lines up with the page title instead of floating in from the edge.
 	 */
-	import { cn } from '../../utils.ts';
+	import { cn } from '#lib/utils.ts';
 
 	export interface Stat {
 		label: string;

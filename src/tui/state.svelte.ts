@@ -191,8 +191,8 @@ import {
   formatDuration,
   formatRate,
   truncateMiddle,
-} from "../util/paths.ts";
-import type { DupeGroup, DupeMember } from "../dedupe/types.ts";
+} from "#lib/util/paths.ts";
+import type { DupeGroup, DupeMember } from "#lib/dedupe/types.ts";
 
 // The view holds the ENGINE's objects, not a copy: a hand-written mirror here
 // drifted once already, missing `suspicious` and `scoreReason` — the two fields
@@ -200,8 +200,8 @@ import type { DupeGroup, DupeMember } from "../dedupe/types.ts";
 export type DuplicateGroup = DupeGroup;
 export type DuplicateMember = DupeMember;
 
-import { BAR_CELLS, type Capabilities, type Sizing } from "./degrade.ts";
-import { boxChars, glyphs } from "./theme.ts";
+import { BAR_CELLS, type Capabilities, type Sizing } from "#lib/tui/degrade.ts";
+import { boxChars, glyphs } from "#lib/tui/theme.ts";
 
 /** `██████████████░░░░░░` — fixed BAR_CELLS wide so it never misleads. */
 export function bar(

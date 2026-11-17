@@ -1,9 +1,10 @@
 /**
  * Filesystem helpers, Bun-first.
  *
- * Uses `Bun.file()` for existence/stat (no syscall round trip through node's
- * binding layer) and `Bun.spawnSync` for the handful of places where a system
- * tool is genuinely the right tool (`sync -f`, `statvfs` via `df`, `du`).
+ * `Bun.spawnSync` covers the handful of places where a system tool is genuinely
+ * the right tool (`sync -f`, `statvfs` via `df`, `du`). Path stat goes through
+ * `node:fs/promises`, because `Bun.file().exists()` is a question about FILES and
+ * answers false for a directory.
  *
  * The durability discipline lives here. Measured on this machine: about **25 %
  * of a transfer's wall time is writeback** that `adb` had already reported as
@@ -12,7 +13,7 @@
  * behalf.
  */
 
-import { mkdir, rm, rename } from "node:fs/promises";
+import { mkdir, rm, rename, stat as statPath } from "node:fs/promises";
 import { join } from "node:path";
 
 /**
@@ -117,17 +118,27 @@ export interface FileStat {
   isDir: boolean;
 }
 
-/** Stat via `Bun.file()` — returns null instead of throwing on a missing path. */
+/**
+ * Stat a path, following symlinks, returning `null` instead of throwing.
+ *
+ * `node:fs` rather than `Bun.file().stat()`, and the reason is a real bug this
+ * replaced: `Bun.file(path).exists()` answers false for a DIRECTORY, so gating
+ * on it made `isDirectory()` false for every directory on the machine — doctor
+ * reported a present destination as "does not exist", and a trash that was full
+ * of files as "no trash". One API answers for files, the other for paths, and
+ * `isDir` has to come from the filesystem rather than from a constant.
+ */
 export async function statSafe(path: string): Promise<FileStat | null> {
-  const file = Bun.file(path);
-  if (!(await file.exists())) return null;
   try {
+    const stat = await statPath(path);
     return {
-      size: file.size,
-      mtimeMs: Math.round(file.lastModified),
-      isDir: false,
+      size: stat.size,
+      mtimeMs: Math.round(stat.mtimeMs),
+      isDir: stat.isDirectory(),
     };
   } catch {
+    // Missing, unreadable, or on a mount that will not answer. All three are
+    // "I cannot vouch for this path", which is what null means everywhere here.
     return null;
   }
 }

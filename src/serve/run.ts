@@ -16,18 +16,18 @@
  *  3. Every emission is guarded by the run id, so nothing from a previous run
  *     can paint over a newer one.
  */
-import type { ResolvedConfig } from "../config/load.ts";
-import type { Adb } from "../device/adb.ts";
-import type { Logger } from "../util/log.ts";
+import type { ResolvedConfig } from "#lib/config/load.ts";
+import type { Adb } from "#lib/device/adb.ts";
+import type { Logger } from "#lib/util/log.ts";
 import {
   createControl,
   startPull,
   type TransferControl,
-} from "../tui/runner.ts";
-import { TransferSink } from "../tui/sink.ts";
-import type { EngineSummary } from "../xfer/engine.ts";
+} from "#lib/tui/runner.ts";
+import { TransferSink } from "#lib/tui/sink.ts";
+import type { EngineSummary } from "#lib/xfer/engine.ts";
 
-import type { Frames } from "./frames.ts";
+import type { Frames } from "#lib/serve/frames.ts";
 
 /** ~10 Hz. Fast enough to look live, slow enough to stay off the wire's back. */
 export const STATE_TICK_MS = 100;

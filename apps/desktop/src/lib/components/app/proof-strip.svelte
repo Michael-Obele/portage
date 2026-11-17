@@ -11,8 +11,8 @@
 	 * fill's leading edge is how far the run has reached, and the four labels
 	 * are where each state currently stands.
 	 */
-	import type { ProofCounts } from '../../state/run.ts';
-	import { cn } from '../../utils.ts';
+	import type { ProofCounts } from '#lib/state/run.ts';
+	import { cn } from '#lib/utils.ts';
 
 	let {
 		proof,

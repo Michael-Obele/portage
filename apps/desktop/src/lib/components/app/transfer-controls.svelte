@@ -9,9 +9,9 @@
 	 * label.
 	 */
 	import type { Snippet } from 'svelte';
-	import { cn } from '../../utils.ts';
-	import { Button } from '../ui/button/index.js';
-	import { CONTROL } from './tokens.ts';
+	import { cn } from '#lib/utils.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { CONTROL } from '#lib/components/app/tokens.ts';
 
 	let {
 		paused,

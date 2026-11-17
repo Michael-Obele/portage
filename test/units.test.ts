@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { chmodSync } from "node:fs";
+import { chmodSync, readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -23,12 +23,17 @@ import {
   resolveInside,
   formatBytes,
   formatDuration,
+  localDayKey,
   truncateMiddle,
   isMarkerFile,
 } from "../src/util/paths.ts";
 import { parseArgs, bool, int, str } from "../src/cli/args.ts";
 import { loadConfig, coerceConfigValue } from "../src/config/load.ts";
 import { DEFAULT_CONFIG } from "../src/config/schema.ts";
+import { PendingRegister } from "../src/serve/pending.ts";
+// The desktop app cannot import from `src/`, so `localDayKey` exists twice. This
+// import is what makes "keep the two identical" a test instead of a comment.
+import { localDayKey as desktopLocalDayKey } from "../apps/desktop/src/lib/util/relative-time.ts";
 
 import {
   parseLsusbTree,
@@ -156,6 +161,80 @@ describe("path safety", () => {
   });
 });
 
+describe("the #lib alias boundary", () => {
+  test("a module the other package imports does not use #lib", () => {
+    // `#lib/*` means `./src/*` in the root package and `./src/lib/*` in
+    // `apps/desktop`. Resolution follows the IMPORTING file's package, so a
+    // `#lib` specifier inside a file the root suite imports would silently load
+    // a different module than it does in the app. These are exactly the files
+    // that cross the boundary today.
+    const crossing = [
+      "apps/desktop/src/lib/engine/protocol.ts",
+      "apps/desktop/src/lib/util/relative-time.ts",
+    ];
+    for (const relative of crossing) {
+      const source = readFileSync(join(import.meta.dir, "..", relative), "utf8");
+      expect({ relative, aliases: source.includes("from '#lib/") || source.includes('from "#lib/') }).toEqual({
+        relative,
+        aliases: false,
+      });
+    }
+  });
+});
+
+describe("the pending-action register", () => {
+  test("one record can be dropped without touching the others", () => {
+    // Emptying the trash used to call `clear()`, which also wiped the duplicate
+    // scan the person was still working through — the second move on that screen
+    // then failed with "that duplicate scan is not available any more".
+    let n = 0;
+    const register = new PendingRegister(
+      60_000,
+      () => 1_000,
+      () => `id-${++n}`,
+    );
+    const draft = {
+      kind: "dupes" as const,
+      paths: new Map<string, string>(),
+      sizes: new Map<string, number>(),
+      bytes: 0,
+      trashDir: null,
+      destRoot: "/drive",
+    };
+    const first = register.insert(draft);
+    const second = register.insert({ ...draft, kind: "trash" });
+
+    expect(register.delete(first.id)).toBe(true);
+    expect(register.get(first.id)).toBeNull();
+    expect(register.get(second.id)?.id).toBe(second.id);
+    expect(register.delete(first.id)).toBe(false);
+  });
+
+  test("expired records are evicted as new ones arrive", () => {
+    let now = 0;
+    let n = 0;
+    const register = new PendingRegister(
+      1_000,
+      () => now,
+      () => `id-${++n}`,
+    );
+    const draft = {
+      kind: "trash" as const,
+      paths: new Map<string, string>(),
+      sizes: new Map<string, number>(),
+      bytes: 0,
+      trashDir: null,
+      destRoot: "/drive",
+    };
+    register.insert(draft);
+    now = 5_000;
+    register.insert(draft);
+    // A screen that only ever inserts (`trash.status` on every mount and move)
+    // must not grow this map forever.
+    expect(register.size()).toBe(1);
+  });
+});
+
 describe("formatting", () => {
   test("bytes render in the unit a human reads", () => {
     expect(formatBytes(0)).toBe("0 B");
@@ -168,6 +247,40 @@ describe("formatting", () => {
     expect(formatDuration(Number.NaN)).toBe("—");
     expect(formatDuration(90)).toBe("01:30");
     expect(formatDuration(3_661)).toBe("1:01:01");
+  });
+
+  test("a trash folder is named by the LOCAL day, not the UTC one", () => {
+    // The bug this pins: `toISOString().slice(0, 10)` is the UTC date, so on a
+    // UTC+1 machine a move at 00:30 landed in YESTERDAY's folder.
+    const justAfterMidnight = new Date(2026, 10, 17, 0, 30, 0);
+    expect(localDayKey(justAfterMidnight)).toBe(
+      [
+        justAfterMidnight.getFullYear(),
+        String(justAfterMidnight.getMonth() + 1).padStart(2, "0"),
+        String(justAfterMidnight.getDate()).padStart(2, "0"),
+      ].join("-"),
+    );
+    // And it is a date a folder can be named: zero-padded, sortable.
+    expect(localDayKey(new Date(2026, 0, 5))).toBe("2026-01-05");
+    if (justAfterMidnight.getTimezoneOffset() !== 0) {
+      expect(localDayKey(justAfterMidnight)).not.toBe(
+        justAfterMidnight.toISOString().slice(0, 10),
+      );
+    }
+  });
+
+  test("the engine's day key and the desktop's agree, year round", () => {
+    // One decides the folder `applySelection` writes into; the other decides what
+    // the screen calls it. They are separate files because the desktop is its own
+    // SvelteKit app, so the invariant is asserted rather than assumed.
+    for (const date of [
+      new Date(2026, 0, 1),
+      new Date(2026, 10, 17, 0, 30),
+      new Date(2026, 11, 31, 23, 59),
+      new Date(2024, 1, 29, 12, 0),
+    ]) {
+      expect(desktopLocalDayKey(date)).toBe(localDayKey(date));
+    }
   });
 
   test("long names truncate in the middle so the extension survives", () => {

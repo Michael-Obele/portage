@@ -26,17 +26,18 @@ import {
 	type PortageConfig,
 	type PurgePlanFrame,
 	type StateFrame,
+	type TrashFrame,
 	type Verdict,
 	type Volume
-} from './protocol.ts';
-import type { BrowseEntry } from './protocol.ts';
+} from '#lib/engine/protocol.ts';
+import type { BrowseEntry } from '#lib/engine/protocol.ts';
 import {
 	type EngineHandlers,
 	type EnginePort,
 	type EngineStatus,
 	type EngineSubscriptions,
 	type PickFolderOptions
-} from './client.ts';
+} from '#lib/engine/client.ts';
 
 export type MockScenario = 'fresh' | 'run' | 'run-failed' | 'plan' | 'dupes' | 'purge' | 'doctor';
 
@@ -673,7 +674,51 @@ export function mockDupes(): DupesFrame {
 			`${base}/S01 SP [1080p].mkv — no episode number in the filename`,
 			`${base}/Frieren 01-12 [1080p].mkv — "01-12" is a range of episodes, not one episode`,
 			`${base}/[Group] EP.1 1080p.mkv — the filename has no show name left once tags are removed`
-		]
+		],
+		// The fixture claims the fast walker, because a fixture that claims the
+		// slow one would bury the real signal the screen exists to show.
+		unreadableFiles: 0,
+		io: {
+			via: 'scanner',
+			elapsedMs: 4_265,
+			dirs: 4_602,
+			errors: [],
+			errorCount: 0,
+			deepest: {
+				relative:
+					'My Old HP/Docs/1stroundNET/images/images/images/images/images/images/images/images/images/banner.jpg',
+				depth: 12
+			},
+			depthLimited: 0,
+			scannerError: null
+		}
+	};
+}
+
+/**
+ * What the drive's trash is holding.
+ *
+ * The fixture carries a REAL-shaped trash on purpose: two day folders, four and
+ * nine files, one loose file outside a day. A fixture that only ever shows an
+ * empty trash cannot exercise the screen that frees space, which is the whole
+ * reason this frame exists.
+ */
+export function mockTrash(): TrashFrame {
+	const root = `${DEST_ROOT}/.portage/trash`;
+	return {
+		v: PROTOCOL_VERSION,
+		type: 'trash',
+		trashId: 'trash-2026-11-08-01',
+		root,
+		exists: true,
+		days: [
+			{ date: '2026-11-07', path: `${root}/2026-11-07`, files: 4, bytes: 1_612_000_000 },
+			{ date: '2026-11-08', path: `${root}/2026-11-08`, files: 9, bytes: 1_588_000_000 }
+		],
+		looseFiles: 1,
+		looseBytes: 41_000_000,
+		totalFiles: 14,
+		totalBytes: 3_241_000_000
 	};
 }
 
@@ -788,6 +833,15 @@ class MockEngine implements EnginePort {
 	private paused = false;
 	/** What `config.set` has written, persisted the way the engine's file is. */
 	private configOverride: Partial<PortageConfig> = {};
+    /**
+     * What the fixture's trash has already lost.
+     *
+     * Per day, because the real engine deletes per day and the panel offers a
+     * button per day. A single "emptied" flag would make a one-day empty wipe the
+     * whole fixture trash, which is the opposite of what the screen does.
+     */
+    private emptiedDays = new Set<string>();
+    private looseEmptied = false;
 
 	constructor(private readonly scenario: MockScenario) {}
 
@@ -1064,6 +1118,71 @@ class MockEngine implements EnginePort {
 					return { needsConfirm: true, actionId: planId, count: keys.length, bytes: 0 };
 				}
 				return { deleted: 0, failed: 0 };
+			}
+			case 'trash.status': {
+				// The real engine answers from the disk, so an emptied trash reports
+				// nothing and the panel disappears. The fixture must do the same or a
+				// broken screen would look correct.
+				const base = mockTrash();
+				const days = base.days.filter((day) => !this.emptiedDays.has(day.date));
+				const looseFiles = this.looseEmptied ? 0 : base.looseFiles;
+				const looseBytes = this.looseEmptied ? 0 : base.looseBytes;
+				const trash = {
+					...base,
+					days,
+					looseFiles,
+					looseBytes,
+					totalFiles: days.reduce((total, day) => total + day.files, looseFiles),
+					totalBytes: days.reduce((total, day) => total + day.bytes, looseBytes)
+				};
+				this.emit(frame('trash', trash));
+				return {
+					trashId: trash.trashId,
+					root: trash.root,
+					// `dayCount`, not `days`: the frame's `days` is a list.
+					dayCount: trash.days.length,
+					totalFiles: trash.totalFiles,
+					totalBytes: trash.totalBytes,
+					freeBytes: 439_867_125_760
+				};
+			}
+			case 'trash.empty': {
+				const trash = mockTrash();
+				const trashId = String(args?.trashId ?? '');
+				// Same scope rule as the engine: `days` OMITTED means the whole
+				// trash, an array means exactly those days, and loose files are
+				// taken only when they were asked for.
+				const wholeTrash = args?.days === undefined;
+				const wanted = Array.isArray(args?.days) ? (args.days as string[]) : [];
+				const chosen = wholeTrash
+					? trash.days
+					: trash.days.filter((day) => wanted.includes(day.path));
+				const takeLoose = wholeTrash || args?.loose === true;
+				const count = chosen.reduce((total, day) => total + day.files, 0) + (takeLoose ? trash.looseFiles : 0);
+				const bytes = chosen.reduce((total, day) => total + day.bytes, 0) + (takeLoose ? trash.looseBytes : 0);
+				if (args?.confirm !== trashId) {
+					this.emit(
+						frame('needsConfirm', {
+							actionId: trashId,
+							action: 'trash.empty',
+							paths: chosen.map((day) => day.path),
+							count,
+							bytes,
+							trashDir: trash.root
+						})
+					);
+					return { needsConfirm: true, actionId: trashId, count, bytes, trashDir: trash.root };
+				}
+				for (const day of chosen) this.emptiedDays.add(day.date);
+				if (takeLoose) this.looseEmptied = true;
+				return {
+					removedDays: chosen.length,
+					removedFiles: count,
+					bytesFreed: bytes,
+					refused: [],
+					freeBytesBefore: 439_867_125_760,
+					freeBytesAfter: 439_867_125_760 + bytes
+				};
 			}
 			case 'shutdown':
 				return { stopping: true };

@@ -17,12 +17,12 @@
 	import Folder from '@lucide/svelte/icons/folder';
 	import { onMount } from 'svelte';
 
-	import type { BrowseEntry, DeviceInfo } from '../../engine/protocol.ts';
-	import { app } from '../../state/app.svelte.ts';
-	import { plural } from '../../util/format.ts';
-	import { cn } from '../../utils.ts';
-	import { Button } from '../ui/button/index.js';
-	import { ScrollArea } from '../ui/scroll-area/index.js';
+	import type { BrowseEntry, DeviceInfo } from '#lib/engine/protocol.ts';
+	import { app } from '#lib/state/app.svelte.ts';
+	import { plural } from '#lib/util/format.ts';
+	import { cn } from '#lib/utils.ts';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
 	import {
 		Dialog,
 		DialogContent,
@@ -30,10 +30,10 @@
 		DialogFooter,
 		DialogHeader,
 		DialogTitle
-	} from '../ui/dialog/index.js';
-	import EmptyState from './empty-state.svelte';
-	import ErrorBand from './error-band.svelte';
-	import SkeletonRows from './skeleton-rows.svelte';
+	} from '#lib/components/ui/dialog/index.js';
+	import EmptyState from '#lib/components/app/empty-state.svelte';
+	import ErrorBand from '#lib/components/app/error-band.svelte';
+	import SkeletonRows from '#lib/components/app/skeleton-rows.svelte';
 	import {
 		PHONE_ROOT,
 		addRoot,
@@ -46,9 +46,9 @@
 		replaceRoot,
 		rootVerdict,
 		rootsSentence
-	} from './source-folders.ts';
-	import { CONTROL } from './tokens.ts';
-	import { failureBand, type Band } from './transfer-band.ts';
+	} from '#lib/components/app/source-folders.ts';
+	import { CONTROL } from '#lib/components/app/tokens.ts';
+	import { failureBand, type Band } from '#lib/components/app/transfer-band.ts';
 
 	let {
 		device,

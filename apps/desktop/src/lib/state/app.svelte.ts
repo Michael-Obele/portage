@@ -14,14 +14,14 @@ import {
 	type EngineStatus,
 	type EngineSubscriptions,
 	type PickFolderOptions,
-} from "../engine/client.ts";
-import { engine as realEngine } from "../engine/client.ts";
+} from "#lib/engine/client.ts";
+import { engine as realEngine } from "#lib/engine/client.ts";
 import {
 	createMockEngine,
 	describeScenario,
 	readMockScenario,
 	type MockScenario,
-} from "../engine/mock.ts";
+} from "#lib/engine/mock.ts";
 import type {
 	DeviceInfo,
 	Frame,
@@ -29,7 +29,7 @@ import type {
 	PortageConfig,
 	ReadyFrame,
 	Volume,
-} from "../engine/protocol.ts";
+} from "#lib/engine/protocol.ts";
 
 export type ConnectionStatus =
 	| "connecting"

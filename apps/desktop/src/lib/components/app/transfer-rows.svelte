@@ -11,13 +11,13 @@
 	 * A stalled row says its own seconds on the row itself: the number is the
 	 * diagnosis, and putting it behind a click is what makes someone wait.
 	 */
-	import { DASH, formatBytes, truncateMiddle } from '../../util/format.ts';
-	import { cn } from '../../utils.ts';
-	import DataTable, { type TableColumn } from './data-table.svelte';
-	import StateChip from './state-chip.svelte';
-	import * as Table from '../ui/table/index.js';
-	import { IDENTIFIER, NUMERIC, ROW_NAME } from './tokens.ts';
-	import type { RowView } from './transfer-series.ts';
+	import { DASH, formatBytes, truncateMiddle } from '#lib/util/format.ts';
+	import { cn } from '#lib/utils.ts';
+	import DataTable, { type TableColumn } from '#lib/components/app/data-table.svelte';
+	import StateChip from '#lib/components/app/state-chip.svelte';
+	import * as Table from '#lib/components/ui/table/index.js';
+	import { IDENTIFIER, NUMERIC, ROW_NAME } from '#lib/components/app/tokens.ts';
+	import type { RowView } from '#lib/components/app/transfer-series.ts';
 
 	let {
 		rows,
