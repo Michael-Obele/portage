@@ -16,11 +16,31 @@ const buildDir = join(appRoot, 'build');
 let PORT = 0;
 const CDP_PORT = 9333;
 const SHOTS = '/tmp/portage-ui';
-const CHROME =
-  process.env.CHROME_PATH ??
-  (existsSync('/usr/bin/google-chrome')
-    ? '/usr/bin/google-chrome'
-    : `${process.env.HOME}/.cache/ms-playwright/chromium-1200/chrome-linux/chrome`);
+/** Chrome, from CHROME_PATH, the usual paths, or PATH — CI images differ. */
+function findChrome(): string | null {
+  const explicit = process.env.CHROME_PATH;
+  if (explicit !== undefined && existsSync(explicit)) return explicit;
+  const paths = [
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/opt/google/chrome/chrome',
+    '/snap/bin/chromium'
+  ];
+  for (const path of paths) if (existsSync(path)) return path;
+  for (const name of ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser']) {
+    const found = Bun.which(name);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
+const CHROME = findChrome();
+if (CHROME === null) {
+  console.error('ui-sweep: no Chrome found; set CHROME_PATH to one');
+  process.exit(2);
+}
 
 if (!existsSync(buildDir)) {
   console.error(`ui-sweep: ${buildDir} is missing — run \`bun run build\` first`);
@@ -316,6 +336,10 @@ const chrome = Bun.spawn(
     '--headless=new',
     '--no-sandbox',
     '--disable-gpu',
+    // CI containers give Chrome a 64 MB /dev/shm and it dies without this.
+    '--disable-dev-shm-usage',
+    '--no-first-run',
+    '--no-default-browser-check',
     '--hide-scrollbars',
     '--window-size=1280,900',
     `--remote-debugging-port=${CDP_PORT}`,
@@ -324,7 +348,7 @@ const chrome = Bun.spawn(
     `--user-data-dir=${await mkdtemp(join(tmpdir(), 'portage-ui-chrome-'))}`,
     'about:blank'
   ],
-  { stdout: 'ignore', stderr: 'ignore' }
+  { stdout: 'ignore', stderr: 'pipe' }
 );
 
 // Chrome from Bun.spawn races its own listener; poll rather than sleep-and-hope.
@@ -344,7 +368,11 @@ for (let attempt = 0; attempt < 100; attempt += 1) {
 if (!ready) {
   chrome.kill();
   server.stop(true);
-  console.error('ui-sweep: Chrome never opened its debugging port');
+  // Say WHY: a missing display, a sandbox refusal and a bad path all look the
+  // same from here.
+  const why = await new Response(chrome.stderr as ReadableStream<Uint8Array>).text();
+  console.error(`ui-sweep: Chrome never opened its debugging port (${CHROME})`);
+  if (why.trim() !== '') console.error(why.trim().slice(0, 600));
   process.exit(2);
 }
 
