@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.17](https://github.com/Michael-Obele/portage/compare/v0.1.16...v0.1.17) (2026-11-18)
+
+
+### Features
+
+* **desktop:** a scan you can see and stop ([b3701d5](https://github.com/Michael-Obele/portage/commit/b3701d508cceb58338b3216c07a1e24bc5e411cb))
+
+
+### Bug Fixes
+
+* **ci:** find Chrome anywhere, and start it in a container ([a756958](https://github.com/Michael-Obele/portage/commit/a756958ba88e28b461e86fe8286a107a3d56b672))
+
 ## [0.1.16](https://github.com/Michael-Obele/portage/compare/v0.1.15...v0.1.16) (2026-11-17)
 
 
