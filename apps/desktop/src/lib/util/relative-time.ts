@@ -1,34 +1,11 @@
 /**
- * Relative time and calendar days — built on the platform's own implementation.
+ * Relative time and calendar days, on `Intl` — no date library.
  *
- * # Why this is not a date library
- *
- * The one thing this app needs that it did not have is "5 minutes ago" and
- * "yesterday". That is `Intl.RelativeTimeFormat`, which is **Baseline widely
- * available since September 2020** and ships inside every runtime we target:
- * Bun 1.4 reports it, and the Tauri window runs WebKitGTK 2.52 (Safari 14+
- * shipped it in 2020). It is locale-correct, has no bundle cost, and IS the
- * standard implementation — so "don't reinvent dates" is satisfied by using it
- * rather than by adding a wrapper around it.
- *
- * Measured alternatives (2026-11-17):
- *
- * | option                            | cost                        | what it adds over Intl                     |
- * |-----------------------------------|-----------------------------|--------------------------------------------|
- * | `Intl.RelativeTimeFormat`         | 0 kB, in the runtime        | —                                          |
- * | `date-fns` `formatDistanceToNow`  | 10.9 MB unpacked, 5 136 files | English phrasing ("about 1 hour"); cannot say "10 min left" either |
- * | `dayjs` + `relativeTime` plugin   | 2 kB core + plugin          | `.fromNow()`; same wrapper problem          |
- *
- * Both libraries produce a sentence and leave the wording ("left", "ago",
- * "checked") to the caller anyway, which is the part that actually varies here.
- * So the standard library wins, and this module only owns the POLICY a library
- * would otherwise hide: which unit to pick, and how to round it.
- *
- * What is hand-written here is the threshold table — and it is written down and
- * tested rather than scattered through the UI. That is the difference between a
- * formatter and guesswork.
+ * `Intl.RelativeTimeFormat` is Baseline since 2020 and present in the shipped
+ * WebKitGTK; date-fns/dayjs would still leave the wording ("left", "ago") to us.
+ * The thresholds below are the only opinionated part, and they never overstate
+ * elapsed time. See AGENTS.md.
  */
-
 /** Noon-to-noon-ish boundaries, in milliseconds. */
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -110,6 +87,20 @@ export function relativeTime(
 		return seconds < 0 ? `${-seconds}s ago` : `in ${seconds}s`;
 	}
 	return formatterFor.format(value, unit);
+}
+
+/**
+ * The age of a PAST event, never negative.
+ *
+ * `now` is a ticking clock, so it can lag the instant it is describing by up to
+ * one tick — which rendered a just-finished scan as "in 19 seconds".
+ */
+export function ageOf(
+	atMs: number,
+	nowMs: number,
+	options: { style?: RelativeStyle; locale?: string } = {}
+): string {
+	return relativeTime(atMs, Math.max(nowMs, atMs), options);
 }
 
 /**

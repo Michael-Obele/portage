@@ -53,7 +53,7 @@
 	import { screens } from '#lib/state/screens.svelte.ts';
 	import { formatBytes, plural, truncateFront } from '#lib/util/format.ts';
 	import { createNow } from '#lib/util/now.svelte.ts';
-	import { relativeTime } from '#lib/util/relative-time.ts';
+	import { ageOf } from '#lib/util/relative-time.ts';
 
 	/**
 	 * The plan lives in a module store (see `lib/state/screens.svelte.ts`), so a
@@ -121,7 +121,7 @@
 	 * drift into a lie while the screen sits open.
 	 */
 	const checkedAge = $derived(
-		plannedAt === null ? '' : relativeTime(plannedAt.getTime(), clockNow.now)
+		plannedAt === null ? '' : ageOf(plannedAt.getTime(), clockNow.now)
 	);
 
 	/** `14:32:07` — local time, seconds, because a re-check is seconds apart. */

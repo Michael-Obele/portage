@@ -12,6 +12,7 @@ license = "MIT"
 # faster algorithm because the engine already records sha256 in its journal and
 # a scan must not change its answer depending on which binary ran it.
 [dependencies]
+libc = "0.2.191"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"

@@ -119,6 +119,14 @@ function readStoredScale(): UiScale {
 class AppState {
 	connection = $state<ConnectionStatus>("connecting");
 	ready = $state<Omit<ReadyFrame, "v" | "type"> | null>(null);
+	/**
+	 * The engine's latest log line.
+	 *
+	 * A scan reports its stages only here — "grouping 33 314 files by size",
+	 * "verifying 812 candidates byte for byte" — so dropping these frames left a
+	 * multi-hour scan with nothing to say for itself.
+	 */
+	lastLog = $state<string | null>(null);
 	config = $state<PortageConfig | null>(null);
 	/** Which layer won per config key: flag, env, drive, user or default. */
 	origins = $state<Record<string, string>>({});
@@ -245,6 +253,12 @@ class AppState {
 
 	applyFrame(frame: Frame): void {
 		switch (frame.type) {
+			case "log": {
+				// The latest line the engine said. A scan reports its stages here and
+				// nowhere else, so dropping these frames left a long scan wordless.
+				this.lastLog = frame.message;
+				return;
+			}
 			case "ready": {
 				this.ready = {
 					protocolVersion: frame.protocolVersion,

@@ -46,7 +46,7 @@
 	import { isInsideMount } from '#lib/util/mount.ts';
 	import { formatBytes, plural, truncateFront } from '#lib/util/format.ts';
 	import { createNow } from '#lib/util/now.svelte.ts';
-	import { dayAge, relativeTime } from '#lib/util/relative-time.ts';
+	import { ageOf, dayAge } from '#lib/util/relative-time.ts';
 
 	/**
 	 * The report, the selection and the scan scope live in a module store (see
@@ -79,7 +79,7 @@
 	/** A ticking clock, so "scanned 4 minutes ago" stays true while it is read. */
 	const clockNow = createNow();
 	const scannedAge = $derived(
-		screen.scannedAt === null ? null : relativeTime(screen.scannedAt.getTime(), clockNow.now)
+		screen.scannedAt === null ? null : ageOf(screen.scannedAt.getTime(), clockNow.now)
 	);
 
 	/**
@@ -259,10 +259,40 @@
 	 */
 	const driveUnknown = $derived(scope === 'drive' && driveMount === null);
 
+	/** When the running scan started, so the screen can count. */
+	let scanStartedAt = $state<number | null>(null);
+	const scanSeconds = $derived(
+		scanStartedAt === null ? 0 : Math.max(0, Math.floor((clockNow.now - scanStartedAt) / 1000))
+	);
+
+	/** Set by Stop, so the aborted scan does not raise a failure band. */
+	let stopRequested = false;
+
+	/**
+	 * Stop a scan.
+	 *
+	 * The engine runs a scan as ONE command and reads no further input until it
+	 * returns, so there is nothing to send it mid-flight. The honest stop is a
+	 * restart: the shell kills the engine and brings a new one up, which ends the
+	 * child scanner too. That is blunt, and it is the only lever the protocol has
+	 * today — the alternative is a scrollbar of lies over a three-hour scan.
+	 */
+	async function stopScan(): Promise<void> {
+		stopRequested = true;
+		screen.failure = null;
+		try {
+			await app.restartEngine();
+		} catch (error) {
+			screen.failure = failureBand(error, 'dupes');
+		} finally {
+			screen.scanning = false;
+		}
+	}
+
 	async function scanNow(): Promise<void> {
 		if (busy) return;
 		screen.scanning = true;
-		screen.failure = null;
+		scanStartedAt = Date.now();		screen.failure = null;
 		// NOT cleared here. A report is stale until a FRESH one lands (the frame
 		// handler clears the flag), because a failed re-scan after a move must not
 		// leave the old report tickable — that is how the last surviving copy got
@@ -288,8 +318,12 @@
 			// the story until the person knows what is already waiting to be freed.
 			void refreshTrash();
 		} catch (error) {
-			screen.failure = failureBand(error, 'dupes');
+			// A scan the person stopped by restarting the engine must not come back
+			// as a failure band: nothing failed, they asked for it to end.
+			if (!stopRequested) screen.failure = failureBand(error, 'dupes');
 		} finally {
+			stopRequested = false;
+			scanStartedAt = null;
 			screen.scanning = false;
 		}
 	}
@@ -672,8 +706,31 @@
 		</section>
 	{/if}
 
+	<!-- The scan's own line, whenever one is running.
+	     A RE-scan keeps the previous report on screen (`Comparing the scan roots
+	     again`), so this must not live inside the "no report yet" branch: that is
+	     exactly the case where the old report is showing and the person has no
+	     way to see progress or stop a scan that is rehashing the drive. -->
+	{#if scanning}
+		<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground">
+			<span class="font-mono tabular-nums text-foreground" data-numeric>{scanSeconds} s</span>
+			<span class="min-w-0 flex-1 truncate">{app.lastLog ?? 'Starting…'}</span>
+			<Button
+				class={CONTROL}
+				size="xs"
+				variant="outline"
+				title="Restarts the engine, which stops the scan"
+				onclick={() => void stopScan()}
+			>
+				Stop
+			</Button>
+		</div>
+	{/if}
+
 	{#if scanning && scan === null}
-		<SkeletonRows rows={8} label="Scanning for duplicates" />
+		<div class="flex flex-col gap-2">
+			<SkeletonRows rows={8} label={`Scanning for duplicates · ${scanSeconds} s`} />
+		</div>
 	{:else if scan === null}
 		{#if !band}
 			<EmptyState

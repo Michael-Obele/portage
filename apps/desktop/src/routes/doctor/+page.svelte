@@ -43,7 +43,7 @@
 	import { screens } from '#lib/state/screens.svelte.ts';
 	import { plural } from '#lib/util/format.ts';
 	import { createNow } from '#lib/util/now.svelte.ts';
-	import { relativeTime } from '#lib/util/relative-time.ts';
+	import { ageOf } from '#lib/util/relative-time.ts';
 	import { cn } from '#lib/utils.ts';
 
 	/**
@@ -73,7 +73,7 @@
 	const summary = $derived.by(() => {
 		const at = screen.checkedAt;
 		if (at === null) return verdict.detail;
-		return `${verdict.detail} · checked ${relativeTime(at.getTime(), clockNow.now)}`;
+		return `${verdict.detail} · checked ${ageOf(at.getTime(), clockNow.now)}`;
 	});
 	const checks = $derived(report === null ? [] : visibleChecks(report.checks, filter));
 	const isUnreadable = $derived(report !== null && unreadable(report));

@@ -1,20 +1,8 @@
 /**
- * A UI journey sweep: serve the built SPA, drive it in headless Chrome over CDP,
- * and assert what a person would see and be able to press.
+ * UI journey sweep: serve the built SPA, drive it in headless Chrome over CDP.
  *
- * Why a script and not a unit test: the interesting failures on these screens are
- * SEAMS — a sheet that opens on the wrong screen, a button that survives its
- * report, a caption that renders two numbers that disagree. None of those live in
- * one component, so none of them are visible to a component test.
- *
- * The fixture (`?mock=…`) is used deliberately: this proves the SCREENS, not the
- * engine. Engine behaviour is covered by `test/` and, on the real drive, by the
- * wire probes in the repo notes.
- *
- * Run from apps/desktop:
- *   bun run build && bun run ui:sweep
- *
- * Exits non-zero when a step fails, and writes a screenshot per step to /tmp.
+ * Proves the SCREENS against the fixture; the engine has its own suites. Run from
+ * apps/desktop: `bun run build && bun run ui:sweep`.
  */
 /// <reference types="bun" />
 import { existsSync, mkdirSync } from 'node:fs';
@@ -24,7 +12,8 @@ import { join, resolve } from 'node:path';
 
 const appRoot = resolve(import.meta.dir, '..');
 const buildDir = join(appRoot, 'build');
-const PORT = 5199;
+// Port 0: the OS assigns one, so a stale run cannot make this flake.
+let PORT = 0;
 const CDP_PORT = 9333;
 const SHOTS = '/tmp/portage-ui';
 const CHROME =
@@ -42,7 +31,7 @@ mkdirSync(SHOTS, { recursive: true });
 // --- the site ---------------------------------------------------------------
 
 const server = Bun.serve({
-  port: PORT,
+  port: 0,
   hostname: '127.0.0.1',
   async fetch(request) {
     const url = new URL(request.url);
@@ -57,6 +46,8 @@ const server = Bun.serve({
     return new Response(Bun.file(join(buildDir, 'index.html')), { headers });
   }
 });
+// eslint-disable-next-line prefer-const
+PORT = server.port ?? 0;
 
 // --- CDP --------------------------------------------------------------------
 

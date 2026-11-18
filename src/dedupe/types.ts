@@ -64,14 +64,8 @@ export interface DupeReport {
   /** Files flagged truncated. Reported as a problem, never as a duplicate. */
   truncated: string[];
   /**
-   * Files the hasher could not read, so they were never compared.
-   *
-   * Zero is a fact worth printing: it is the difference between "nothing repeats"
-   * and "nothing I could look at repeats". A drive unplugged mid-scan lands
-   * here, which is exactly the case a silent zero hides.
-   *
-   * Optional only so a hand-built report (a test, a fixture) stays valid;
-   * `scanDuplicates` always sets it.
+   * Files the hasher could not read, so they were never compared — the difference
+   * between "nothing repeats" and "nothing I could read repeats".
    */
   unreadableFiles?: number;
   /**

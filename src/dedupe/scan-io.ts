@@ -1,16 +1,8 @@
 /**
- * The filesystem half of a scan, behind one interface.
+ * The filesystem half of a scan, behind one interface: Rust, or the JS fallback.
  *
- * Two implementations, and the report says which one ran:
- *
- *  - `scannerIo` shells out to `crates/portage-scan`. It walks with relative
- *    descent (4 s on the real 2 TB archive) and hashes on several cores.
- *  - `globIo` is the original engine-side walker. It is CORRECT and stays as the
- *    fallback, but on this drive it takes 178 s for the same tree, because a
- *    FUSE mount charges by path component and JavaScript cannot `openat`.
- *
- * The fallback is not silent: `WalkOutcome.scannerError` carries the reason the
- * fast path did not run, and every screen that shows a scan can show it.
+ * The report records which one ran. Both must see the same candidate set, so the
+ * exclusion rule lives once (`isExcludedRelative`) and mirrors walk.rs.
  */
 /// <reference types="bun" />
 import { ALWAYS_EXCLUDED_DIRS } from "#lib/config/schema.ts";

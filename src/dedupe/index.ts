@@ -76,9 +76,8 @@ function isProtected(relative: string): boolean {
  * absolute path, or a symlink) never becomes a candidate. That is §6 rule 6,
  * applied at DISCOVERY so a bad path cannot even reach the report.
  *
- * The walk itself lives behind `ScanIo`. This function's job is the part that
- * must not differ between walkers: the keep-file filter, and falling back with
- * a REASON rather than silently costing the person three minutes.
+ * The walk lives behind `ScanIo`; what must not differ between walkers is the
+ * keep-file filter.
  */
 async function collect(
   roots: string[],
@@ -416,13 +415,9 @@ export async function applySelection(
     const insideDrive = target
       .slice(opts.destRoot.replace(/\/+$/, "").length)
       .replace(/^\/+/, "");
-    // §6 rule 5 — never delete the last copy of anything.
-    //
-    // The survivors are checked ON DISK, not in the report. The report is a
-    // snapshot: a previous `dupes.apply` against the same scan already moved one
-    // copy to the trash while still listing it as a member, so trusting the list
-    // let a second apply move the last surviving copy — the report said there was
-    // another, and there was not. A file that has gone is not a survivor.
+    // §6 rule 5 — never delete the last copy. Survivors are checked ON DISK: the
+    // report is a snapshot, and a second apply on one scan moved the last copy
+    // because the list still named a file that was already in the trash.
     const group = report.groups.find((g) =>
       g.members.some((m) => m.path === raw),
     );

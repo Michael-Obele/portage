@@ -1,30 +1,10 @@
 /**
- * The Rust scanner client (`crates/portage-scan`).
+ * Client for `crates/portage-scan`: spawn, deadline, JSON in/out.
  *
- * The engine keeps every DECISION — what a duplicate is, what may move, what is
- * safe to delete. This module only gets the two expensive things done: walking a
- * filesystem, and hashing files on several cores.
- *
- * # Why there is a separate binary at all
- *
- * Measured on the real 2 TB archive (ntfs-3g, 34 880 files):
- *
- *   Bun.Glob("**\/*")            178.5 s
- *   Rust walk, absolute paths    175.3 s
- *   Rust walk, relative descent    4.1 s
- *
- * Every one of those reads the same tree. The difference is PATH LENGTH: one
- * folder on that drive holds a 462-segment chain, and ntfs-3g resolves every
- * component per syscall — a stat of the deepest directory is 621 ms by full path
- * and 3 ms as `.` from inside it. GNU find is fast for the same reason (fts keeps
- * paths short with fchdir). JavaScript has no `openat`, so this cannot be fixed
- * inside the engine; it needs a process that can chdir.
- *
- * # Failure is never fatal
- *
- * A missing or broken scanner falls back to the JavaScript walker, which is
- * correct but slow, and says so. A scan that returns in three minutes and tells
- * you it was slow beats a scan that refuses to run.
+ * The engine keeps every decision; this only walks and hashes. Why Rust at all:
+ * a full-path walk of the 2 TB archive took 175 s against 4.1 s by `chdir`, and
+ * JavaScript has no `openat`. A missing binary falls back to the JS walker and
+ * says so. See AGENTS.md.
  */
 /// <reference types="bun" />
 import { existsSync, readdirSync, statSync } from "node:fs";

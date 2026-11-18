@@ -699,7 +699,12 @@ const handlerTable = {
       roots,
       tier: args.tier,
       suggest: true,
-      onProgress: (message) => ctx.logger.debug(message),
+      // Progress goes on the WIRE, not just a debug log: a whole-drive scan can
+      // run for hours and cannot be cancelled mid-command.
+      onProgress: (message) => {
+        ctx.logger.debug(message);
+        ctx.frames.log("info", message);
+      },
     });
 
     // The trash directory is computed ONCE, here, and stored — so the sheet the
@@ -1076,9 +1081,8 @@ const handlerTable = {
       storedDays.reduce((total, day) => total + day.bytes, 0) +
       (takeLoose ? Math.max(0, entry.bytes - known.reduce((total, day) => total + day.bytes, 0)) : 0);
 
-    // Act on a FRESH reading. Deleting a folder by name also deletes anything
-    // moved into it after the person looked, and the sheet is the only thing
-    // that told them what would go — so a changed reading re-asks instead.
+    // Act on a FRESH reading: a folder deleted by name also takes anything moved
+    // into it after the sheet was shown, so a changed reading re-asks.
     const io = resilientScanIo(defaultScanIo()).io;
     const fresh = await readTrash(entry.destRoot, io);
     const freshDays = fresh.days.filter((day) => wanted.includes(day.path));

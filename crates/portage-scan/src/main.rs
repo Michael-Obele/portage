@@ -92,7 +92,28 @@ struct Rejection {
     error: String,
 }
 
+/// Die when the engine does: an orphaned walker keeps reading the drive after a
+/// restart (observed on the real archive). Linux-only; elsewhere an orphan is the
+/// residual risk.
+#[cfg(target_os = "linux")]
+fn die_with_parent() {
+    // SAFETY: `prctl` with a constant option and a signal number has no memory
+    // contracts. If it fails we simply keep today's behaviour.
+    unsafe {
+        libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL);
+    }
+    // The parent may already be gone between spawn and this call, in which case
+    // the signal will never fire.
+    if unsafe { libc::getppid() } == 1 {
+        std::process::exit(0);
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn die_with_parent() {}
+
 fn main() -> ExitCode {
+    die_with_parent();
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|arg| arg == "--version" || arg == "-V") {
         println!("portage-scan {VERSION}");

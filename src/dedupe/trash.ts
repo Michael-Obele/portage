@@ -1,19 +1,9 @@
 /**
- * The trash — where a duplicate goes, and the reason "reclaimable" needs a
- * second step to become "reclaimed".
+ * The trash: inventory, and the app's only permanent delete.
  *
- * `applySelection` MOVES a duplicate to `<destRoot>/.portage/trash/<date>/`. It
- * never deletes, which is the right default: a name-and-size match is not proof,
- * and a person who ticked the wrong copy must be able to get it back. But a move
- * frees ZERO bytes — the trash sits on the same drive. So this module exists to
- * close the loop honestly:
- *
- *  1. `readTrash` says what is still held, by day, with bytes.
- *  2. `emptyTrash` is the ONE permanent deletion in the app, and it only ever
- *     runs on a path inside the trash directory that the engine itself built.
- *
- * What it must never do: delete anything outside `<destRoot>/.portage/trash/`,
- * follow a symlink out of it, or report bytes freed that it did not free.
+ * Moving a duplicate frees nothing on the same drive, so "reclaimable" needs this
+ * second step. `emptyTrash` deletes only inside `<destRoot>/.portage/trash`,
+ * never follows a symlink, and reports what it could not remove.
  */
 /// <reference types="bun" />
 import { lstat, rm, stat } from "node:fs/promises";

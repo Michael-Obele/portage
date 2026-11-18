@@ -11,7 +11,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 
-import { dayAge, localDayKey, relativeTime } from '#lib/util/relative-time.ts';
+import { ageOf, dayAge, localDayKey, relativeTime } from '#lib/util/relative-time.ts';
 
 const NOW = new Date(2026, 10, 17, 12, 0, 0).getTime();
 const SECOND = 1000;
@@ -123,5 +123,14 @@ describe('dayAge', () => {
 	test('a folder that is not a date is shown, not hidden', () => {
 		expect(dayAge('hand-sorted', today)).toBe('hand-sorted');
 		expect(dayAge('', today)).toBe('');
+	});
+});
+
+describe('ageOf', () => {
+	test('a lagging clock never renders a past event in the future', () => {
+		// The ticking clock is up to one tick behind, which rendered a just-finished
+		// scan as "in 19 seconds".
+		expect(ageOf(NOW, NOW - 19 * SECOND, { locale: 'en' })).toBe('now');
+		expect(ageOf(NOW - 3 * MINUTE, NOW, { locale: 'en' })).toBe('3 minutes ago');
 	});
 });

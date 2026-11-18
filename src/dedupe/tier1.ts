@@ -129,12 +129,8 @@ function buckets<T>(items: T[], key: (item: T) => string | null): T[][] {
 export interface ByteIdenticalResult {
   groups: DupeMember[][];
   /**
-   * Files the hasher could not read.
-   *
-   * They were NOT compared, so a report that omits this number claims a
-   * completeness it does not have. A drive unplugged mid-scan lands here: the
-   * walk saw the files, the hasher could not open them, and "0 duplicates" would
-   * otherwise be the whole story.
+   * Files the hasher could not read, so a report without this claims a
+   * completeness it does not have.
    */
   unreadable: number;
 }
