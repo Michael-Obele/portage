@@ -1,0 +1,1183 @@
+{
+  "experiment": "e1-flush",
+  "startedAt": "2026-11-26T09:10:14.585Z",
+  "finishedAt": "2026-11-26T09:12:30.596Z",
+  "commit": {
+    "sha": "47e78debb458c56ea37fc0485159d9b9a8b34663",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "mount": {
+    "root": "/media/node/2TB",
+    "mountPoint": "/media/node/2TB",
+    "line": "/dev/sda1 /media/node/2TB fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096 0 0",
+    "findmnt": "/dev/sda1 fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096"
+  },
+  "driver": "ntfs-3g",
+  "device": {
+    "partition": "/dev/sda1",
+    "disk": "/dev/sda"
+  },
+  "usb": {
+    "port": "4-1",
+    "speedMbit": 5000
+  },
+  "block": {
+    "disk": "/dev/sda",
+    "rotational": true,
+    "writeCache": "write back",
+    "model": "HN-M201RAD"
+  },
+  "verdict": {
+    "result": "pass",
+    "openMode": "r",
+    "counterLine": "disk",
+    "fileDeadlineMs": 60000,
+    "dirDeadlineMs": 30000,
+    "flushMsMax": 4309.869319999998,
+    "dirSyncMsMax": 0.15272600000025705,
+    "counterReadings": {
+      "form0": {
+        "before": 16,
+        "after": 16
+      },
+      "form1a": {
+        "before": 16,
+        "after": 17
+      },
+      "form1b": {
+        "before": 21,
+        "after": 22
+      },
+      "form2": {
+        "before": 26,
+        "after": 27
+      }
+    },
+    "partitionLine": {
+      "result": "fail",
+      "openMode": null
+    }
+  },
+  "raw": {
+    "archiveRoot": "/media/node/2TB",
+    "partition": {
+      "partition": "sda1",
+      "disk": "sda"
+    },
+    "fixtureRoot": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z",
+    "baseline": {
+      "partition": 0,
+      "disk": 16,
+      "dirtyKb": 1940,
+      "writebackKb": 0
+    },
+    "df": {
+      "start": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sda1      2000397791232 1564687040512 435710750720  79% /media/node/2TB",
+      "beforeCleanup": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sda1      2000397791232 1564687040512 435710750720  79% /media/node/2TB",
+      "afterCleanup": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sda1      2000397791232 1564687040512 435710750720  79% /media/node/2TB"
+    },
+    "timed": {
+      "form0": [
+        {
+          "form": "form0",
+          "index": 1,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form0-1.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 1940,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 296408,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 296644,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 1584,
+            "writebackKb": 36
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "sync -f child",
+                "mode": null,
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form0-1.bin"
+              }
+            ],
+            "wallMs": 4838.652064,
+            "fileSyncMs": 4838.652064,
+            "dirSyncMs": null
+          }
+        },
+        {
+          "form": "form0",
+          "index": 2,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form0-2.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 3640,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 295452,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 295452,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 692,
+            "writebackKb": 108
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "sync -f child",
+                "mode": null,
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form0-2.bin"
+              }
+            ],
+            "wallMs": 3858.2237719999994,
+            "fileSyncMs": 3858.2237719999994,
+            "dirSyncMs": null
+          }
+        },
+        {
+          "form": "form0",
+          "index": 3,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form0-3.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 2740,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 197984,
+            "writebackKb": 1760
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 197984,
+            "writebackKb": 1760
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 952,
+            "writebackKb": 192
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "sync -f child",
+                "mode": null,
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form0-3.bin"
+              }
+            ],
+            "wallMs": 2835.1814570000024,
+            "fileSyncMs": 2835.1814570000024,
+            "dirSyncMs": null
+          }
+        },
+        {
+          "form": "form0",
+          "index": 4,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form0-4.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 3012,
+            "writebackKb": 192
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 295584,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 295584,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 520,
+            "writebackKb": 36
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "sync -f child",
+                "mode": null,
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form0-4.bin"
+              }
+            ],
+            "wallMs": 3867.646489999999,
+            "fileSyncMs": 3867.646489999999,
+            "dirSyncMs": null
+          }
+        },
+        {
+          "form": "form0",
+          "index": 5,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form0-5.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 2580,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 295556,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 295556,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 972,
+            "writebackKb": 36
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "sync -f child",
+                "mode": null,
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form0-5.bin"
+              }
+            ],
+            "wallMs": 3865.036591,
+            "fileSyncMs": 3865.036591,
+            "dirSyncMs": null
+          }
+        }
+      ],
+      "form1a": [
+        {
+          "form": "form1a",
+          "index": 1,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1a-1.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 3032,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 233588,
+            "writebackKb": 2632
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 16,
+            "dirtyKb": 233588,
+            "writebackKb": 2632
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 17,
+            "dirtyKb": 720,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1a-1.bin"
+              }
+            ],
+            "wallMs": 3759.0588759999955,
+            "fileSyncMs": 3758.389335,
+            "dirSyncMs": null
+          }
+        },
+        {
+          "form": "form1a",
+          "index": 2,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1a-2.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 17,
+            "dirtyKb": 2780,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 17,
+            "dirtyKb": 295552,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 17,
+            "dirtyKb": 295552,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 18,
+            "dirtyKb": 988,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1a-2.bin"
+              }
+            ],
+            "wallMs": 4478.442869999999,
+            "fileSyncMs": 4478.064312000002,
+            "dirSyncMs": null
+          }
+        },
+        {
+          "form": "form1a",
+          "index": 3,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1a-3.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 18,
+            "dirtyKb": 3072,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 18,
+            "dirtyKb": 295908,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 18,
+            "dirtyKb": 295908,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 19,
+            "dirtyKb": 852,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1a-3.bin"
+              }
+            ],
+            "wallMs": 4349.448513000003,
+            "fileSyncMs": 4349.096934999994,
+            "dirSyncMs": null
+          }
+        },
+        {
+          "form": "form1a",
+          "index": 4,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1a-4.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 19,
+            "dirtyKb": 2912,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 19,
+            "dirtyKb": 172328,
+            "writebackKb": 736
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 19,
+            "dirtyKb": 172328,
+            "writebackKb": 736
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 20,
+            "dirtyKb": 800,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1a-4.bin"
+              }
+            ],
+            "wallMs": 2913.8766560000004,
+            "fileSyncMs": 2913.1679300000033,
+            "dirSyncMs": null
+          }
+        },
+        {
+          "form": "form1a",
+          "index": 5,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1a-5.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 20,
+            "dirtyKb": 2860,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 20,
+            "dirtyKb": 295752,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 20,
+            "dirtyKb": 295752,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 21,
+            "dirtyKb": 860,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1a-5.bin"
+              }
+            ],
+            "wallMs": 4297.961976999999,
+            "fileSyncMs": 4297.6426779999965,
+            "dirSyncMs": null
+          }
+        }
+      ],
+      "form1b": [
+        {
+          "form": "form1b",
+          "index": 1,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1b-1.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 21,
+            "dirtyKb": 2920,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 21,
+            "dirtyKb": 295384,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 21,
+            "dirtyKb": 295384,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 22,
+            "dirtyKb": 452,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r+",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1b-1.bin"
+              }
+            ],
+            "wallMs": 4302.141212999995,
+            "fileSyncMs": 4301.732338999995,
+            "dirSyncMs": null
+          }
+        },
+        {
+          "form": "form1b",
+          "index": 2,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1b-2.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 22,
+            "dirtyKb": 2516,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 22,
+            "dirtyKb": 196580,
+            "writebackKb": 2052
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 22,
+            "dirtyKb": 196580,
+            "writebackKb": 2052
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 23,
+            "dirtyKb": 844,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r+",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1b-2.bin"
+              }
+            ],
+            "wallMs": 3220.6259830000054,
+            "fileSyncMs": 3220.300172999996,
+            "dirSyncMs": null
+          }
+        },
+        {
+          "form": "form1b",
+          "index": 3,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1b-3.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 23,
+            "dirtyKb": 2916,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 23,
+            "dirtyKb": 295616,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 23,
+            "dirtyKb": 295828,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 24,
+            "dirtyKb": 812,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r+",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1b-3.bin"
+              }
+            ],
+            "wallMs": 4294.526844000007,
+            "fileSyncMs": 4294.153774999999,
+            "dirSyncMs": null
+          }
+        },
+        {
+          "form": "form1b",
+          "index": 4,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1b-4.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 24,
+            "dirtyKb": 2884,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 24,
+            "dirtyKb": 295452,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 24,
+            "dirtyKb": 295452,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 25,
+            "dirtyKb": 992,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r+",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1b-4.bin"
+              }
+            ],
+            "wallMs": 4288.202876999989,
+            "fileSyncMs": 4287.827833999996,
+            "dirSyncMs": null
+          }
+        },
+        {
+          "form": "form1b",
+          "index": 5,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1b-5.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 25,
+            "dirtyKb": 3064,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 25,
+            "dirtyKb": 183768,
+            "writebackKb": 1760
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 25,
+            "dirtyKb": 183768,
+            "writebackKb": 1760
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 26,
+            "dirtyKb": 468,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r+",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form1b-5.bin"
+              }
+            ],
+            "wallMs": 3041.9541089999984,
+            "fileSyncMs": 3041.6149920000025,
+            "dirSyncMs": null
+          }
+        }
+      ],
+      "form2": [
+        {
+          "form": "form2",
+          "index": 1,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form2-1.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 26,
+            "dirtyKb": 2540,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 26,
+            "dirtyKb": 295128,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 26,
+            "dirtyKb": 295128,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 27,
+            "dirtyKb": 512,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form2-1.bin"
+              },
+              {
+                "role": "dir",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z"
+              }
+            ],
+            "wallMs": 4283.499821999998,
+            "fileSyncMs": 4282.534703000012,
+            "dirSyncMs": 0.1318980000069132
+          }
+        },
+        {
+          "form": "form2",
+          "index": 2,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form2-2.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 27,
+            "dirtyKb": 2572,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 27,
+            "dirtyKb": 295800,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 27,
+            "dirtyKb": 295800,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 28,
+            "dirtyKb": 992,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form2-2.bin"
+              },
+              {
+                "role": "dir",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z"
+              }
+            ],
+            "wallMs": 4308.139196999997,
+            "fileSyncMs": 4307.397018000003,
+            "dirSyncMs": 0.07758700000704266
+          }
+        },
+        {
+          "form": "form2",
+          "index": 3,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form2-3.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 28,
+            "dirtyKb": 3052,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 28,
+            "dirtyKb": 185460,
+            "writebackKb": 736
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 28,
+            "dirtyKb": 185460,
+            "writebackKb": 736
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 29,
+            "dirtyKb": 968,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form2-3.bin"
+              },
+              {
+                "role": "dir",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z"
+              }
+            ],
+            "wallMs": 3058.0650509999978,
+            "fileSyncMs": 3057.021151000008,
+            "dirSyncMs": 0.10949399998935405
+          }
+        },
+        {
+          "form": "form2",
+          "index": 4,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form2-4.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 29,
+            "dirtyKb": 3028,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 29,
+            "dirtyKb": 295852,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 29,
+            "dirtyKb": 295852,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 30,
+            "dirtyKb": 1204,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form2-4.bin"
+              },
+              {
+                "role": "dir",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z"
+              }
+            ],
+            "wallMs": 4310.915105000007,
+            "fileSyncMs": 4309.869319999998,
+            "dirSyncMs": 0.15272600000025705
+          }
+        },
+        {
+          "form": "form2",
+          "index": 5,
+          "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form2-5.bin",
+          "beforeWrite": {
+            "partition": 0,
+            "disk": 30,
+            "dirtyKb": 3264,
+            "writebackKb": 0
+          },
+          "afterWrite": {
+            "partition": 0,
+            "disk": 30,
+            "dirtyKb": 295760,
+            "writebackKb": 0
+          },
+          "beforeFlush": {
+            "partition": 0,
+            "disk": 30,
+            "dirtyKb": 295760,
+            "writebackKb": 0
+          },
+          "afterFlush": {
+            "partition": 0,
+            "disk": 31,
+            "dirtyKb": 800,
+            "writebackKb": 0
+          },
+          "flush": {
+            "handles": [
+              {
+                "role": "file",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-form2-5.bin"
+              },
+              {
+                "role": "dir",
+                "mode": "r",
+                "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z"
+              }
+            ],
+            "wallMs": 4292.438508000007,
+            "fileSyncMs": 4291.736577000003,
+            "dirSyncMs": 0.06147200000123121
+          }
+        }
+      ]
+    },
+    "statScenario": {
+      "file": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-stat.bin",
+      "before": {
+        "partition": 0,
+        "disk": 31,
+        "dirtyKb": 190284,
+        "writebackKb": 2200
+      },
+      "after": {
+        "partition": 0,
+        "disk": 32,
+        "dirtyKb": 1004,
+        "writebackKb": 0
+      },
+      "flush": {
+        "handles": [
+          {
+            "role": "file",
+            "mode": "r",
+            "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z/e1-stat.bin"
+          },
+          {
+            "role": "dir",
+            "mode": "r",
+            "path": "/media/node/2TB/.portage/bench/e1-2026-11-26T09-10-14-589Z"
+          }
+        ],
+        "wallMs": 3136.544844000018,
+        "fileSyncMs": 3134.6181099999812,
+        "dirSyncMs": 0.14745099999709055
+      },
+      "calls": [
+        {
+          "ms": 0.28824799999711104,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 0.4083810000156518,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 0.2682420000201091,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 0.2703969999856781,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 0.266103000001749,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.7846480000007,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.7412269999913,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.212006000016,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3134.9264269999985,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 0.3537159999832511,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.769101999991,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.732017000002,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.298023999989,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.770571000001,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.7658370000136,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.200497999991,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.070354000025,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.286175999994,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.285570999986,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.2621240000008,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.0984499999904,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.051919999998,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.0544170000067,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3134.979985999991,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.746561000007,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.7456590000074,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.7410789999994,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.8275159999903,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.7360970000154,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.728384999995,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.999615000008,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.9968749999825,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.9927800000005,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.9171429999988,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.648788999999,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.600244000001,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.090311000007,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3134.8686990000133,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 0.24023100000340492,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 0.21772700001019984,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.8859660000016,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.802697999985,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.7478830000036,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.876753999997,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.873094999988,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.642122999998,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.5932930000126,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3135.541115,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3134.942462999985,
+          "pendingAtStart": true
+        },
+        {
+          "ms": 3134.7863770000113,
+          "pendingAtStart": true
+        }
+      ],
+      "pendingStats": 50,
+      "longestMs": 3135.999615000008,
+      "longestWhilePendingMs": 3135.999615000008,
+      "firstAfterMs": 0.08685399999376386
+    }
+  }
+}
