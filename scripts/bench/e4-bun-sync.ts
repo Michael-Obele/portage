@@ -23,6 +23,8 @@ const SCRIPT = fileURLToPath(import.meta.url);
 const FILE_BYTES = 300_000_000;
 // Dirty data for the "r+" call. A sync with nothing dirty would not show the counter.
 const DIRTY_BYTES = 1_000_000;
+// Written after the file syncs and never synced, so the dir sync has an entry to flush.
+const PENDING_BYTES = 4096;
 const MIN_FREE_BYTES = 1_000_000_000;
 
 export type CallName = "file-r" | "file-r+" | "dir-r";
@@ -209,7 +211,10 @@ async function childRun(dest: string): Promise<ChildRun> {
     calls = [
       await syncCall("file-r", file, "r", disk),
       await syncCall("file-r+", file, "r+", disk, dirty),
-      await syncCall("dir-r", dir, "r", disk),
+      // Runs after the file syncs, so none of them has flushed this entry.
+      await syncCall("dir-r", dir, "r", disk, () =>
+        writeFixed(join(dir, "pending.bin"), PENDING_BYTES, made),
+      ),
     ];
   } finally {
     for (const f of made.files) await unlink(f).catch(ignoreMissing);
@@ -284,6 +289,8 @@ async function main(): Promise<void> {
       fixture: { bytes: FILE_BYTES, dirtyBytes: DIRTY_BYTES },
       df: { start: dfStart.raw, end: dfEnd.raw },
       runs: [pin, local],
+      procedure: `Pending-entry step: after the two file syncs and before the dir-r sync, the script creates pending.bin in the run folder, writes ${PENDING_BYTES} bytes, and closes it without any sync, so the directory sync is the first call that can flush that entry.`,
+      supersedes: "bench/results/superseded/2026-11-26-e4-bun-sync.json",
     },
   );
   process.stdout.write(`${path}\n`);

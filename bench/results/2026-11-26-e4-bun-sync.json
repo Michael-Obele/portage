@@ -1,9 +1,9 @@
 {
   "experiment": "e4-bun-sync",
-  "startedAt": "2026-11-26T09:54:15.203Z",
-  "finishedAt": "2026-11-26T09:54:29.987Z",
+  "startedAt": "2026-11-26T10:38:48.145Z",
+  "finishedAt": "2026-11-26T10:39:03.292Z",
   "commit": {
-    "sha": "1f9bf28d6e0865ae364bc44193b430c322cf181f",
+    "sha": "5f4f245057e9d86cd92d6ac821d1526404bc96a6",
     "dirty": true
   },
   "host": {
@@ -38,11 +38,11 @@
     "model": "HN-M201RAD"
   },
   "verdict": {
-    "result": "fail",
-    "directoryBranch": null,
+    "result": "pass",
+    "directoryBranch": "B",
     "pinVersion": "1.4.4",
     "localVersion": "1.4.5",
-    "localBranch": null,
+    "localBranch": "B",
     "runsAgree": true,
     "decidedBy": "Bun 1.4.4 (CI pin)"
   },
@@ -62,15 +62,15 @@
         "execPath": "/home/node/.bun/install/cache/.bunx-1000/bun@1.4.4/node_modules/bun/bin/bun.exe",
         "partition": "sda1",
         "disk": "sda",
-        "dir": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-15-241Z",
-        "file": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-15-241Z/e4.bin",
+        "dir": "/media/node/2TB/.portage/bench/e4-2026-11-26T10-38-48-182Z",
+        "file": "/media/node/2TB/.portage/bench/e4-2026-11-26T10-38-48-182Z/e4.bin",
         "calls": [
           {
             "name": "file-r",
             "mode": "r",
-            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-15-241Z/e4.bin",
-            "counterBefore": 32,
-            "counterAfter": 33,
+            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T10-38-48-182Z/e4.bin",
+            "counterBefore": 36,
+            "counterAfter": 37,
             "ok": true,
             "stage": null,
             "error": null
@@ -78,9 +78,9 @@
           {
             "name": "file-r+",
             "mode": "r+",
-            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-15-241Z/e4.bin",
-            "counterBefore": 33,
-            "counterAfter": 34,
+            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T10-38-48-182Z/e4.bin",
+            "counterBefore": 37,
+            "counterAfter": 38,
             "ok": true,
             "stage": null,
             "error": null
@@ -88,9 +88,9 @@
           {
             "name": "dir-r",
             "mode": "r",
-            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-15-241Z",
-            "counterBefore": 34,
-            "counterAfter": 34,
+            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T10-38-48-182Z",
+            "counterBefore": 38,
+            "counterAfter": 39,
             "ok": true,
             "stage": null,
             "error": null
@@ -102,15 +102,15 @@
         "execPath": "/home/node/.local/share/vite-plus/package_manager/bun/1.4.5/bun/bin/bun.native",
         "partition": "sda1",
         "disk": "sda",
-        "dir": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-23-046Z",
-        "file": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-23-046Z/e4.bin",
+        "dir": "/media/node/2TB/.portage/bench/e4-2026-11-26T10-38-56-119Z",
+        "file": "/media/node/2TB/.portage/bench/e4-2026-11-26T10-38-56-119Z/e4.bin",
         "calls": [
           {
             "name": "file-r",
             "mode": "r",
-            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-23-046Z/e4.bin",
-            "counterBefore": 34,
-            "counterAfter": 35,
+            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T10-38-56-119Z/e4.bin",
+            "counterBefore": 39,
+            "counterAfter": 40,
             "ok": true,
             "stage": null,
             "error": null
@@ -118,9 +118,9 @@
           {
             "name": "file-r+",
             "mode": "r+",
-            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-23-046Z/e4.bin",
-            "counterBefore": 35,
-            "counterAfter": 36,
+            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T10-38-56-119Z/e4.bin",
+            "counterBefore": 40,
+            "counterAfter": 41,
             "ok": true,
             "stage": null,
             "error": null
@@ -128,15 +128,17 @@
           {
             "name": "dir-r",
             "mode": "r",
-            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-23-046Z",
-            "counterBefore": 36,
-            "counterAfter": 36,
+            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T10-38-56-119Z",
+            "counterBefore": 41,
+            "counterAfter": 42,
             "ok": true,
             "stage": null,
             "error": null
           }
         ]
       }
-    ]
+    ],
+    "procedure": "Pending-entry step: after the two file syncs and before the dir-r sync, the script creates pending.bin in the run folder, writes 4096 bytes, and closes it without any sync, so the directory sync is the first call that can flush that entry.",
+    "supersedes": "bench/results/superseded/2026-11-26-e4-bun-sync.json"
   }
 }
