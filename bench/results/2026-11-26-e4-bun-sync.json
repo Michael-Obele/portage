@@ -1,0 +1,142 @@
+{
+  "experiment": "e4-bun-sync",
+  "startedAt": "2026-11-26T09:54:15.203Z",
+  "finishedAt": "2026-11-26T09:54:29.987Z",
+  "commit": {
+    "sha": "1f9bf28d6e0865ae364bc44193b430c322cf181f",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "mount": {
+    "root": "/media/node/2TB",
+    "mountPoint": "/media/node/2TB",
+    "line": "/dev/sda1 /media/node/2TB fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096 0 0",
+    "findmnt": "/dev/sda1 fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096"
+  },
+  "driver": "ntfs-3g",
+  "device": {
+    "partition": "/dev/sda1",
+    "disk": "/dev/sda"
+  },
+  "usb": {
+    "port": "4-1",
+    "speedMbit": 5000
+  },
+  "block": {
+    "disk": "/dev/sda",
+    "rotational": true,
+    "writeCache": "write back",
+    "model": "HN-M201RAD"
+  },
+  "verdict": {
+    "result": "fail",
+    "directoryBranch": null,
+    "pinVersion": "1.4.4",
+    "localVersion": "1.4.5",
+    "localBranch": null,
+    "runsAgree": true,
+    "decidedBy": "Bun 1.4.4 (CI pin)"
+  },
+  "raw": {
+    "archiveRoot": "/media/node/2TB",
+    "fixture": {
+      "bytes": 300000000,
+      "dirtyBytes": 1000000
+    },
+    "df": {
+      "start": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sda1      2000397791232 1564687040512 435710750720  79% /media/node/2TB",
+      "end": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sda1      2000397791232 1564687040512 435710750720  79% /media/node/2TB"
+    },
+    "runs": [
+      {
+        "bunVersion": "1.4.4",
+        "execPath": "/home/node/.bun/install/cache/.bunx-1000/bun@1.4.4/node_modules/bun/bin/bun.exe",
+        "partition": "sda1",
+        "disk": "sda",
+        "dir": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-15-241Z",
+        "file": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-15-241Z/e4.bin",
+        "calls": [
+          {
+            "name": "file-r",
+            "mode": "r",
+            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-15-241Z/e4.bin",
+            "counterBefore": 32,
+            "counterAfter": 33,
+            "ok": true,
+            "stage": null,
+            "error": null
+          },
+          {
+            "name": "file-r+",
+            "mode": "r+",
+            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-15-241Z/e4.bin",
+            "counterBefore": 33,
+            "counterAfter": 34,
+            "ok": true,
+            "stage": null,
+            "error": null
+          },
+          {
+            "name": "dir-r",
+            "mode": "r",
+            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-15-241Z",
+            "counterBefore": 34,
+            "counterAfter": 34,
+            "ok": true,
+            "stage": null,
+            "error": null
+          }
+        ]
+      },
+      {
+        "bunVersion": "1.4.5",
+        "execPath": "/home/node/.local/share/vite-plus/package_manager/bun/1.4.5/bun/bin/bun.native",
+        "partition": "sda1",
+        "disk": "sda",
+        "dir": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-23-046Z",
+        "file": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-23-046Z/e4.bin",
+        "calls": [
+          {
+            "name": "file-r",
+            "mode": "r",
+            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-23-046Z/e4.bin",
+            "counterBefore": 34,
+            "counterAfter": 35,
+            "ok": true,
+            "stage": null,
+            "error": null
+          },
+          {
+            "name": "file-r+",
+            "mode": "r+",
+            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-23-046Z/e4.bin",
+            "counterBefore": 35,
+            "counterAfter": 36,
+            "ok": true,
+            "stage": null,
+            "error": null
+          },
+          {
+            "name": "dir-r",
+            "mode": "r",
+            "path": "/media/node/2TB/.portage/bench/e4-2026-11-26T09-54-23-046Z",
+            "counterBefore": 36,
+            "counterAfter": 36,
+            "ok": true,
+            "stage": null,
+            "error": null
+          }
+        ]
+      }
+    ]
+  }
+}
