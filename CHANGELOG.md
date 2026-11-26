@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.18](https://github.com/Michael-Obele/portage/compare/v0.1.17...v0.1.18) (2026-11-26)
+
+
+### Features
+
+* **durability:** add probe, dirty ledger, and flush primitives ([fd933c2](https://github.com/Michael-Obele/portage/commit/fd933c2775f6c3fa10921f2fb887b3cde175e868))
+
+
+### Bug Fixes
+
+* **durability:** flush each drive copy before recording it written ([88200aa](https://github.com/Michael-Obele/portage/commit/88200aafb89688a7e12061e7643563a0fb12101d))
+
+
+### Tests
+
+* **bench:** record E1 flush measurements on the archive drive ([1f9bf28](https://github.com/Michael-Obele/portage/commit/1f9bf28d6e0865ae364bc44193b430c322cf181f))
+* **bench:** record E4 Bun sync results on the archive drive ([a003691](https://github.com/Michael-Obele/portage/commit/a0036913915cc1d9fa063414d316c08c8c420d52))
+* **bench:** record E4 Bun sync results on the archive drive ([5f4f245](https://github.com/Michael-Obele/portage/commit/5f4f245057e9d86cd92d6ac821d1526404bc96a6))
+
 ## [0.1.17](https://github.com/Michael-Obele/portage/compare/v0.1.16...v0.1.17) (2026-11-18)
 
 
