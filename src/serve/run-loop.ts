@@ -193,6 +193,7 @@ export async function startPull(
     jobs,
     verify: config.verify,
     deleteSource,
+    root: destRoot,
     resumeThreshold: config.resume_threshold,
     logger: opts.logger,
     dryRun: false,
@@ -246,8 +247,7 @@ async function gather(
     // so the transfer's own totals still explain themselves.
     all.push(
       ...found.map((candidate) =>
-        isMarkerFile(candidate.srcPath) &&
-        candidate.verdict !== "excluded"
+        isMarkerFile(candidate.srcPath) && candidate.verdict !== "excluded"
           ? {
               ...candidate,
               verdict: "excluded" as const,

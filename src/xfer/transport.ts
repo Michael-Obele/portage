@@ -13,6 +13,8 @@ export interface CopyRequest {
   srcPath: string;
   /** Absolute destination path on the drive. */
   destPath: string;
+  /** Destination root. The probes and the breaker for this drive use it. */
+  root: string;
   /** Bytes already on disk at `destPath` from a previous attempt, if any. */
   partialBytes: number;
   /** Total expected size. */

@@ -30,9 +30,16 @@ import type { Adb, DeviceInfo } from "#lib/device/adb.ts";
 import type { Journal, TransferState } from "#lib/index/journal.ts";
 import type { PlanResult, PlannedFile } from "#lib/plan/plan.ts";
 import type { DeleteSource } from "#lib/config/schema.ts";
-import { statSyncSafe } from "#lib/util/fs.ts";
+import {
+  ensureDirTracked,
+  flushFile,
+  flushGate,
+  flushReason,
+} from "#lib/util/durable.ts";
 import { sha256File } from "#lib/util/hash.ts";
 import type { Logger } from "#lib/util/log.ts";
+import { dirname } from "#lib/util/paths.ts";
+import { statDrive } from "#lib/util/probe.ts";
 import type { CopyRequest, Transport } from "#lib/xfer/transport.ts";
 
 export interface EngineOptions {
@@ -43,6 +50,8 @@ export interface EngineOptions {
    * Injected so tests can drive the whole state machine without a device.
    */
   adb: Pick<Adb, "hashRemote">;
+  /** The archive root. Probes, the breaker, and the ledger key on it. */
+  root: string;
   /** Where interrupted files live — on the destination filesystem. */
   partialDir: string;
   /** How many files to move at once. 3 was the measured knee. */
@@ -59,6 +68,15 @@ export interface EngineOptions {
   /** Called on SIGINT/SIGTERM to stop cleanly. */
   shouldStop?: () => boolean;
 }
+
+/** The flush calls. Tests replace them to fake each outcome. */
+interface Durability {
+  flushFile: typeof flushFile;
+  flushGate: typeof flushGate;
+}
+
+// EH-13 text. durable.ts has the same string; the tests match it exactly.
+const UNREADABLE = "the destination could not be read; nothing was changed";
 
 export type FileEvent =
   | { type: "start"; file: PlannedFile }
@@ -96,6 +114,7 @@ export async function runTransfer(
   plan: PlanResult,
   devices: Map<string, DeviceInfo>,
   opts: EngineOptions,
+  durability: Durability = { flushFile, flushGate },
 ): Promise<EngineSummary> {
   const started = Bun.nanoseconds();
   const deviceId = plan.toTransfer[0]?.candidate.deviceId ?? null;
@@ -140,7 +159,14 @@ export async function runTransfer(
       const file = queue[index];
       if (!file) return;
 
-      const result = await processFile(file, devices, opts, runId, summary);
+      const result = await processFile(
+        file,
+        devices,
+        opts,
+        runId,
+        summary,
+        durability,
+      );
       if (result === "failed") {
         summary.failed++;
       }
@@ -196,6 +222,7 @@ async function processFile(
   opts: EngineOptions,
   runId: number,
   summary: EngineSummary,
+  durability: Durability,
 ): Promise<"ok" | "failed"> {
   const { candidate } = file;
   const device = devices.get(candidate.deviceId);
@@ -217,12 +244,33 @@ async function processFile(
   opts.onFileEvent?.({ type: "start", file });
   opts.journal.setState(rowId, "copying");
 
+  // Fails this file without touching the phone copy (EH-1).
+  const failFile = (label: string, reason: string): "failed" => {
+    opts.journal.setState(rowId, "failed", reason);
+    opts.journal.event("error", `${label}: ${candidate.srcPath}`, runId, {
+      reason,
+    });
+    opts.onFileEvent?.({ type: "failed", file, reason });
+    summary.failures.push({ srcPath: candidate.srcPath, reason });
+    return "failed";
+  };
+
   // --- the copy --------------------------------------------------------------
-  const partialBytes = statSyncSafe(file.destPath)?.size ?? 0;
+  // A missing partial is size 0. An unreadable one fails the file, because zero
+  // would let the pull overwrite a copy already on the drive (EH-2).
+  const partial = await statDrive(opts.root, file.destPath);
+  if (partial.kind === "unreadable") return failFile("copy failed", UNREADABLE);
+  const partialBytes = partial.kind === "ok" ? partial.value.size : 0;
+
+  // The pull writes into this folder, so the folder must exist first (EH-7).
+  const made = await ensureDirTracked(dirname(file.destPath), opts.root);
+  if (made.kind === "failed") return failFile("copy failed", made.reason);
+
   const req: CopyRequest = {
     serial: candidate.serial,
     srcPath: candidate.srcPath,
     destPath: file.destPath,
+    root: opts.root,
     partialBytes,
     size: candidate.size,
     resumeThreshold: opts.resumeThreshold,
@@ -265,6 +313,21 @@ async function processFile(
     summary.skipped++;
     return "ok";
   }
+
+  // "written" claims the bytes are durable, so the flushes come first (R1.1).
+  const flushed = await durability.flushFile(
+    opts.root,
+    file.destPath,
+    outcome.bytes,
+  );
+  if (flushed.kind !== "ok") {
+    return failFile("flush failed", flushReason(flushed));
+  }
+
+  // flushFile syncs only the copy's folder. The gate also syncs the parents of
+  // folders created for this copy (R1.13).
+  const gated = await durability.flushGate(opts.root, dirname(file.destPath));
+  if (gated.kind !== "ok") return failFile("flush failed", flushReason(gated));
 
   opts.journal.setState(rowId, "written");
   summary.transferred++;
@@ -361,13 +424,14 @@ async function verifyFile(
   const { candidate } = file;
 
   // Size is the cheap gate before we spend two hashes.
-  const local = statSyncSafe(file.destPath);
-  if (!local)
+  const local = await statDrive(opts.root, file.destPath);
+  if (local.kind === "missing")
     return { ok: false, reason: "destination disappeared before verification" };
-  if (local.size !== candidate.size) {
+  if (local.kind === "unreadable") return { ok: false, reason: UNREADABLE };
+  if (local.value.size !== candidate.size) {
     return {
       ok: false,
-      reason: `size mismatch: phone says ${candidate.size}, drive has ${local.size}`,
+      reason: `size mismatch: phone says ${candidate.size}, drive has ${local.value.size}`,
     };
   }
 

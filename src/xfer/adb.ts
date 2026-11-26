@@ -22,9 +22,13 @@ import { join } from "node:path";
 import { finished } from "node:stream/promises";
 
 import type { Adb } from "#lib/device/adb.ts";
-import { ensureDir, fsyncPath, statSyncSafe } from "#lib/util/fs.ts";
 import { dirname } from "#lib/util/paths.ts";
-import type { CopyOutcome, CopyRequest, Transport } from "#lib/xfer/transport.ts";
+import { statDrive } from "#lib/util/probe.ts";
+import type {
+  CopyOutcome,
+  CopyRequest,
+  Transport,
+} from "#lib/xfer/transport.ts";
 
 export class AdbTransport implements Transport {
   readonly name = "adb" as const;
@@ -50,7 +54,6 @@ export class AdbTransport implements Transport {
    */
   async copy(req: CopyRequest): Promise<CopyOutcome> {
     const destDir = dirname(req.destPath);
-    await ensureDir(destDir);
 
     const resumeWorthIt =
       req.partialBytes > 0 &&
@@ -90,21 +93,21 @@ export class AdbTransport implements Transport {
         };
       }
 
-      const stat = statSyncSafe(req.destPath);
-      if (!stat) {
+      const probed = await statDrive(req.root, req.destPath);
+      if (probed.kind !== "ok") {
         return {
           status: "failed",
-          reason: `adb pull reported success but ${req.destPath} does not exist`,
+          reason:
+            probed.kind === "missing"
+              ? `adb pull reported success but ${req.destPath} does not exist`
+              : "the destination could not be read; nothing was changed",
           code: res.code,
           fatal: false,
         };
       }
+      const stat = probed.value;
 
-      // `adb` reports a file as finished when the bytes are in the OS page
-      // cache. Roughly 25 % of a job's wall time is the writeback that follows,
-      // so flush before anyone is told this file is done.
-      fsyncPath(req.destPath);
-
+      // No flush here: the engine flushes each copy before recording it (R1.1).
       req.onProgress?.(stat.size);
       return { status: "copied", bytes: stat.size };
     } catch (err) {
@@ -173,7 +176,6 @@ export class AdbTransport implements Transport {
       };
     }
 
-    fsyncPath(req.destPath);
     return { status: "copied", bytes: written };
   }
 
@@ -244,8 +246,6 @@ export class RsyncTransport implements Transport {
       `${dirname(req.destPath)}/`,
     );
 
-    await ensureDir(dirname(req.destPath));
-
     const res = await Bun.$`${this.opts.bin} ${args.join(" ")}`
       .quiet()
       .nothrow()
@@ -261,16 +261,21 @@ export class RsyncTransport implements Transport {
       };
     }
 
-    const stat = statSyncSafe(req.destPath);
-    if (!stat) {
+    const probed = await statDrive(req.root, req.destPath);
+    if (probed.kind !== "ok") {
       return {
         status: "failed",
-        reason: `rsync reported success but ${req.destPath} does not exist`,
+        reason:
+          probed.kind === "missing"
+            ? `rsync reported success but ${req.destPath} does not exist`
+            : "the destination could not be read; nothing was changed",
         code: 0,
         fatal: false,
       };
     }
-    fsyncPath(req.destPath);
+    const stat = probed.value;
+
+    // No flush here: the engine flushes each copy before recording it (R1.1).
     return { status: "copied", bytes: stat.size };
   }
 
