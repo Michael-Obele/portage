@@ -325,7 +325,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `src/send/plan.ts`.
     - Build: `judgeRequest(request)` returns a refusal with its reason, or accepts the request.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 24:"` passes, and `git log -1 --format=%s` prints `feat(send): add plan rules for mounts, devices, and files` after this task's group commit for tasks 4.1 to 4.20.
-  - [~] 4.21 Checkpoint: plan rules
+  - [x] 4.21 Checkpoint: plan rules
     - Requirements: R16.11. Design: §3.2.
     - Files: none.
     - Done when: `bun run test` and `bun run typecheck` exit 0.
