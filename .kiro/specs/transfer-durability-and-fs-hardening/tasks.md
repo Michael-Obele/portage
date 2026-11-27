@@ -243,7 +243,7 @@ This plan builds the feature in the order that requirements.md and design.md app
       - Neither check changes the breaker count. Row P14 uses a null root, and row P15 records no breaker count.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "deadline checks"` fails, because `formatDeadline`, `doctorFlushMessage`, and the async rsync check do not exist yet.
 
-  - [~] 2.8 Make the existing destination-check tests pass a mounted probe
+  - [x] 2.8 Make the existing destination-check tests pass a mounted probe
     - Requirements: R2.14. Design: Testing strategy, Layer 2 (design.md gives verify-gate.test.ts lines 459 and 466; the file has them at lines 464 and 471) and Layer 1 (the planner tests with an explicit destination probe); DV-14.
     - Files: `src/index/recovery.ts` (the current `checkDestination`), `src/plan/plan.ts` (`PlanOptions`), `test/verify-gate.test.ts`, `test/plan.test.ts`.
     - Build: add an optional `probe` argument to the current synchronous `checkDestination`. When it is given, the function judges that value and makes no read. Add an optional `destinationProbe` to `PlanOptions`, which `buildPlan` passes to the same judgement. Task 2.11 and task 2.13 replace these with the async signature and the snapshot.
@@ -252,43 +252,43 @@ This plan builds the feature in the order that requirements.md and design.md app
       - In `test/plan.test.ts`, the `planFor` helper (line 62) and every test that calls it: in `the plan reads the destination, not only the journal`, "a file that is not on the drive yet is queued, under the same folder it has on the phone", "a file already at the destination with the same size is skipped", "an interrupted copy this journal knows about is queued, so it can resume", "a different-sized file that no run claims is a collision, not an overwrite", "a file this journal recorded as failed is retried, not trusted because the size matches", and "every file in every folder is still accounted for"; and in `a file removed from the pull by hand`, "is still planned, marked excluded, and never queued" and "is not confused with a file that is already on the drive".
     - Done when: `bun test --preload ./scripts/preload.ts test/verify-gate.test.ts -t "destination pre-flight"` and `bun test --preload ./scripts/preload.ts test/plan.test.ts` show the same results as before this task, with no test failing for a reason other than the new seam.
 
-  - [~] 2.9 Add `readMount` to `src/util/fs.ts`
+  - [x] 2.9 Add `readMount` to `src/util/fs.ts`
     - Requirements: R2.2, R2.3. Design: Components (`readMount`, `MountState`); DV-4.
     - Files: `src/util/fs.ts`.
     - Build: `readMount(spawn, path, timeoutMs = 3000)` runs `findmnt -rno FSTYPE,OPTIONS,TARGET --target <path>`. A `TIMEOUT` signal gives `unreadable`. Exit 1 with no output gives `not-mounted`. Any other failure gives `unreadable`. Success gives `mounted` with the filesystem type, the options, and the target. Escaped spaces in the fields are unescaped. `mountOptions` in volumes.ts stays until task 2.10.
     - Done when: the `readMount` examples in the `destination check` block pass, which task 2.1 names. The `checkDestination` examples stay red until task 2.11.
 
-  - [~] 2.10 Move volume discovery onto `readMount`
+  - [x] 2.10 Move volume discovery onto `readMount`
     - Requirements: DV-4. Design: Components (`readMount`); Notes N8 (volume discovery is out of scope).
     - Files: `src/device/volumes.ts`.
     - Build: delete `mountOptions`. Call `readMount(spawn, mountPoint, 5_000)` where the call sits at line 234. Volume discovery keeps its 5-second bound. Keep the output shape.
     - Done when: `bun test --preload ./scripts/preload.ts test/volumes.test.ts` passes, and `grep -n "mountOptions" src` prints nothing.
 
-  - [~] 2.11 Make the destination check async, split into a probe and a judgement
+  - [x] 2.11 Make the destination check async, split into a probe and a judgement
     - Requirements: R2.1, R2.3, R2.4. Design: Components (`probeDestination`, `judgeDestination`, `checkDestination`, `DestinationCheck` with `status`); DV-14; Notes N2.
     - Files: `src/index/recovery.ts` (`checkDestination` at line 157, and the `findmnt` call at line 162).
     - Build: `probeDestination(spawn, destRoot)` reads the mount with `readMount` and the free space with `diskSpaceAsync`, each under its own 3-second deadline. It makes no decision. `judgeDestination(probe, plannedBytes, headroom)` is pure. It keeps the existing reasons for a full disk and a read-only mount. For any unreadable read, it returns `status: "unreadable"`, `ok: false`, and the EH-13 text "the destination could not be read; nothing was changed" (R2.4). `checkDestination(spawn, destRoot, plannedBytes, headroom)` runs the probe and then the judgement. It replaces the optional `probe` argument from task 2.8. `isReadOnlyMount` stays. Update the two calls in `test/verify-gate.test.ts` that task 2.8 changed, to pass a fake spawn that reports a mounted target.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "destination check"` passes the examples that task 2.1 names, except the root-filesystem example, which task 2.31 adds. `bun run typecheck` reports errors only in `src/plan/plan.ts` and `src/serve/run-loop.ts`, which tasks 2.13 and 2.14 fix.
 
-  - [~] 2.12 Give reconcile a root and three-way results
+  - [x] 2.12 Give reconcile a root and three-way results
     - Requirements: R2.5, R2.2. Design: Components (`reconcile`, `RecoveryReport.unreadable`); EH-2; DV-3, DV-28.
     - Files: `src/index/recovery.ts` (the same file as task 2.11, so this task runs after it).
     - Build: `reconcile(journal, partialDir, root)`. Replace each `statSyncSafe` call (lines 82 and 102) with `statDrive(root, path)`. A `missing` verified row is failed with "missing", as now. An `unreadable` verified row stays `verified` and is listed in `unreadable`. An unreadable partial is listed in `unreadable`, not in `orphanPartials`. `RecoveryReport` gains `unreadable: string[]`, and `EMPTY_REPORT` sets it to an empty list.
     - Done when: `bun test --preload ./scripts/preload.ts test/verify-gate.test.ts -t "reconcile three-way"` passes.
 
-  - [~] 2.13 Make the planner take a snapshot
+  - [x] 2.13 Make the planner take a snapshot
     - Requirements: R2.1, R2.8. Design: Components (`src/plan/plan.ts`: `destinationsFor`, `snapshotDestinations`, `PlanOptions.space` and `onDisk`); "Behaviour of buildPlan with the snapshot"; DV-10, DV-11; Notes N2.
     - Files: `src/plan/plan.ts` (`PlanOptions` near line 63, the `statSync` at line 168, and the `checkDestination` call at line 228), and the `planFor` helper in `test/plan.test.ts`.
     - Build: add `destinationsFor(candidates, destRoot)` and `snapshotDestinations(root, destPaths)`. The snapshot runs `statDrive` for each path, each under its own 3-second deadline, and callers await it. `PlanOptions.space` replaces the `destinationProbe` from task 2.8, and `buildPlan` judges it with its own `bytesTotal` through `judgeDestination`. `buildPlan` keeps the warning text, reads `onDisk` instead of calling `statSync`, and stays synchronous. The `planFor` helper passes `space` and `onDisk` in place of the 2.8 argument.
     - Done when: `bun test --preload ./scripts/preload.ts test/plan.test.ts` passes.
 
-  - [~] 2.14 Switch the run path to the snapshot and the async probe
+  - [x] 2.14 Switch the run path to the snapshot and the async probe
     - Requirements: R2.1, R2.4, R2.8. Design: Components (`src/serve/run-loop.ts`); DV-10.
     - Files: `src/serve/run-loop.ts` (the `reconcile` call near line 147, the plan near line 155, and the check near line 164).
     - Build: pass `destRoot` to `reconcile`. After `gather`, call `destinationsFor`, `snapshotDestinations`, and `probeDestination`, awaiting each, and then call `buildPlan`. After planning, call `judgeDestination` with `planResult.bytesTotal`. A result that is not `ok` throws the existing precondition error. That error covers `unreadable` too.
     - Done when: `bun run typecheck` reports no error in `src/serve/run-loop.ts`.
 
-  - [~] 2.15 Switch the plan action to the snapshot
+  - [x] 2.15 Switch the plan action to the snapshot
     - Requirements: R2.1, R2.8. Design: Components (`src/serve/dispatch.ts`, the plan action near line 586); DV-10.
     - Files: `src/serve/dispatch.ts` (lines 585 to 590).
     - Build: the plan action calls `destinationsFor`, awaits `snapshotDestinations` and `probeDestination`, and then calls `buildPlan`.

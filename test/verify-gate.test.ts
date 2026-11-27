@@ -28,6 +28,7 @@ import { silentLogger } from "../src/util/log.ts";
 import {
   fakeDevice,
   makeTempDrive,
+  mountedSpawn,
   sha256OfBytes,
   type TempDrive,
 } from "./helpers.ts";
@@ -134,7 +135,13 @@ function planOf(files: PlannedFile[]): PlanResult {
     bytesExcluded: 0,
     fileCount: files.length,
     etaSeconds: null,
-    space: { ok: true, freeBytes: 1e12, totalBytes: 1e12, usedFraction: 0.1 },
+    space: {
+      ok: true,
+      status: "ok",
+      freeBytes: 1e12,
+      totalBytes: 1e12,
+      usedFraction: 0.1,
+    },
     warnings: [],
   };
 }
@@ -404,7 +411,7 @@ describe("crash recovery", () => {
       state: "copying",
     });
 
-    const report = await reconcile(journal, drive.partialDir);
+    const report = await reconcile(journal, drive.partialDir, drive.root);
 
     expect(report.interrupted).toBe(1);
     const row = journal.listRecent(1)[0];
@@ -426,7 +433,7 @@ describe("crash recovery", () => {
     journal.setHash(row.id, sha256OfBytes(1024), "full");
 
     // The destination does not exist — the drive lost the file.
-    const report = await reconcile(journal, drive.partialDir);
+    const report = await reconcile(journal, drive.partialDir, drive.root);
 
     expect(report.missing).toBe(1);
     expect(journal.getTransfer(row.id)?.state).toBe("failed");
@@ -436,7 +443,7 @@ describe("crash recovery", () => {
   test("an orphan partial is reported, never adopted", async () => {
     await Bun.write(join(drive.partialDir, "stranger.mkv"), "partial");
 
-    const report = await reconcile(journal, drive.partialDir);
+    const report = await reconcile(journal, drive.partialDir, drive.root);
 
     expect(report.orphanPartials.length).toBeGreaterThan(0);
     expect(report.notes.join(" ")).toContain("no journal row");
@@ -512,15 +519,20 @@ describe("destination pre-flight", () => {
   // copies nothing writes nothing, so the reserve must not apply to it: at the
   // maximum allowed headroom (0.9) the old arithmetic answered "need 0 bytes,
   // short by N" on any drive that was not nearly empty.
-  test("an empty plan is never refused for lack of space", () => {
-    const verdict = checkDestination(drive.root, 0, 0.9);
+  test("an empty plan is never refused for lack of space", async () => {
+    const verdict = await checkDestination(mountedSpawn, drive.root, 0, 0.9);
 
     expect(verdict.ok).toBe(true);
     expect(verdict.reason).toBeUndefined();
   });
 
-  test("a plan that cannot fit is still refused", () => {
-    const verdict = checkDestination(drive.root, Number.MAX_SAFE_INTEGER, 0.02);
+  test("a plan that cannot fit is still refused", async () => {
+    const verdict = await checkDestination(
+      mountedSpawn,
+      drive.root,
+      Number.MAX_SAFE_INTEGER,
+      0.02,
+    );
 
     expect(verdict.ok).toBe(false);
     expect(verdict.reason).toContain("not enough space");

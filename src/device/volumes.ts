@@ -7,7 +7,7 @@
  */
 
 import { join } from "node:path";
-import { diskSpaceAsync, isDirectory, withTimeout } from "#lib/util/fs.ts";
+import { diskSpaceAsync, isDirectory, readMount, withTimeout } from "#lib/util/fs.ts";
 import type { SpawnFn } from "#lib/util/spawn.ts";
 
 /** One row of `lsblk` output, before any judgement about whether it is useful. */
@@ -180,32 +180,6 @@ export async function isPortageDrive(mountPoint: string): Promise<boolean> {
   return false;
 }
 
-/**
- * Read the live mount's driver and options, so a kernel-`ntfs3` mount is told
- * apart from a `fuseblk`/ntfs-3g one, and a read-only mount is visible rather
- * than silent. `lsblk` reports both as `ntfs`, so only `findmnt` knows. When
- * `findmnt` cannot answer, `readOnly` is `null` (unknown — never assumed
- * writable) and the caller falls back to the `lsblk` driver name.
- */
-async function mountOptions(
-  spawn: SpawnFn,
-  mountPoint: string,
-): Promise<{ driver: string | null; readOnly: boolean | null }> {
-  const res = await spawn(
-    ["findmnt", "-no", "FSTYPE,OPTIONS", "--target", mountPoint],
-    { timeoutMs: 5_000 },
-  );
-  // Could not verify: fail closed and say so, rather than guessing "writable".
-  if (res.code !== 0) return { driver: null, readOnly: null };
-  // Output is `ntfs3 rw,relatime,uid=1000` — driver first, then the option list.
-  const [fsType = "", optionList = ""] = res.stdout.trim().split(/\s+/, 2);
-  return {
-    driver: fsType ? driverName(fsType) : null,
-    // No option list means findmnt told us nothing about the mount mode.
-    readOnly: optionList ? optionList.split(",").includes("ro") : null,
-  };
-}
-
 /** Injection points, so a unit test never reads a real mount. */
 export interface ListVolumesOptions {
   /** Defaults to the real `.portage` probe. */
@@ -231,7 +205,18 @@ export async function listVolumes(
     // screen that reads a volume list hung with it — the app looked dead
     // because one drive was sick.
     const space = await diskSpaceAsync(spawn, mountPoint);
-    const live = await mountOptions(spawn, mountPoint);
+    // lsblk calls ntfs3 and fuseblk both `ntfs`; only findmnt tells them apart.
+    // Could not verify: fail closed. `readOnly: null` is unknown, never "writable".
+    const mount = await readMount(spawn, mountPoint, 5_000);
+    const live =
+      mount.kind === "mounted"
+        ? {
+            driver: driverName(mount.fsType),
+            readOnly: mount.options
+              ? mount.options.split(",").includes("ro")
+              : null,
+          }
+        : { driver: null, readOnly: null };
     volumes.push({
       device: `/dev/${block.name}`,
       label: block.label,

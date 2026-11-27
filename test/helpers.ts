@@ -13,6 +13,9 @@ import { join } from "node:path";
 import { Journal } from "../src/index/journal.ts";
 import type { DeviceInfo } from "../src/device/adb.ts";
 import { deviceId } from "../src/device/adb.ts";
+import type { DestinationProbe } from "../src/index/recovery.ts";
+import { diskSpaceAsync } from "../src/util/fs.ts";
+import { realSpawn, type SpawnFn } from "../src/util/spawn.ts";
 
 export interface TempDrive {
   root: string;
@@ -77,3 +80,29 @@ export function sha256OfBytes(sizeBytes: number, fill = 0x41): string {
 export function secondsAgo(n: number): number {
   return Math.floor(Date.now() / 1000) - n;
 }
+
+/** A mounted destination at `/mnt/archive` with the real free space of `root`. */
+export async function mountedProbe(root: string): Promise<DestinationProbe> {
+  const space = await diskSpaceAsync(realSpawn, root);
+  if (space === null) throw new Error(`df could not read ${root}`);
+  return {
+    mount: {
+      kind: "mounted",
+      fsType: "ext4",
+      options: "rw,relatime",
+      target: "/mnt/archive",
+    },
+    space: { kind: "ok", free: space.free, total: space.total },
+  };
+}
+
+/** findmnt reports a mounted ext4 target; every other command is real. */
+export const mountedSpawn: SpawnFn = (cmd, opts) =>
+  cmd[0] === "findmnt"
+    ? Promise.resolve({
+        code: 0,
+        stdout: "ext4 rw,relatime /mnt/archive\n",
+        stderr: "",
+        durationMs: 1,
+      })
+    : realSpawn(cmd, opts);

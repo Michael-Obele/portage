@@ -20,9 +20,18 @@ import type { Adb, DeviceInfo } from "#lib/device/adb.ts";
 import type { ResolvedConfig } from "#lib/config/load.ts";
 import { requireDestRoot } from "#lib/config/load.ts";
 import { ensureStateDirs } from "#lib/util/fs.ts";
-import { checkDestination, reconcile } from "#lib/index/recovery.ts";
+import {
+  judgeDestination,
+  probeDestination,
+  reconcile,
+} from "#lib/index/recovery.ts";
 import { Journal } from "#lib/index/journal.ts";
-import { buildPlan, type PlanResult } from "#lib/plan/plan.ts";
+import {
+  buildPlan,
+  destinationsFor,
+  snapshotDestinations,
+  type PlanResult,
+} from "#lib/plan/plan.ts";
 import { eligible, scanDevice, type Candidate } from "#lib/scan/scan.ts";
 import { isMarkerFile } from "#lib/util/paths.ts";
 import { AdbTransport } from "#lib/xfer/adb.ts";
@@ -30,6 +39,7 @@ import { runTransfer, type EngineSummary } from "#lib/xfer/engine.ts";
 import type { DeleteSource } from "#lib/config/schema.ts";
 import { preconditionError } from "#lib/util/errors.ts";
 import type { Logger } from "#lib/util/log.ts";
+import { realSpawn } from "#lib/util/spawn.ts";
 
 import { TransferSink } from "#lib/serve/sink.ts";
 
@@ -144,7 +154,7 @@ export async function startPull(
 
   // Recovery first, exactly as pull() does it: a killed transfer must leave a
   // journal the next run can continue from (gate C5).
-  const recovery = await reconcile(journal, partial);
+  const recovery = await reconcile(journal, partial, destRoot);
   if (recovery.interrupted || recovery.missing) {
     sink.onNotice(
       `recovered from a previous run: ${recovery.interrupted} interrupted, ${recovery.missing} missing`,
@@ -152,6 +162,10 @@ export async function startPull(
   }
 
   const candidates = await gather(opts, selected);
+  const [onDisk, destinationRead] = await Promise.all([
+    snapshotDestinations(destRoot, destinationsFor(candidates, destRoot)),
+    probeDestination(realSpawn, destRoot),
+  ]);
   const planResult = buildPlan(candidates, {
     destRoot,
     journal,
@@ -159,12 +173,16 @@ export async function startPull(
     show: opts.show,
     sinceSeconds: opts.sinceSeconds,
     exclude: new Set(opts.exclude ?? []),
+    space: destinationRead,
+    onDisk,
   });
 
-  const space = checkDestination(
-    destRoot,
+  // An unreadable destination refuses here too; `ok` is false for it (R2.4).
+  const space = judgeDestination(
+    destinationRead,
     planResult.bytesTotal,
     config.space_headroom,
+    destRoot,
   );
   if (!space.ok) {
     journal.close();

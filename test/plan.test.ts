@@ -12,11 +12,18 @@ import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import type { Journal } from "../src/index/journal.ts";
-import { buildPlan, type PlanOptions } from "../src/plan/plan.ts";
+import type { DestinationProbe } from "../src/index/recovery.ts";
+import {
+  buildPlan,
+  destinationsFor,
+  snapshotDestinations,
+  type PlanOptions,
+} from "../src/plan/plan.ts";
 import type { Candidate } from "../src/scan/scan.ts";
 import {
   openJournal,
   makeTempDrive,
+  mountedProbe,
   secondsAgo,
   type TempDrive,
 } from "./helpers.ts";
@@ -26,10 +33,12 @@ const ROOT = "/sdcard/Download/Move";
 
 let drive: TempDrive;
 let journal: Journal;
+let probe: DestinationProbe;
 
 beforeEach(async () => {
   drive = await makeTempDrive();
   journal = openJournal(drive);
+  probe = await mountedProbe(drive.root);
 });
 
 afterEach(async () => {
@@ -52,20 +61,26 @@ function candidate(relative: string): Candidate {
   };
 }
 
-function planFor(files: Candidate[], extra: Partial<PlanOptions> = {}) {
+async function planFor(files: Candidate[], extra: Partial<PlanOptions> = {}) {
+  const onDisk = await snapshotDestinations(
+    drive.root,
+    destinationsFor(files, drive.root),
+  );
   const opts: PlanOptions = {
     destRoot: drive.root,
     journal,
     spaceHeadroom: 0,
+    space: probe,
+    onDisk,
     ...extra,
   };
   return buildPlan(files, opts);
 }
 
 describe("the plan reads the destination, not only the journal", () => {
-  test("a file that is not on the drive yet is queued, under the same folder it has on the phone", () => {
+  test("a file that is not on the drive yet is queued, under the same folder it has on the phone", async () => {
     const relative = "Frieren/S01/ep01.mkv";
-    const plan = planFor([candidate(relative)]);
+    const plan = await planFor([candidate(relative)]);
 
     expect(plan.toTransfer).toHaveLength(1);
     expect(plan.bytesTotal).toBe(SIZE);
@@ -79,7 +94,7 @@ describe("the plan reads the destination, not only the journal", () => {
     await mkdir(dirname(destPath), { recursive: true });
     await Bun.write(destPath, new Uint8Array(SIZE));
 
-    const plan = planFor([candidate(relative)]);
+    const plan = await planFor([candidate(relative)]);
 
     expect(plan.toTransfer).toHaveLength(0);
     expect(plan.bytesTotal).toBe(0);
@@ -106,7 +121,7 @@ describe("the plan reads the destination, not only the journal", () => {
       state: "copying",
     });
 
-    const plan = planFor([file]);
+    const plan = await planFor([file]);
 
     expect(plan.toTransfer).toHaveLength(1);
   });
@@ -117,7 +132,7 @@ describe("the plan reads the destination, not only the journal", () => {
     await mkdir(dirname(destPath), { recursive: true });
     await Bun.write(destPath, new Uint8Array(SIZE * 2));
 
-    const plan = planFor([candidate(relative)]);
+    const plan = await planFor([candidate(relative)]);
 
     expect(plan.toTransfer).toHaveLength(0);
     expect(plan.skipped[0]!.skipReason).toContain("collision");
@@ -146,7 +161,7 @@ describe("the plan reads the destination, not only the journal", () => {
     });
     journal.setState(row.id, "failed", "verification failed: content mismatch");
 
-    const plan = planFor([file]);
+    const plan = await planFor([file]);
 
     expect(plan.toTransfer).toHaveLength(1);
   });
@@ -163,7 +178,7 @@ describe("the plan reads the destination, not only the journal", () => {
       new Uint8Array(SIZE),
     );
 
-    const plan = planFor(relatives.map(candidate));
+    const plan = await planFor(relatives.map(candidate));
 
     expect(plan.files).toHaveLength(4);
     expect(plan.toTransfer.map((f) => f.candidate.relative)).toEqual([
@@ -175,11 +190,11 @@ describe("the plan reads the destination, not only the journal", () => {
 });
 
 describe("a file removed from the pull by hand", () => {
-  test("is still planned, marked excluded, and never queued", () => {
+  test("is still planned, marked excluded, and never queued", async () => {
     const keep = candidate("Frieren/S01/keep.mkv");
     const drop = candidate("Frieren/S01/drop.mkv");
 
-    const plan = planFor([keep, drop], { exclude: new Set([drop.srcPath]) });
+    const plan = await planFor([keep, drop], { exclude: new Set([drop.srcPath]) });
 
     expect(plan.toTransfer.map((f) => f.candidate.srcPath)).toEqual([
       keep.srcPath,
@@ -192,9 +207,9 @@ describe("a file removed from the pull by hand", () => {
     expect(plan.bytesTotal).toBe(SIZE);
   });
 
-  test("is not confused with a file that is already on the drive", () => {
+  test("is not confused with a file that is already on the drive", async () => {
     const drop = candidate("Frieren/S01/other.mkv");
-    const plan = planFor([drop], { exclude: new Set([drop.srcPath]) });
+    const plan = await planFor([drop], { exclude: new Set([drop.srcPath]) });
 
     expect(plan.skipped[0]!.alreadyTransferred).toBe(false);
     expect(plan.skipped[0]!.excluded).toBe(true);

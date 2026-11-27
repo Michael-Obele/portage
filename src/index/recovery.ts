@@ -12,7 +12,8 @@
  *     half-written or complete?" is exactly the question the verify gate exists
  *     to answer.
  *  2. A `verified` row whose destination is gone from disk is `failed(missing)`.
- *     The journal claims proof the drive cannot corroborate.
+ *     The journal claims proof the drive cannot corroborate. A destination that
+ *     cannot be read is listed as `unreadable` and the row is left alone.
  *  3. A partial in `.portage/partial/` with no matching row is reported, never
  *     adopted blindly — it may belong to a run from a different machine.
  *  4. A run still marked `running` is closed as `interrupted`.
@@ -21,8 +22,18 @@
 import { readdir } from "node:fs/promises";
 import { join, basename } from "node:path";
 
-import { diskSpace } from "#lib/util/fs.ts";
-import { statSyncSafe } from "#lib/util/fs.ts";
+import {
+  diskSpaceAsync,
+  readMount,
+  type MountState,
+} from "#lib/util/fs.ts";
+import {
+  PROBE_TIMEOUT_MS,
+  probe,
+  statDrive,
+  type ProbeResult,
+} from "#lib/util/probe.ts";
+import type { SpawnFn } from "#lib/util/spawn.ts";
 import type { Journal } from "#lib/index/journal.ts";
 
 export interface RecoveryReport {
@@ -32,6 +43,8 @@ export interface RecoveryReport {
   missing: number;
   /** Partial files with no journal row. */
   orphanPartials: string[];
+  /** Paths whose stat got no answer. Not missing: nothing was concluded. */
+  unreadable: string[];
   /** Runs left in `running` from a previous process. */
   staleRuns: number;
   notes: string[];
@@ -41,6 +54,7 @@ const EMPTY_REPORT: RecoveryReport = {
   interrupted: 0,
   missing: 0,
   orphanPartials: [],
+  unreadable: [],
   staleRuns: 0,
   notes: [],
 };
@@ -48,10 +62,12 @@ const EMPTY_REPORT: RecoveryReport = {
 export async function reconcile(
   journal: Journal,
   partialDir: string,
+  root: string,
 ): Promise<RecoveryReport> {
   const report: RecoveryReport = {
     ...EMPTY_REPORT,
     orphanPartials: [],
+    unreadable: [],
     notes: [],
   };
 
@@ -79,8 +95,11 @@ export async function reconcile(
   // phone, and a missing `done` row is usually a user deletion, not a failure.
   for (const row of journal.listActive()) {
     if (row.state !== "verified") continue;
-    const stat = statSyncSafe(row.dest_path);
-    if (!stat) {
+    const stat = await statDrive(root, row.dest_path);
+    if (stat.kind === "unreadable") {
+      // Unknown is not missing: the row keeps its proof until a read answers.
+      report.unreadable.push(row.dest_path);
+    } else if (stat.kind === "missing") {
       journal.setState(
         row.id,
         "failed",
@@ -99,7 +118,9 @@ export async function reconcile(
 
     for (const entry of entries) {
       const full = join(partialDir, entry);
-      if (!statSyncSafe(full)) continue;
+      const stat = await statDrive(root, full);
+      if (stat.kind === "unreadable") report.unreadable.push(full);
+      if (stat.kind !== "ok") continue;
       // A partial is a flat file on the adb path and a directory per file on
       // the rsync fallback path; the name is the entry either way.
       if (known.has(entry)) continue;
@@ -136,12 +157,25 @@ export async function reconcile(
  */
 export interface DestinationCheck {
   ok: boolean;
+  /** `unreadable` means a read got no answer; the drive is not judged. */
+  status: "ok" | "refused" | "unreadable";
   reason?: string;
   fix?: string;
   freeBytes: number;
   totalBytes: number;
   usedFraction: number;
 }
+
+export interface DestinationProbe {
+  mount: MountState;
+  space:
+    | { kind: "ok"; free: number; total: number }
+    | { kind: "unreadable"; reason: string };
+}
+
+/** EH-13. */
+export const DESTINATION_UNREADABLE =
+  "the destination could not be read; nothing was changed";
 
 /**
  * True when a mount's option list carries the `ro` flag.
@@ -154,22 +188,57 @@ export function isReadOnlyMount(options: string): boolean {
   return options.split(",").some((option) => option.trim() === "ro");
 }
 
-export function checkDestination(
+/** Two reads, each under its own deadline. Decides nothing. */
+export async function probeDestination(
+  spawn: SpawnFn,
   destRoot: string,
+  timeoutMs = PROBE_TIMEOUT_MS,
+): Promise<DestinationProbe> {
+  const [mount, space] = await Promise.all([
+    probe(destRoot, "findmnt", () => readMount(spawn, destRoot, timeoutMs), timeoutMs),
+    probe(destRoot, "df", () => diskSpaceAsync(spawn, destRoot, timeoutMs), timeoutMs),
+  ]);
+  return {
+    mount:
+      mount.kind === "ok"
+        ? mount.value
+        : { kind: "unreadable", reason: unreadableReason(mount) },
+    space:
+      space.kind === "ok" && space.value !== null
+        ? { kind: "ok", free: space.value.free, total: space.value.total }
+        : { kind: "unreadable", reason: unreadableReason(space) },
+  };
+}
+
+function unreadableReason(result: ProbeResult<unknown>): string {
+  if (result.kind === "unreadable") {
+    return result.reason === "timeout" ? "timeout" : result.message;
+  }
+  return result.kind === "ok" ? "no reading" : "missing";
+}
+
+const unreadable = (): DestinationCheck => ({
+  ok: false,
+  status: "unreadable",
+  reason: DESTINATION_UNREADABLE,
+  freeBytes: 0,
+  totalBytes: 0,
+  usedFraction: 0,
+});
+
+/** Pure: judges what `probeDestination` read, and reads nothing itself. */
+export function judgeDestination(
+  read: DestinationProbe,
   plannedBytes: number,
   headroom: number,
+  destRoot = "",
 ): DestinationCheck {
-  const probe = Bun.spawnSync(
-    ["findmnt", "-no", "OPTIONS", "--target", destRoot],
-    {
-      stderr: "ignore",
-    },
-  );
-  const options = probe.exitCode === 0 ? probe.stdout.toString().trim() : "";
+  if (read.mount.kind === "unreadable") return unreadable();
 
-  if (probe.exitCode !== 0) {
+  if (read.mount.kind === "not-mounted") {
     return {
       ok: false,
+      status: "refused",
       reason: `destination is not on a mounted filesystem: ${destRoot}`,
       fix: `mount the drive, or set dest_root with: portage config set dest_root <path>`,
       freeBytes: 0,
@@ -178,9 +247,10 @@ export function checkDestination(
     };
   }
 
-  if (isReadOnlyMount(options)) {
+  if (isReadOnlyMount(read.mount.options)) {
     return {
       ok: false,
+      status: "refused",
       reason: `destination is mounted read-only (NTFS dirty bit?): ${destRoot}`,
       fix: "unmount, then run `sudo ntfsfix /dev/<partition>` — or cleanly eject the drive from Windows first",
       freeBytes: 0,
@@ -189,19 +259,9 @@ export function checkDestination(
     };
   }
 
-  const space = diskSpace(destRoot);
-  if (!space) {
-    return {
-      ok: false,
-      reason: `cannot read free space on ${destRoot}`,
-      fix: "check the drive is healthy: portage doctor",
-      freeBytes: 0,
-      totalBytes: 0,
-      usedFraction: 0,
-    };
-  }
+  if (read.space.kind === "unreadable") return unreadable();
 
-  const { free, total } = space;
+  const { free, total } = read.space;
   // The headroom is a margin for the bytes this run is about to write. A plan
   // that moves nothing writes nothing, so it needs no margin — without this,
   // `0 > free - reserve` refused an EMPTY plan on any drive with less free
@@ -213,6 +273,7 @@ export function checkDestination(
     const short = plannedBytes - usable;
     return {
       ok: false,
+      status: "refused",
       reason:
         `not enough space: need ${plannedBytes} bytes, ` +
         `${usable} usable (${free} free − ${reserve} headroom) — short by ${short}`,
@@ -225,8 +286,21 @@ export function checkDestination(
 
   return {
     ok: true,
+    status: "ok",
     freeBytes: free,
     totalBytes: total,
     usedFraction: total > 0 ? 1 - free / total : 0,
   };
+}
+
+/** The probe, then the judgement. The plan and run paths call the halves. */
+export async function checkDestination(
+  spawn: SpawnFn,
+  destRoot: string,
+  plannedBytes: number,
+  headroom: number,
+  timeoutMs = PROBE_TIMEOUT_MS,
+): Promise<DestinationCheck> {
+  const read = await probeDestination(spawn, destRoot, timeoutMs);
+  return judgeDestination(read, plannedBytes, headroom, destRoot);
 }

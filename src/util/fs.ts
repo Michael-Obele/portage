@@ -8,6 +8,8 @@
 import { mkdir, stat as statPath } from "node:fs/promises";
 import { join } from "node:path";
 
+import type { SpawnFn } from "#lib/util/spawn.ts";
+
 export interface DiskSpace {
   free: number;
   total: number;
@@ -50,9 +52,10 @@ export async function diskSpaceAsync(
     stdout: string;
   }>,
   path: string,
+  timeoutMs = 3_000,
 ): Promise<DiskSpace | null> {
   const res = await spawn(["df", "-B1", "--output=size,avail", path], {
-    timeoutMs: 3_000,
+    timeoutMs,
   });
   if (res.code !== 0) return null;
   const lines = res.stdout.trim().split("\n");
@@ -64,6 +67,51 @@ export async function diskSpaceAsync(
   const free = Number(parts[1]);
   if (!Number.isFinite(total) || !Number.isFinite(free)) return null;
   return { free, total };
+}
+
+export type MountState =
+  | { kind: "mounted"; fsType: string; options: string; target: string }
+  | { kind: "not-mounted" }
+  | { kind: "unreadable"; reason: string };
+
+const unescapeMount = (field: string): string =>
+  field.replace(/\\x([0-9a-fA-F]{2})/g, (_, hex: string) =>
+    String.fromCharCode(Number.parseInt(hex, 16)),
+  );
+
+/**
+ * One `findmnt` for the mount holding `path`. A killed child is `unreadable`,
+ * never `not-mounted`: only exit 1 with no output means the path has no mount.
+ */
+export async function readMount(
+  spawn: SpawnFn,
+  path: string,
+  timeoutMs = 3_000,
+): Promise<MountState> {
+  const res = await spawn(
+    ["findmnt", "-rno", "FSTYPE,OPTIONS,TARGET", "--target", path],
+    { timeoutMs },
+  );
+  if (res.signal === "TIMEOUT") {
+    return { kind: "unreadable", reason: `no answer within ${timeoutMs} ms` };
+  }
+  const out = res.stdout.trim();
+  if (res.code === 1 && out === "") return { kind: "not-mounted" };
+  if (res.code !== 0) {
+    return { kind: "unreadable", reason: `findmnt exited ${res.code}` };
+  }
+  // A short line still reads as mounted: the volume list only needs the type.
+  const [fsType, options = "", ...rest] = out.split(" ");
+  const target = rest.join(" ");
+  if (!fsType) {
+    return { kind: "unreadable", reason: "findmnt printed an empty line" };
+  }
+  return {
+    kind: "mounted",
+    fsType: unescapeMount(fsType),
+    options: unescapeMount(options),
+    target: unescapeMount(target),
+  };
 }
 
 /** Resolve to `fallback` when `task` takes longer than `ms`. */

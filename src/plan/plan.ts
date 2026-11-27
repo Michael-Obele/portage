@@ -8,12 +8,16 @@
  * turns that from a surprise into a fact.
  */
 
-import { statSync } from "node:fs";
 import { join } from "node:path";
 
 import type { Journal } from "#lib/index/journal.ts";
 import type { Candidate } from "#lib/scan/scan.ts";
-import { checkDestination, type DestinationCheck } from "#lib/index/recovery.ts";
+import {
+  judgeDestination,
+  type DestinationCheck,
+  type DestinationProbe,
+} from "#lib/index/recovery.ts";
+import { statDrive, type ProbeResult } from "#lib/util/probe.ts";
 import { formatBytes, formatDuration, normPath } from "#lib/util/paths.ts";
 
 export interface PlannedFile {
@@ -72,6 +76,55 @@ export interface PlanOptions {
   sinceSeconds?: number;
   /** Source paths a person removed from this pull; still shown, never moved. */
   exclude?: ReadonlySet<string>;
+  /** Read by the caller, judged here with this plan's own byte total. */
+  space: DestinationProbe;
+  /** One entry per destination path; see `snapshotDestinations`. */
+  onDisk: ReadonlyMap<string, ProbeResult<DriveEntryState>>;
+}
+
+export interface DriveEntryState {
+  isFile: boolean;
+  size: number;
+}
+
+/** The destination of every candidate, joined as `buildPlan` joins it. */
+export function destinationsFor(
+  candidates: readonly Candidate[],
+  destRoot: string,
+): string[] {
+  return candidates.map((candidate) => join(destRoot, candidate.relative));
+}
+
+const SNAPSHOT_WORKERS = 8;
+
+/**
+ * One `statDrive` per path, each under its own deadline. Callers await this
+ * before `buildPlan`, which stays synchronous.
+ */
+export async function snapshotDestinations(
+  root: string,
+  destPaths: readonly string[],
+  stat: typeof statDrive = statDrive,
+): Promise<ReadonlyMap<string, ProbeResult<DriveEntryState>>> {
+  const paths = [...new Set(destPaths)];
+  const found = new Map<string, ProbeResult<DriveEntryState>>();
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < paths.length) {
+      const path = paths[next++] as string;
+      const result = await stat(root, path);
+      found.set(
+        path,
+        result.kind === "ok"
+          ? { kind: "ok", value: { isFile: result.value.isFile, size: result.value.size } }
+          : result,
+      );
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(SNAPSHOT_WORKERS, paths.length) }, worker),
+  );
+  return found;
 }
 
 /**
@@ -165,8 +218,21 @@ export function buildPlan(
     // file of a *different* size that no run of ours claims is a collision:
     // `adb pull` would delete it first, which is the one thing this tool never
     // does to something it did not write.
-    const onDisk = statSync(destPath, { throwIfNoEntry: false });
-    const diskSize = onDisk?.isFile() === true ? onDisk.size : null;
+    // An entry the snapshot lacks counts as unread: no key can start a transfer.
+    const entry = opts.onDisk.get(destPath);
+    if (entry === undefined || entry.kind === "unreadable") {
+      files.push({
+        candidate,
+        destPath,
+        destNorm,
+        alreadyTransferred: false,
+        skipReason: "the path could not be read; not transferred over",
+        bytes: 0,
+      });
+      continue;
+    }
+    const diskSize =
+      entry.kind === "ok" && entry.value.isFile ? entry.value.size : null;
     const priorFailed = priorTransfer?.state === "failed";
     const alreadyOnDisk = !priorFailed && diskSize === candidate.size;
     const collision =
@@ -225,7 +291,12 @@ export function buildPlan(
   const etaSeconds =
     rate && rate > 0 && bytesTotal > 0 ? bytesTotal / rate : null;
 
-  const space = checkDestination(opts.destRoot, bytesTotal, opts.spaceHeadroom);
+  const space = judgeDestination(
+    opts.space,
+    bytesTotal,
+    opts.spaceHeadroom,
+    opts.destRoot,
+  );
   if (!space.ok) warnings.push(space.reason ?? "");
 
   return {

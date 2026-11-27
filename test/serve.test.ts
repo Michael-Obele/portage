@@ -1359,7 +1359,13 @@ function planOf(files: PlannedFile[]): PlanResult {
     bytesExcluded: 0,
     fileCount: files.length,
     etaSeconds: null,
-    space: { ok: true, freeBytes: 1e12, totalBytes: 2e12, usedFraction: 0.5 },
+    space: {
+      ok: true,
+      status: "ok",
+      freeBytes: 1e12,
+      totalBytes: 2e12,
+      usedFraction: 0.5,
+    },
     warnings: [],
   };
 }

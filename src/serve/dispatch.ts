@@ -30,7 +30,13 @@ import {
 import { CONFIG_KEYS, FIELD_SCHEMAS, STATE_DIR } from "#lib/config/schema.ts";
 import { Journal } from "#lib/index/journal.ts";
 import { isMarkerFile, localDayKey } from "#lib/util/paths.ts";
-import { buildPlan, type PlanResult } from "#lib/plan/plan.ts";
+import { probeDestination } from "#lib/index/recovery.ts";
+import {
+  buildPlan,
+  destinationsFor,
+  snapshotDestinations,
+  type PlanResult,
+} from "#lib/plan/plan.ts";
 import { scanDevice, summarise, type Candidate } from "#lib/scan/scan.ts";
 import { AdbTransport } from "#lib/xfer/adb.ts";
 import { applyPurge, planPurge, type PurgePlan } from "#lib/xfer/purge.ts";
@@ -583,6 +589,13 @@ const handlerTable = {
     const gathered = await gatherCandidates(adb, resolved, devices);
     const journal = Journal.open(destRoot, ctx.logger);
     try {
+      const [onDisk, space] = await Promise.all([
+        snapshotDestinations(
+          destRoot,
+          destinationsFor(gathered.candidates, destRoot),
+        ),
+        probeDestination(realSpawn, destRoot),
+      ]);
       const planned = buildPlan(gathered.candidates, {
         destRoot,
         journal,
@@ -590,6 +603,8 @@ const handlerTable = {
         show: args.show,
         sinceSeconds: parseSince(args.since),
         exclude: new Set(args.exclude ?? []),
+        space,
+        onDisk,
       });
       // `buildPlan` only ever sees the candidates it was handed, so a device
       // that contributed none is invisible to it. The gather warnings are the
