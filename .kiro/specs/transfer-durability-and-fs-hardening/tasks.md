@@ -482,7 +482,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: on the deep and shallow fixtures, each with 1,000 files of 4,096 bytes (4,096,000 bytes per fixture), time the TypeScript removal (Bun `rm` with recursive set) and the Rust candidate from 4.1. Run five times per path, alternating the order between runs. Each run builds a new fixture and times only the removal. Call `mountGuard` before any write. The verdict's `result` is `pass` when the deep ratio, the TypeScript median over the Helper median, is at least 2.0, and the shallow ratio, the Helper median over the TypeScript median, is at most 1.10. Otherwise it is `fail`.
     - Done when: `ls bench/results/*-e2-trash.json` lists one record, its `verdict.result` is `pass` or `fail`, and `git log -1 --format=%s` prints `test(bench): record E2 trash removal on the archive drive`.
 
-  - [~] 4.3 Write the E3 script, run it on the archive drive, and commit its record
+  - [x] 4.3 Write the E3 script, run it on the archive drive, and commit its record
     - Needs the archive drive mounted. Requirements: R4.2, R4.3, R4.12. Design: Measurement plan (E3); O-11.
     - Files: `scripts/bench/e3-move-stat.ts` (new), `bench/results/<date>-e3-move-stat.json` (new, committed).
     - Build: the same fixtures and run rules as task 4.2. The move takes every file into a trash day folder, once with TypeScript `rename` and once with the Rust `renameat` candidate. The stat times TypeScript `stat` for each path, and the Helper stat as one group call. The move and the stat each get a verdict, `verdict.move.result` and `verdict.stat.result`, because R4.2 and R4.3 measure them separately. Call `mountGuard` before any write.

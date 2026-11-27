@@ -1,0 +1,331 @@
+{
+  "experiment": "e3-move-stat",
+  "startedAt": "2026-11-27T06:39:16.137Z",
+  "finishedAt": "2026-11-27T08:15:43.489Z",
+  "commit": {
+    "sha": "a091da1bbd317083bc914d64675ddff22c68604a",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "mount": {
+    "root": "/media/node/2TB",
+    "mountPoint": "/media/node/2TB",
+    "line": "/dev/sdb1 /media/node/2TB fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096 0 0",
+    "findmnt": "/dev/sdb1 fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096"
+  },
+  "driver": "ntfs-3g",
+  "device": {
+    "partition": "/dev/sdb1",
+    "disk": "/dev/sdb"
+  },
+  "usb": {
+    "port": "3-4",
+    "speedMbit": 480
+  },
+  "block": {
+    "disk": "/dev/sdb",
+    "rotational": true,
+    "writeCache": "write back",
+    "model": "HN-M201RAD"
+  },
+  "verdict": {
+    "result": "pass",
+    "move": {
+      "result": "pass",
+      "deepRatio": 144.93047673248992,
+      "shallowRatio": 0.45948821191636263
+    },
+    "stat": {
+      "result": "pass",
+      "deepRatio": 137.68294641849386,
+      "shallowRatio": 0.36192908689937503
+    },
+    "samples": {
+      "move": {
+        "deep": {
+          "ts": [
+            582356.026709,
+            521290.2821230001,
+            585178.8642500001,
+            575269.2084730002,
+            554992.6922979997
+          ],
+          "helper": [
+            3386.60096099996,
+            4726.878719999921,
+            4219.22458499996,
+            3969.2770039997995,
+            3652.278884999454
+          ]
+        },
+        "shallow": {
+          "ts": [
+            368.58798899990506,
+            307.2139670001343,
+            453.9195709996857,
+            430.4003119999543,
+            328.31719299964607
+          ],
+          "helper": [
+            168.27668299991637,
+            169.36183599941432,
+            184.22869099956006,
+            298.0291330004111,
+            139.83980600070208
+          ]
+        }
+      },
+      "stat": {
+        "deep": {
+          "ts": [
+            549330.223579,
+            559133.5772560001,
+            563052.9738960001,
+            571248.4597339998,
+            576399.3642290002
+          ],
+          "helper": [
+            4222.06071899971,
+            3726.034936999902,
+            4196.636559000239,
+            4089.4895739997737,
+            2723.646554999985
+          ]
+        },
+        "shallow": {
+          "ts": [
+            133.30634299991652,
+            123.96057699993253,
+            249.52594600012526,
+            160.57930199988186,
+            126.25328999944031
+          ],
+          "helper": [
+            48.247442999854684,
+            40.98912899987772,
+            64.70466100005433,
+            60.08446699939668,
+            37.38332900032401
+          ]
+        }
+      }
+    }
+  },
+  "raw": {
+    "runs": [
+      {
+        "run": 1,
+        "kind": "deep",
+        "which": "ts",
+        "statMs": 549330.223579,
+        "moveMs": 582356.026709
+      },
+      {
+        "run": 1,
+        "kind": "deep",
+        "which": "helper",
+        "statMs": 4222.06071899971,
+        "moveMs": 3386.60096099996,
+        "statInProcessMs": 3318.207,
+        "moveInProcessMs": 2757.634,
+        "capabilityMs": [
+          2.9624359998852015,
+          1.5737050001043826
+        ]
+      },
+      {
+        "run": 1,
+        "kind": "shallow",
+        "which": "ts",
+        "statMs": 133.30634299991652,
+        "moveMs": 368.58798899990506
+      },
+      {
+        "run": 1,
+        "kind": "shallow",
+        "which": "helper",
+        "statMs": 48.247442999854684,
+        "moveMs": 168.27668299991637,
+        "statInProcessMs": 45.102,
+        "moveInProcessMs": 164.87,
+        "capabilityMs": [
+          1.3442379999905825,
+          1.3592829999979585
+        ]
+      },
+      {
+        "run": 2,
+        "kind": "deep",
+        "which": "helper",
+        "statMs": 3726.034936999902,
+        "moveMs": 4726.878719999921,
+        "statInProcessMs": 3000.103,
+        "moveInProcessMs": 4025.015,
+        "capabilityMs": [
+          2.196053999941796,
+          1.6487239999696612
+        ]
+      },
+      {
+        "run": 2,
+        "kind": "deep",
+        "which": "ts",
+        "statMs": 559133.5772560001,
+        "moveMs": 521290.2821230001
+      },
+      {
+        "run": 2,
+        "kind": "shallow",
+        "which": "helper",
+        "statMs": 40.98912899987772,
+        "moveMs": 169.36183599941432,
+        "statInProcessMs": 37.785,
+        "moveInProcessMs": 163.883,
+        "capabilityMs": [
+          1.3437649998813868,
+          1.2640419998206198
+        ]
+      },
+      {
+        "run": 2,
+        "kind": "shallow",
+        "which": "ts",
+        "statMs": 123.96057699993253,
+        "moveMs": 307.2139670001343
+      },
+      {
+        "run": 3,
+        "kind": "deep",
+        "which": "ts",
+        "statMs": 563052.9738960001,
+        "moveMs": 585178.8642500001
+      },
+      {
+        "run": 3,
+        "kind": "deep",
+        "which": "helper",
+        "statMs": 4196.636559000239,
+        "moveMs": 4219.22458499996,
+        "statInProcessMs": 3567.16,
+        "moveInProcessMs": 3551.862,
+        "capabilityMs": [
+          1.5579420002177358,
+          1.3296880000270903
+        ]
+      },
+      {
+        "run": 3,
+        "kind": "shallow",
+        "which": "ts",
+        "statMs": 249.52594600012526,
+        "moveMs": 453.9195709996857
+      },
+      {
+        "run": 3,
+        "kind": "shallow",
+        "which": "helper",
+        "statMs": 64.70466100005433,
+        "moveMs": 184.22869099956006,
+        "statInProcessMs": 61.357,
+        "moveInProcessMs": 180.435,
+        "capabilityMs": [
+          1.3135009999386966,
+          1.4126549996435642
+        ]
+      },
+      {
+        "run": 4,
+        "kind": "deep",
+        "which": "helper",
+        "statMs": 4089.4895739997737,
+        "moveMs": 3969.2770039997995,
+        "statInProcessMs": 3173.861,
+        "moveInProcessMs": 3345.972,
+        "capabilityMs": [
+          2.6887719999067485,
+          1.2929730000905693
+        ]
+      },
+      {
+        "run": 4,
+        "kind": "deep",
+        "which": "ts",
+        "statMs": 571248.4597339998,
+        "moveMs": 575269.2084730002
+      },
+      {
+        "run": 4,
+        "kind": "shallow",
+        "which": "helper",
+        "statMs": 60.08446699939668,
+        "moveMs": 298.0291330004111,
+        "statInProcessMs": 56.609,
+        "moveInProcessMs": 293.944,
+        "capabilityMs": [
+          1.3044849997386336,
+          1.412775999866426
+        ]
+      },
+      {
+        "run": 4,
+        "kind": "shallow",
+        "which": "ts",
+        "statMs": 160.57930199988186,
+        "moveMs": 430.4003119999543
+      },
+      {
+        "run": 5,
+        "kind": "deep",
+        "which": "ts",
+        "statMs": 576399.3642290002,
+        "moveMs": 554992.6922979997
+      },
+      {
+        "run": 5,
+        "kind": "deep",
+        "which": "helper",
+        "statMs": 2723.646554999985,
+        "moveMs": 3652.278884999454,
+        "statInProcessMs": 2265.716,
+        "moveInProcessMs": 3126.141,
+        "capabilityMs": [
+          1.2361300000920892,
+          1.362342999316752
+        ]
+      },
+      {
+        "run": 5,
+        "kind": "shallow",
+        "which": "ts",
+        "statMs": 126.25328999944031,
+        "moveMs": 328.31719299964607
+      },
+      {
+        "run": 5,
+        "kind": "shallow",
+        "which": "helper",
+        "statMs": 37.38332900032401,
+        "moveMs": 139.83980600070208,
+        "statInProcessMs": 34.011,
+        "moveInProcessMs": 136.137,
+        "capabilityMs": [
+          1.2943080002442002,
+          1.3272900003939867
+        ]
+      }
+    ],
+    "df": {
+      "start": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sdb1      2000397791232 1571572834304 428824956928  79% /media/node/2TB\n",
+      "end": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sdb1      2000397791232 1571572834304 428824956928  79% /media/node/2TB\n"
+    }
+  }
+}
