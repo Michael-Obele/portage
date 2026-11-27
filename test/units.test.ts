@@ -56,6 +56,7 @@ import {
   readCiBunPin,
 } from "../scripts/bench/record.ts";
 
+import { s1Verdict } from "../scripts/bench/send-s1.ts";
 import {
   cleanupManifest,
   guardFolder,
@@ -1333,5 +1334,57 @@ describe("send spike guard", () => {
 
   test("the writer refuses a bad experiment name", () => {
     expect(() => writeSpikeRecord("../x", { result: "pass" }, {})).toThrow();
+  });
+});
+
+describe("send S1 verdict", () => {
+  const H = "a".repeat(64);
+  const X = "b".repeat(64);
+  const good = {
+    phoneToHost: { sourceHash: H, receivedHash: H },
+    hostToPhone: { sourceHash: H, receivedHash: H },
+    control: { sourceHash: H, receivedHash: H },
+    push: { sourceHash: H, receivedHash: H },
+    renameOver: { ok: true },
+    renameNoClobber: { ok: true },
+  };
+
+  test("passes only when both directions match", () => {
+    const v = s1Verdict(good);
+    expect(v.result).toBe("pass");
+    expect(v.failedDirections).toEqual([]);
+  });
+
+  test("a failed direction carries both hashes", () => {
+    const v = s1Verdict({ ...good, hostToPhone: { sourceHash: H, receivedHash: X } });
+    expect(v.result).toBe("fail");
+    expect(v.failedDirections).toEqual([
+      { direction: "host-to-phone", sourceHash: H, receivedHash: X },
+    ]);
+    const both = s1Verdict({
+      ...good,
+      phoneToHost: { sourceHash: X, receivedHash: H },
+      hostToPhone: { sourceHash: H, receivedHash: X },
+    });
+    expect(both.failedDirections.map((d) => d.direction)).toEqual([
+      "phone-to-host",
+      "host-to-phone",
+    ]);
+  });
+
+  test("a missing hash is not equal", () => {
+    const v = s1Verdict({ ...good, phoneToHost: { sourceHash: null, receivedHash: null } });
+    expect(v.result).toBe("fail");
+  });
+
+  test("control, push and rename results do not change the verdict", () => {
+    const v = s1Verdict({
+      ...good,
+      control: { sourceHash: H, receivedHash: X },
+      push: { sourceHash: H, receivedHash: null },
+      renameOver: { ok: false },
+      renameNoClobber: { ok: false },
+    });
+    expect(v.result).toBe("pass");
   });
 });
