@@ -11,6 +11,8 @@ export interface SendRequest {
   target: { deviceId: string; folder: string };
   replace: boolean;
   move: boolean;
+  /** True when the owner picked one file (OI-8). */
+  single?: boolean;
 }
 
 export type PlanVerdict =

@@ -2385,17 +2385,19 @@ describe("send archive mount", () => {
         !segs.includes("..") &&
         !segs.includes(".portage");
       const j = judgeArchiveMount(state, "/mnt/archive", folder);
+      const reason = j.ok ? "" : j.reason;
       if (kind === "unreadable") {
         expect(j.ok).toBe(false);
-        expect(j.reason).toContain("could not be read");
-        expect(j.reason).not.toContain("not mounted");
+        expect(reason).toContain("could not be read");
+        expect(reason).not.toContain("not mounted");
         return;
       }
       if (kind === "not-mounted") {
         expect(j.ok).toBe(false);
-        expect(j.reason).toContain("not mounted");
+        expect(reason).toContain("not mounted");
         return;
       }
+      if (state.kind !== "mounted") throw new Error("unreachable");
       const expected =
         state.target !== "/" &&
         !state.options.split(",").includes("ro") &&

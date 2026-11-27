@@ -230,97 +230,97 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `test/helpers.ts`.
     - Build: `seededCases(seed, n)`, a fixed-seed generator that prints its seed when a case fails. `FakeAdb` records every call in order (method, serial, path, arguments) and gives scripted outcomes: ok, exit code, deadline, unplug, wrong digest, missing sentinel, byte stall, and removal failure. `FakeHost` records archive reads, host temporary files, and relay handles, on a deterministic clock.
     - Done when: `bun run test` and `bun run typecheck` exit 0.
-  - [~] 4.2 Write the Property 6 test (red)
+  - [x] 4.2 Write the Property 6 test (red)
     - Requirements: R6.1, R6.2, R6.8, R14.11. Design: §3.2, §2.8, EH-17. D12. Property 6.
     - Files: `test/units.test.ts` (describe `send archive mount`).
     - Test: `Feature: send-to-phone, Property 6: the archive mount decides admission, and an unreadable mount is never healthy`. The archive is admitted only when the reading is mounted, the target is not `/`, `ro` is absent, and the folder resolves under the archive root without a `.portage` segment. An unreadable reading gives "the mount could not be read", never "not mounted", "healthy", or "read-only".
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 6:"` fails, because `src/send/plan.ts` does not exist yet.
-  - [~] 4.3 Build judgeArchiveMount
+  - [x] 4.3 Build judgeArchiveMount
     - Requirements: R6.1, R6.2, R6.8. Design: §3.2, EH-17. D12. Notes N6 (reuse durability's rule).
     - Files: `src/send/plan.ts` (new).
     - Build: `judgeArchiveMount(state, root, folder)` as a pure function. It uses the `MountState` from durability task 2.9 and the refusal words of EH-17.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 6:"` passes.
-  - [~] 4.4 Write the Property 13 test (red)
+  - [x] 4.4 Write the Property 13 test (red)
     - Requirements: R7.13, R7.14, R8.3, R8.4. Design: §3.2, EH-12. D20. Property 13.
     - Files: `test/units.test.ts` (describe `send free space`).
     - Test: `Feature: send-to-phone, Property 13: free space gates for the phone and the host`. A missing free-space reading is refused as "could not be read". A shortfall is refused exactly when free minus headroom is below the bytes to write. The host check counts every temporary file that can exist at once.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 13:"` fails, because `judgeFreeSpace` does not exist in `src/send/plan.ts` yet.
-  - [~] 4.5 Build judgeFreeSpace
+  - [x] 4.5 Build judgeFreeSpace
     - Requirements: R7.13, R7.14, R8.3. Design: §3.2. D20 (`space_headroom`, C22).
     - Files: `src/send/plan.ts`.
     - Build: `judgeFreeSpace({ free, total, bytesToWrite, headroomFraction })`. Each refusal carries the shortfall in bytes.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 13:"` passes.
-  - [~] 4.6 Write the Property 3 test (red)
+  - [x] 4.6 Write the Property 3 test (red)
     - Requirements: R5.1 to R5.5, R14.6. Design: §3.12, EH-16. D11. Property 3.
     - Files: `test/units.test.ts` (describe `send device identity`).
     - Test: `Feature: send-to-phone, Property 3: device identity and phone choice`. A target id is accepted only when it belongs to a ready phone. Two phones that share a device id or serial are refused. A phone-to-phone send needs exactly two ready phones. A drive-to-phone send with no named target chooses none. An empty `ro.serialno` is refused, and the phone is named by serial and model.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 3:"` fails, because `judgeDevices` does not exist in `src/send/plan.ts` yet.
-  - [~] 4.7 Build judgeDevices
+  - [x] 4.7 Build judgeDevices
     - Requirements: R5.1 to R5.6. Design: §3.12, EH-16, EH-6. D11.
     - Files: `src/send/plan.ts`.
     - Build: `judgeDevices(request, phones)`. An unauthorized phone gets the fix "accept the USB debugging prompt on the phone" (R5.6).
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 3:"` passes.
-  - [~] 4.8 Write the Property 9 test (red)
+  - [x] 4.8 Write the Property 9 test (red)
     - Requirements: R7.1, R7.2. Design: §2.8, DD-6, EH-29. D2. OI-7 (keep the source folder's name). Property 9.
     - Files: `test/units.test.ts` (describe `send target paths`).
     - Test: `Feature: send-to-phone, Property 9: target paths stay inside the target folder`. The target path is the target folder, then the source folder's name (OI-7), then the relative path. Every created folder lies under the target folder. The list of created folders equals the folders that were missing.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 9:"` fails, because `targetPathFor` does not exist in `src/send/plan.ts` yet.
-  - [~] 4.9 Build targetPathFor and missingFolderChain
+  - [x] 4.9 Build targetPathFor and missingFolderChain
     - Requirements: R7.1, R7.2. Design: §2.8, DD-6, AD-4. OI-7.
     - Files: `src/send/plan.ts`.
     - Build: `targetPathFor(targetFolder, sourceName, relative)` and `missingFolderChain(path, existing)`. The chain lists only the folders that are missing, one level at a time.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 9:"` passes.
-  - [~] 4.10 Write the Property 10 test (red)
+  - [x] 4.10 Write the Property 10 test (red)
     - Requirements: R7.5, R7.7. Design: §2.2, §2.3 step 3. D8. Property 10.
     - Files: `test/units.test.ts` (describe `send skip rule`).
     - Test: `Feature: send-to-phone, Property 10: a file is skipped only when both sides hash the same`. A file is skipped as "already there" only when sizes are equal and both SHA-256 values are equal. A size match alone never skips. A hash is read only for same-size pairs.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 10:"` fails, because `judgePlanFile` does not exist in `src/send/plan.ts` yet.
-  - [~] 4.11 Write the Property 11 test (red)
+  - [x] 4.11 Write the Property 11 test (red)
     - Requirements: R7.6, R7.11. Design: §2.3 step 7, §4.1. D8, D23. Property 11.
     - Files: `test/units.test.ts` (describe `send replace rule`).
     - Test: `Feature: send-to-phone, Property 11: a differing file is replaced only when the owner chose replace`. Without replace, a differing file is "different file at this path" and is not written. With replace, the verdict is `replace`, and it records the old size and hash (D23).
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 11:"` fails, because `judgePlanFile` does not exist in `src/send/plan.ts` yet.
-  - [~] 4.12 Build judgePlanFile
+  - [x] 4.12 Build judgePlanFile
     - Requirements: R7.5, R7.6, R7.7, R7.11. Design: §2.2, §4.1. D8, D23.
     - Files: `src/send/plan.ts`.
     - Build: `judgePlanFile(input)` returns one verdict: copy, replace, skip "already there", skip "different file at this path", or refuse for a folder at the target path (EH-30). It reads hashes only for same-size pairs.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 10:"` and `-t "Property 11:"` both pass.
-  - [~] 4.13 Write the Property 12 test (red)
+  - [x] 4.13 Write the Property 12 test (red)
     - Requirements: R7.10, R16.2. Design: §2.8, EH-21, EH-22. D27, DD-4. Property 12.
     - Files: `test/units.test.ts` (describe `send names`).
     - Test: `Feature: send-to-phone, Property 12: names keep their bytes, and case collisions are refused`. Names that differ only in case are both refused. A control character, invalid UTF-8, or U+FFFD after decoding is skipped with a reason. Other names pass unchanged. A name over 255 bytes with its 31-byte partial overhead is refused, never truncated. `quoteShellArg` output is read by `sh` as one word equal to the name.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 12:"` fails, because `nameVerdict` does not exist in `src/send/plan.ts` yet.
-  - [~] 4.14 Build nameVerdict
+  - [x] 4.14 Build nameVerdict
     - Requirements: R7.10, R16.2. Design: §2.8, EH-21, EH-22. D27.
     - Files: `src/send/plan.ts`.
     - Build: `nameVerdict(names)` returns a verdict for each name, using the reason text of EH-21 and EH-22.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 12:"` passes.
-  - [~] 4.15 Write the Property 36 test (red)
+  - [x] 4.15 Write the Property 36 test (red)
     - Requirements: R8.15, R7.15. Design: §2.8, EH-24. D19. OI-9 (never-scan rules apply), OI-10 (zero bytes are skipped). Property 36.
     - Files: `test/units.test.ts` (describe `send phone source skips`).
     - Test: `Feature: send-to-phone, Property 36: zero-byte, in-flight, and recent phone files are skipped, and only those`. A zero-byte file, a name with `.part`, `.tmp`, or `.crdownload`, and a file modified within `quiet_seconds` are skipped. No other file is skipped.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 36:"` fails, because `judgeSourcePhoneFile` does not exist in `src/send/plan.ts` yet.
-  - [~] 4.16 Build judgeSourcePhoneFile
+  - [x] 4.16 Build judgeSourcePhoneFile
     - Requirements: R8.15. Design: §2.8. D19, OI-10. The suffix list and `quiet_seconds` come from `src/config/schema.ts:123` and `src/scan/scan.ts:81-84`.
     - Files: `src/send/plan.ts`.
     - Build: `judgeSourcePhoneFile(file, now, quietSeconds)`. Reads the existing suffix list. It does not copy it.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 36:"` passes.
-  - [~] 4.17 Write the Property 8 test (red)
+  - [x] 4.17 Write the Property 8 test (red)
     - Requirements: R6.5, R6.6, R8.13. Design: §2.3 steps 1 and 3, EH-23, F-13. Property 8.
     - Files: `test/units.test.ts` (describe `send source queue`).
     - Test: `Feature: send-to-phone, Property 8: a source file is queued only when it was read and did not change`. A path that is missing at its turn gives `missing-since-plan`. Any other stat or read failure gives `could-not-read-source`. A file whose size changed is never queued.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 8:"` fails, because `judgeSourceFile` does not exist in `src/send/plan.ts` yet.
-  - [~] 4.18 Build judgeSourceFile
+  - [x] 4.18 Build judgeSourceFile
     - Requirements: R6.5, R6.6, R8.13. Design: §2.3 steps 1 and 3, F-13. EH-23.
     - Files: `src/send/plan.ts`.
     - Build: `judgeSourceFile(stat, plannedSize)`. It stats the path before any hash, so a missing path and an unreadable one stay separate.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 8:"` passes.
-  - [~] 4.19 Write the Property 24 test (red)
+  - [x] 4.19 Write the Property 24 test (red)
     - Requirements: R8.10, R14.2, R5.5. Design: §4.1, §4.5. D1. OI-2 (phone roots), OI-8 (single files), OI-9 (never-scan). Property 24.
     - Files: `test/units.test.ts` (describe `send request rules`).
     - Test: `Feature: send-to-phone, Property 24: move is offered only for phone sources`. A drive source with move is refused. A phone source may choose move. Roots are limited to `/sdcard` and `/storage/emulated/0`, and a `..` segment is refused (OI-2). A `single` file is accepted (OI-8). A phone source under a never-scan folder is refused (OI-9).
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 24:"` fails, because `judgeRequest` does not exist in `src/send/plan.ts` yet.
-  - [~] 4.20 Build judgeRequest
+  - [x] 4.20 Build judgeRequest
     - Requirements: R8.10, R14.2. Design: §4.1, §2.8. OI-2, OI-8, OI-9.
     - Files: `src/send/plan.ts`.
     - Build: `judgeRequest(request)` returns a refusal with its reason, or accepts the request.
