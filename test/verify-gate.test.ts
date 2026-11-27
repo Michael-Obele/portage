@@ -7,6 +7,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { Journal } from "../src/index/journal.ts";
@@ -439,6 +440,56 @@ describe("crash recovery", () => {
 
     expect(report.orphanPartials.length).toBeGreaterThan(0);
     expect(report.notes.join(" ")).toContain("no journal row");
+  });
+});
+
+describe("reconcile three-way", () => {
+  function verifiedRow(destPath: string) {
+    const row = journal.upsertTransfer({
+      runId: null,
+      deviceId: fakeDevice().id,
+      srcPath: "/sdcard/Movies/Frieren/ep20.mkv",
+      destPath,
+      pathNorm: destPath.toLowerCase(),
+      size: 1024,
+      srcMtime: 1_700_000_000,
+      state: "verified",
+    });
+    journal.setHash(row.id, sha256OfBytes(1024), "full");
+    return row;
+  }
+
+  test("a path under a regular file is unreadable, and the row stays verified", async () => {
+    await Bun.write(join(drive.root, "plain"), "x");
+    const dest = join(drive.root, "plain", "ep20.mkv");
+    const row = verifiedRow(dest);
+
+    const report = await reconcile(journal, drive.partialDir, drive.root);
+
+    expect(report.unreadable).toContain(dest);
+    expect(report.missing).toBe(0);
+    expect(journal.getTransfer(row.id)?.state).toBe("verified");
+  });
+
+  test("a missing destination is still failed with missing", async () => {
+    const row = verifiedRow(join(drive.root, "Frieren/ep20.mkv"));
+
+    const report = await reconcile(journal, drive.partialDir, drive.root);
+
+    expect(report.missing).toBe(1);
+    expect(report.unreadable).toEqual([]);
+    expect(journal.getTransfer(row.id)?.state).toBe("failed");
+    expect(journal.getTransfer(row.id)?.last_error).toContain("missing");
+  });
+
+  test("an unreadable partial is listed as unreadable, not as an orphan", async () => {
+    const loop = join(drive.partialDir, "loop.mkv");
+    symlinkSync("loop.mkv", loop); // stat gives ELOOP, which is not ENOENT
+
+    const report = await reconcile(journal, drive.partialDir, drive.root);
+
+    expect(report.unreadable).toContain(loop);
+    expect(report.orphanPartials).not.toContain(loop);
   });
 });
 

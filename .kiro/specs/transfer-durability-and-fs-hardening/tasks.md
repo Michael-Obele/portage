@@ -192,31 +192,31 @@ This plan builds the feature in the order that requirements.md and design.md app
 
 - [ ] 2. Phase 2: probes and bounded drive reads (R2.1 to R2.5, R2.8 to R2.12, R2.14, R2.15, Appendix A)
      This phase starts after checkpoint 1.20. Phase 1 already moved the copy-path and verify-path stats (R2.6, R2.7) and the flushes. This phase moves the other Appendix A call sites. Task 1.7 builds the breaker (R2.12), and this phase wires it to the run loop (2.27), the status frame (2.28 and 2.29), and Doctor (2.30). Tasks 2.31 to 2.33 then apply the approved mount rule, the Doctor bound, and the verify and purge deadlines. Every probe test uses a fake that never resolves and a 50 ms deadline. Each test is red until the task named in its Done when line is done.
-  - [~] 2.1 Write the destination-check probe tests (red)
+  - [x] 2.1 Write the destination-check probe tests (red)
     - Requirements: R2.1, R2.3, R2.4. Design: Correctness Property 3 at the call sites; EH-2 (destination check row); EH-13; DV-4, DV-14.
     - Files: `test/units.test.ts` (new `destination check` describe block).
     - Tests first: a `findmnt` fake that never resolves, at a 50 ms deadline, gives `unreadable` with reason `timeout`. The destination's reason is the EH-13 text "the destination could not be read; nothing was changed". The status is neither `not-mounted` nor `ok`. A `df` fake that never resolves gives `unreadable`, never zero free space. Exit 1 with no output gives `not-mounted`. Exit 0 gives `mounted` with the filesystem type, the options, and the target. `checkDestination` with a timed-out `findmnt` returns `status: "unreadable"` and `ok: false`.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "destination check"` fails, because `readMount`, `probeDestination`, and the async `checkDestination` do not exist yet.
 
-  - [~] 2.2 Write the reconcile three-way tests (red)
+  - [x] 2.2 Write the reconcile three-way tests (red)
     - Requirements: R2.5. Design: EH-2 (reconcile rows); Appendix A rows P9 and P10; DV-3, DV-28.
     - Files: `test/verify-gate.test.ts` (new `reconcile three-way` describe block).
     - Tests first: a `verified` row whose path sits under a regular file gets ENOTDIR, which is not ENOENT. Reconcile keeps that row `verified` and lists the path under `unreadable`. A missing destination is still marked `failed` with "missing". An unreadable partial is listed under `unreadable`, not under `orphanPartials`. The tests call `reconcile(journal, partialDir, root)`.
     - Done when: `bun test --preload ./scripts/preload.ts test/verify-gate.test.ts -t "reconcile three-way"` fails.
 
-  - [~] 2.3 Write the unreadable-trash tests (red)
+  - [x] 2.3 Write the unreadable-trash tests (red)
     - Requirements: R2.11. Design: EH-2 (trash row); Correctness Property 3.
     - Files: `test/trash.test.ts` (new `unreadable trash` describe block).
     - Tests first: a trash root under a regular file gives `unreadable` set to "the trash could not be read" and `exists` false. The status never reads as "no trash".
     - Done when: `bun test --preload ./scripts/preload.ts test/trash.test.ts -t "unreadable trash"` fails.
 
-  - [~] 2.4 Write the survivor-check tests (red)
+  - [x] 2.4 Write the survivor-check tests (red)
     - Requirements: R2.9. Design: EH-2 (survivor row); EH-13; Notes N15.
     - Files: `test/dedupe.test.ts` (new `survivor check` describe block).
     - Tests first: a survivor path under a regular file is not counted as a survivor, and the deletion is refused with the EH-13 text "the destination could not be read; nothing was changed".
     - Done when: `bun test --preload ./scripts/preload.ts test/dedupe.test.ts -t "survivor check"` fails.
 
-  - [~] 2.5 Write the purge and Doctor probe tests (red)
+  - [x] 2.5 Write the purge and Doctor probe tests (red)
     - Requirements: R2.2, R2.3, R2.8, R2.10. Design: EH-2 (purge rows, Doctor rows); EH-13; Appendix A rows P12, P18, P19; DV-29.
     - Files: `test/serve.test.ts` (new `unreadable reads` describe block).
     - Tests first, each with a 50 ms deadline:
@@ -228,13 +228,13 @@ This plan builds the feature in the order that requirements.md and design.md app
       - "a status request is answered while a purge probe never resolves" (R2.8): with the purge `statDrive` fake stalled, a status request on the dispatch path returns before the probe's 50 ms deadline. It is red until task 2.19 wires the probe.
     - Done when: `bun test --preload ./scripts/preload.ts test/serve.test.ts -t "unreadable reads"` fails.
 
-  - [~] 2.6 Write the planner-snapshot tests (red)
+  - [x] 2.6 Write the planner-snapshot tests (red)
     - Requirements: R2.1, R2.2, R2.3, R2.8. Design: Components (`src/plan/plan.ts`: `snapshotDestinations`, `DriveEntryState`, `PlanOptions.space` and `onDisk`); "Behaviour of buildPlan with the snapshot"; DV-10, DV-11.
     - Files: `test/plan.test.ts` (new `planner snapshot` describe block).
     - Tests first: a `statDrive` fake that never resolves makes `snapshotDestinations` return each path as `unreadable` at the 50 ms deadline (row P17). An `unreadable` entry skips the file with "the path could not be read; not transferred over". An entry absent from the map is treated as unreadable and skipped with the same text. A `missing` entry is planned for transfer. An `ok` file of the same size is skipped, and a file of a different size is a collision, as before. `buildPlan` returns a value, not a promise.
     - Done when: `bun test --preload ./scripts/preload.ts test/plan.test.ts -t "planner snapshot"` fails.
 
-  - [~] 2.7 Write the rsync-check and Doctor-flush deadline tests (red)
+  - [x] 2.7 Write the rsync-check and Doctor-flush deadline tests (red)
     - Requirements: R2.2, R2.3, R2.8. Design: Appendix A rows P14 and P15; EH-13 (`check failed: no answer within <s> s`); DV-29; Testing strategy (the `timeoutMs` seam).
     - Files: `test/units.test.ts` (new `deadline checks` describe block).
     - Tests first, each with a fake that never resolves and a 50 ms deadline:

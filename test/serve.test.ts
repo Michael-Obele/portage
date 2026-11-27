@@ -22,9 +22,12 @@ import { Adb, type DeviceFile, type DeviceInfo } from "../src/device/adb.ts";
 import type { DupeReport } from "../src/dedupe/types.ts";
 import type { EngineSummary } from "../src/xfer/engine.ts";
 import type { PlanResult, PlannedFile } from "../src/plan/plan.ts";
-import type { PurgePlan } from "../src/xfer/purge.ts";
+import { applyPurge, type PurgePlan } from "../src/xfer/purge.ts";
+import { Journal } from "../src/index/journal.ts";
+import { probe, resetDriveState, statDrive } from "../src/util/probe.ts";
+import { doctor, type DoctorContext } from "../src/serve/doctor.ts";
 import type { SpawnFn } from "../src/util/spawn.ts";
-import { createContext, dispatch, withFreshDriveCopies } from "../src/serve/dispatch.ts";
+import { captureOutput, createContext, dispatch, withFreshDriveCopies } from "../src/serve/dispatch.ts";
 import { connect, snapshot, type Sink } from "../src/serve/frames.ts";
 import { serve, type ServeOptions } from "../src/serve/index.ts";
 import { PendingRegister } from "../src/serve/pending.ts";
@@ -1583,6 +1586,197 @@ describe("a purge plan is checked against the drive before it is offered", () =>
       expect(plan.eligible).toHaveLength(0);
       expect(plan.bytesReclaimed).toBe(0);
       expect(plan.refused).toHaveLength(1);
+    } finally {
+      await drive.cleanup();
+    }
+  });
+});
+
+// --- unreadable reads -------------------------------------------------------
+
+describe("unreadable reads", () => {
+  const DEADLINE_MS = 50;
+  const NEVER = () => new Promise<never>(() => {});
+  /** A drive read that never answers, cut at the 50 ms deadline. */
+  const stalledStat: typeof statDrive = (root, path) =>
+    probe(root, `stat ${path}`, NEVER, DEADLINE_MS);
+
+  afterEach(() => resetDriveState());
+
+  function purgeCandidate(destPath: string) {
+    return {
+      deviceId: "dev",
+      serial: "serial",
+      srcPath: `/sdcard/Download/${destPath.split("/").pop()}`,
+      destPath,
+      size: 5,
+      proof: "journal-hash" as const,
+      hash: "deadbeef",
+    };
+  }
+
+  function planOf(destPath: string): PurgePlan {
+    return { eligible: [purgeCandidate(destPath)], refused: [], bytesReclaimed: 5 };
+  }
+
+  test("dispatch purge refuses an unreadable drive copy", async () => {
+    const drive = await makeTempDrive("portage-unreadable-purge-");
+    try {
+      const dest = join(drive.root, "here.mkv");
+      await Bun.write(dest, "bytes");
+      const plan = await withFreshDriveCopies(planOf(dest), drive.root, {
+        statDrive: stalledStat,
+      });
+      expect(plan.eligible).toHaveLength(0);
+      expect(plan.refused.map((r) => r.reason)).toEqual(["drive copy unreadable"]);
+
+      const gone = await withFreshDriveCopies(
+        planOf(join(drive.root, "gone.mkv")),
+        drive.root,
+      );
+      expect(gone.refused[0]?.reason).toBe(
+        "the drive copy is gone — nothing was deleted",
+      );
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
+  test("applyPurge refuses an unreadable drive copy", async () => {
+    const drive = await makeTempDrive("portage-unreadable-apply-");
+    const journal = Journal.open(drive.root);
+    try {
+      const removed: string[] = [];
+      const options = (root: string, stat?: typeof statDrive) =>
+        ({
+          journal,
+          transport: {
+            removeSource: async (_serial: string, path: string) => {
+              removed.push(path);
+              return true;
+            },
+          },
+          verifyHash: false,
+          dryRun: false,
+          apply: true,
+          root,
+          ...(stat ? { statDrive: stat } : {}),
+        }) as unknown as Parameters<typeof applyPurge>[1];
+      const dest = join(drive.root, "here.mkv");
+      await Bun.write(dest, "bytes");
+
+      const stalled = await applyPurge(planOf(dest), options(drive.root, stalledStat));
+      expect(stalled).toEqual({ deleted: 0, failed: 1 });
+      const missing = await applyPurge(
+        planOf(join(drive.root, "gone.mkv")),
+        options(drive.root),
+      );
+      expect(missing).toEqual({ deleted: 0, failed: 1 });
+      const messages = journal.recentEvents(10).map((e) => e.msg);
+      expect(messages.some((m) => m.includes("drive copy unreadable"))).toBe(true);
+      expect(messages.some((m) => m.includes("drive copy no longer exists"))).toBe(true);
+      expect(removed).toEqual([]);
+    } finally {
+      journal.close();
+      await drive.cleanup();
+    }
+  });
+
+  test("a directory in place of a drive copy is refused as not a file", async () => {
+    const drive = await makeTempDrive("portage-unreadable-dir-");
+    try {
+      const dest = join(drive.root, "folder.mkv");
+      await mkdir(dest);
+      const plan = await withFreshDriveCopies(planOf(dest), drive.root);
+      expect(plan.eligible).toHaveLength(0);
+      expect(plan.refused.map((r) => r.reason)).toEqual([
+        "the drive copy is not a file — nothing was deleted",
+      ]);
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
+  async function doctorRows(
+    root: string,
+    deps: NonNullable<DoctorContext["deps"]>,
+  ): Promise<Array<{ label: string; value: string }>> {
+    const capture = captureOutput();
+    await doctor({
+      resolved: resolvedFor(root),
+      adb: null,
+      output: capture.output,
+      bench: false,
+      deps,
+    });
+    const last = capture.payloads.at(-1) as {
+      checks: Array<{ label: string; value: string }>;
+    };
+    return last.checks;
+  }
+
+  const dfOk = (cmd: string[]) =>
+    cmd[0] === "df"
+      ? Promise.resolve({ code: 0, stdout: "B Avail\n1000 900\n", stderr: "", durationMs: 1 })
+      : NEVER();
+
+  test("Doctor destination row reads an unreadable root as could not be read", async () => {
+    const drive = await makeTempDrive("portage-unreadable-doctor-");
+    try {
+      const rows = await doctorRows(drive.root, { statDrive: stalledStat, spawn: dfOk });
+      const row = rows.find((r) => r.label === "destination");
+      expect(row?.value).toContain("the destination could not be read");
+      expect(row?.value).not.toContain("does not exist");
+
+      const gone = await doctorRows(join(drive.root, "nope"), {});
+      expect(gone.find((r) => r.label === "destination")?.value).toContain(
+        "does not exist",
+      );
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
+  test("Doctor mount check reads a timed-out findmnt as could not be read", async () => {
+    const drive = await makeTempDrive("portage-unreadable-mount-");
+    try {
+      const rows = await doctorRows(drive.root, {
+        spawn: dfOk,
+        timeoutMs: DEADLINE_MS,
+      });
+      const text = rows.map((r) => r.value).join("\n");
+      expect(text).toContain("the mount check could not be read");
+      expect(text).not.toContain("unknown filesystem");
+      expect(text).not.toContain("is mounted read-only");
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
+  test("a status request is answered while a purge probe never resolves", async () => {
+    const drive = await makeTempDrive("portage-unreadable-status-");
+    try {
+      const c = collector();
+      const ctx = createContext({
+        frames: connect(c.sink),
+        logger: silentLogger,
+        resolveConfig: async () => resolvedFor(drive.root),
+        adb: async () => null,
+      });
+      const dest = join(drive.root, "here.mkv");
+      await Bun.write(dest, "bytes");
+      const started = performance.now();
+      const purge = withFreshDriveCopies(planOf(dest), drive.root, {
+        statDrive: stalledStat,
+      });
+      await dispatch(cmd("s1", "status", {}), ctx);
+      const elapsed = performance.now() - started;
+
+      expect(answerFor(c.frames(), "s1").ok).toBe(true);
+      expect(elapsed).toBeLessThan(DEADLINE_MS);
+      expect((await purge).refused.map((r) => r.reason)).toEqual([
+        "drive copy unreadable",
+      ]);
     } finally {
       await drive.cleanup();
     }

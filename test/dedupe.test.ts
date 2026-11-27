@@ -569,3 +569,31 @@ describe("--json parity", () => {
     }
   });
 });
+
+describe("survivor check", () => {
+  test("a survivor under a regular file is unreadable, and the deletion is refused", async () => {
+    const root = await drive();
+    try {
+      const a = await put(root, "Anime/a/ep01.mkv", 4096);
+      const b = await put(root, "Anime/b/ep01.mkv", 4096);
+      const report = await scanDuplicates({ roots: [root] });
+      // `b`'s folder becomes a plain file: stat of `b` is ENOTDIR, not ENOENT.
+      await rm(join(root, "Anime/b"), { recursive: true });
+      await Bun.write(join(root, "Anime/b"), "not a folder");
+
+      const result = await applySelection(report, [a], { destRoot: root });
+
+      expect(result.moved).toHaveLength(0);
+      expect(result.refused).toEqual([
+        {
+          path: a,
+          reason: "the destination could not be read; nothing was changed",
+        },
+      ]);
+      expect(b).toContain("Anime/b");
+      expect(await Bun.file(a).exists()).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});

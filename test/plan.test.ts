@@ -200,3 +200,141 @@ describe("a file removed from the pull by hand", () => {
     expect(plan.skipped[0]!.excluded).toBe(true);
   });
 });
+
+describe("planner snapshot", () => {
+  // Loaded per test, so the older blocks pass until these exports exist.
+  const load = () => import("../src/plan/plan.ts");
+  const NEVER = () => new Promise<never>(() => {});
+  const DEADLINE_MS = 50;
+  const UNREADABLE_SKIP = "the path could not be read; not transferred over";
+
+  const MOUNTED = {
+    mount: {
+      kind: "mounted" as const,
+      fsType: "ext4",
+      options: "rw",
+      target: "/mnt/archive",
+    },
+    space: { kind: "ok" as const, free: 1e12, total: 2e12 },
+  };
+
+  type Entry = import("../src/util/probe.ts").ProbeResult<{
+    isFile: boolean;
+    size: number;
+  }>;
+  const ok = (size: number, isFile = true): Entry => ({
+    kind: "ok",
+    value: { isFile, size },
+  });
+  const unreadable: Entry = {
+    kind: "unreadable",
+    reason: "error",
+    code: "EIO",
+    message: "I/O error",
+  };
+
+  async function planWith(files: Candidate[], onDisk: Map<string, Entry>) {
+    const { buildPlan } = await load();
+    return buildPlan(files, {
+      destRoot: drive.root,
+      journal,
+      spaceHeadroom: 0,
+      space: MOUNTED,
+      onDisk,
+    } as unknown as PlanOptions);
+  }
+
+  test("a stalled statDrive makes every path unreadable at the deadline", async () => {
+    const { snapshotDestinations } = await load();
+    const { probe, resetDriveState } = await import("../src/util/probe.ts");
+    resetDriveState();
+    try {
+      const stalled = (root: string, path: string) =>
+        probe(root, `stat ${path}`, NEVER, DEADLINE_MS);
+      const paths = [join(drive.root, "a.mkv"), join(drive.root, "b.mkv")];
+      const started = performance.now();
+      const snap = await snapshotDestinations(drive.root, paths, stalled);
+      expect(performance.now() - started).toBeLessThan(2000);
+      for (const path of paths) {
+        expect(snap.get(path)?.kind).toBe("unreadable");
+      }
+    } finally {
+      resetDriveState();
+    }
+  });
+
+  test("destinationsFor and snapshotDestinations read a real file", async () => {
+    const { destinationsFor, snapshotDestinations } = await load();
+    const relative = "Frieren/ep01.mkv";
+    await mkdir(join(drive.root, "Frieren"), { recursive: true });
+    await Bun.write(join(drive.root, relative), new Uint8Array(SIZE));
+    const paths = destinationsFor(
+      [candidate(relative), candidate("Frieren/ep02.mkv")],
+      drive.root,
+    );
+    expect(paths).toEqual([
+      join(drive.root, relative),
+      join(drive.root, "Frieren/ep02.mkv"),
+    ]);
+    const snap = await snapshotDestinations(drive.root, paths);
+    expect(snap.get(paths[0]!)).toEqual(ok(SIZE));
+    expect(snap.get(paths[1]!)?.kind).toBe("missing");
+  });
+
+  test("an unreadable entry skips the file and never queues it", async () => {
+    const relative = "Frieren/ep01.mkv";
+    const dest = join(drive.root, relative);
+    const plan = await planWith([candidate(relative)], new Map([[dest, unreadable]]));
+    expect(plan.toTransfer).toHaveLength(0);
+    expect(plan.skipped[0]?.skipReason).toBe(UNREADABLE_SKIP);
+  });
+
+  test("an entry absent from the map is skipped the same way", async () => {
+    const plan = await planWith([candidate("Frieren/ep01.mkv")], new Map());
+    expect(plan.toTransfer).toHaveLength(0);
+    expect(plan.skipped[0]?.skipReason).toBe(UNREADABLE_SKIP);
+  });
+
+  test("a missing entry is planned for transfer", async () => {
+    const relative = "Frieren/ep01.mkv";
+    const dest = join(drive.root, relative);
+    const plan = await planWith(
+      [candidate(relative)],
+      new Map<string, Entry>([[dest, { kind: "missing" }]]),
+    );
+    expect(plan.toTransfer).toHaveLength(1);
+  });
+
+  test("an ok file of the same size is skipped, a different size is a collision", async () => {
+    const same = join(drive.root, "same.mkv");
+    const other = join(drive.root, "other.mkv");
+    const plan = await planWith(
+      [candidate("same.mkv"), candidate("other.mkv")],
+      new Map([
+        [same, ok(SIZE)],
+        [other, ok(SIZE * 2)],
+      ]),
+    );
+    expect(plan.toTransfer).toHaveLength(0);
+    expect(plan.skipped.find((f) => f.destPath === same)?.skipReason).toContain(
+      "already on the drive",
+    );
+    expect(plan.skipped.find((f) => f.destPath === other)?.skipReason).toContain(
+      "collision",
+    );
+  });
+
+  test("buildPlan returns a value, not a promise", async () => {
+    const plan = await planWith([], new Map());
+    const { buildPlan } = await load();
+    const direct = buildPlan([], {
+      destRoot: drive.root,
+      journal,
+      spaceHeadroom: 0,
+      space: MOUNTED,
+      onDisk: new Map(),
+    } as unknown as PlanOptions);
+    expect(direct instanceof Promise).toBe(false);
+    expect(plan.fileCount).toBe(0);
+  });
+});

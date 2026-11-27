@@ -1525,3 +1525,243 @@ describe("send listing timing", () => {
     expect(out.every((s) => s.longestMs === null)).toBe(true);
   });
 });
+
+describe("destination check", () => {
+  // Loaded per test, so the other blocks pass until these modules exist.
+  const loadFs = () => import("../src/util/fs.ts");
+  const loadRecovery = () => import("../src/index/recovery.ts");
+  const loadProbe = () => import("../src/util/probe.ts");
+  const DEADLINE_MS = 50;
+  const ROOT = "/mnt/archive-destination-check";
+  const NEVER = () => new Promise<never>(() => {});
+  const DF_OK = "1B-blocks Avail\n1000000 900000\n";
+  const UNREADABLE = "the destination could not be read; nothing was changed";
+
+  type Run = {
+    code: number;
+    stdout: string;
+    stderr: string;
+    durationMs: number;
+  };
+  const reply = (code: number, stdout: string): Promise<Run> =>
+    Promise.resolve({ code, stdout, stderr: "", durationMs: 1 });
+  /** A spawn that answers `findmnt` and `df` separately. */
+  const fake =
+    (findmnt: () => Promise<Run>, df: () => Promise<Run>) =>
+    (cmd: string[]): Promise<Run> =>
+      cmd[0] === "findmnt" ? findmnt() : df();
+  const MOUNTED = () => reply(0, `ext4 rw,relatime ${ROOT}\n`);
+  const DF = () => reply(0, DF_OK);
+
+  async function reset(): Promise<void> {
+    (await loadProbe()).resetDriveState();
+  }
+
+  test("readMount reads a mounted target with its type and options", async () => {
+    const { readMount } = await loadFs();
+    const state = await readMount(fake(MOUNTED, DF), ROOT, DEADLINE_MS);
+    expect(state).toEqual({
+      kind: "mounted",
+      fsType: "ext4",
+      options: "rw,relatime",
+      target: ROOT,
+    });
+  });
+
+  test("readMount unescapes spaces in the target", async () => {
+    const { readMount } = await loadFs();
+    const state = await readMount(
+      fake(() => reply(0, "fuseblk rw,nosuid /mnt/My\\x20Drive\n"), DF),
+      "/mnt/My Drive",
+    );
+    expect(state).toMatchObject({ kind: "mounted", target: "/mnt/My Drive" });
+  });
+
+  test("readMount: exit 1 with no output is not-mounted", async () => {
+    const { readMount } = await loadFs();
+    const state = await readMount(
+      fake(() => reply(1, ""), DF),
+      ROOT,
+    );
+    expect(state).toEqual({ kind: "not-mounted" });
+  });
+
+  test("readMount: a killed findmnt is unreadable, never not-mounted", async () => {
+    const { readMount } = await loadFs();
+    const killed = () =>
+      Promise.resolve({
+        code: 124,
+        stdout: "",
+        stderr: "",
+        durationMs: 1,
+        signal: "TIMEOUT",
+      });
+    expect((await readMount(fake(killed, DF), ROOT)).kind).toBe("unreadable");
+    const failed = () => reply(2, "");
+    expect((await readMount(fake(failed, DF), ROOT)).kind).toBe("unreadable");
+  });
+
+  test("a findmnt that never resolves is unreadable with reason timeout", async () => {
+    await reset();
+    const { probeDestination } = await loadRecovery();
+    const probed = await probeDestination(fake(NEVER, DF), ROOT, DEADLINE_MS);
+    expect(probed.mount).toMatchObject({ kind: "unreadable" });
+    expect(JSON.stringify(probed.mount)).toContain("timeout");
+    await reset();
+  });
+
+  test("a df that never resolves is unreadable, never zero free space", async () => {
+    await reset();
+    const { probeDestination, judgeDestination } = await loadRecovery();
+    const probed = await probeDestination(
+      fake(MOUNTED, NEVER),
+      ROOT,
+      DEADLINE_MS,
+    );
+    expect(probed.space.kind).toBe("unreadable");
+    const verdict = judgeDestination(probed, 0, 0.02);
+    expect(verdict.status).toBe("unreadable");
+    expect(verdict.ok).toBe(false);
+    expect(verdict.reason).toBe(UNREADABLE);
+    await reset();
+  });
+
+  test("a timed-out findmnt gives status unreadable and the EH-13 text", async () => {
+    await reset();
+    const { checkDestination } = await loadRecovery();
+    const verdict = await checkDestination(
+      fake(NEVER, DF),
+      ROOT,
+      0,
+      0.02,
+      DEADLINE_MS,
+    );
+    expect(verdict.status).toBe("unreadable");
+    expect(verdict.ok).toBe(false);
+    expect(verdict.reason).toBe(UNREADABLE);
+    expect(verdict.status).not.toBe("refused");
+    await reset();
+  });
+
+  test("exit 1 with no output is refused as not mounted", async () => {
+    await reset();
+    const { checkDestination } = await loadRecovery();
+    const verdict = await checkDestination(
+      fake(() => reply(1, ""), DF),
+      ROOT,
+      0,
+      0.02,
+    );
+    expect(verdict.ok).toBe(false);
+    expect(verdict.status).toBe("refused");
+    expect(verdict.reason).toBe(
+      `destination is not on a mounted filesystem: ${ROOT}`,
+    );
+    await reset();
+  });
+
+  test("a mounted destination with room is ok", async () => {
+    await reset();
+    const { checkDestination } = await loadRecovery();
+    const verdict = await checkDestination(fake(MOUNTED, DF), ROOT, 1000, 0.02);
+    expect(verdict).toMatchObject({
+      ok: true,
+      status: "ok",
+      freeBytes: 900000,
+    });
+    await reset();
+  });
+});
+
+describe("deadline checks", () => {
+  // Loaded per test, so the other blocks pass until these exports exist.
+  const loadProbe = () => import("../src/util/probe.ts");
+  const loadDurable = () => import("../src/util/durable.ts");
+  const loadDoctor = () => import("../src/serve/doctor.ts");
+  const loadAdb = () => import("../src/xfer/adb.ts");
+  const NEVER = () => new Promise<never>(() => {});
+  const DEADLINE_MS = 50;
+
+  test("formatDeadline writes seconds with up to two decimals", async () => {
+    const { formatDeadline } = await loadProbe();
+    expect(formatDeadline(3000)).toBe("3 s");
+    expect(formatDeadline(50)).toBe("0.05 s");
+    expect(formatDeadline(30_000)).toBe("30 s");
+    expect(formatDeadline(1500)).toBe("1.5 s");
+  });
+
+  test("rsync --version that never resolves is failed, not absent", async () => {
+    const { resetDriveState } = await loadProbe();
+    const { RsyncTransport } = await loadAdb();
+    resetDriveState();
+    const transport = new RsyncTransport({
+      bin: "rsync",
+      port: 8022,
+      user: "u",
+      partialDir: "/tmp/p",
+      spawn: NEVER,
+      timeoutMs: DEADLINE_MS,
+    } as ConstructorParameters<typeof RsyncTransport>[0]);
+    expect(await transport.available("dev")).toEqual({
+      kind: "failed",
+      reason: "check failed: no answer within 0.05 s",
+    });
+    resetDriveState();
+  });
+
+  test("rsync check at the production deadline reads '3 s'", async () => {
+    const { formatDeadline } = await loadProbe();
+    expect(`check failed: no answer within ${formatDeadline(3000)}`).toBe(
+      "check failed: no answer within 3 s",
+    );
+  });
+
+  test("rsync check: a missing binary is absent and an answer is available", async () => {
+    const { RsyncTransport } = await loadAdb();
+    const make = (code: number) =>
+      new RsyncTransport({
+        bin: "rsync",
+        port: 8022,
+        user: "u",
+        partialDir: "/tmp/p",
+        spawn: async () => ({ code, stdout: "rsync 3", stderr: "", durationMs: 1 }),
+      } as ConstructorParameters<typeof RsyncTransport>[0]);
+    expect((await make(0).available("dev")).kind).toBe("available");
+    expect((await make(127).available("dev")).kind).toBe("absent");
+  });
+
+  test("a Doctor flush that never resolves says 'check failed', never healthy", async () => {
+    const { syncFileOnly } = await loadDurable();
+    const { doctorFlushMessage } = await loadDoctor();
+    const { formatDeadline } = await loadProbe();
+    const { flushDeadlineMs } = await loadDurable();
+    const outcome = await syncFileOnly("/tmp/never-synced", 0, {
+      open: NEVER,
+      deadlineMs: DEADLINE_MS,
+    });
+    expect(outcome.kind).toBe("timeout");
+    const message = doctorFlushMessage(outcome);
+    expect(message).toBe("check failed: no answer within 0.05 s");
+    expect(message).not.toContain("healthy");
+    expect(formatDeadline(flushDeadlineMs(0))).toBe("30 s");
+  });
+
+  test("neither check changes a breaker count", async () => {
+    const { breakerFor, resetDriveState } = await loadProbe();
+    const { syncFileOnly } = await loadDurable();
+    const { RsyncTransport } = await loadAdb();
+    resetDriveState();
+    await syncFileOnly("/tmp/never-synced", 0, { open: NEVER, deadlineMs: 20 });
+    await new RsyncTransport({
+      bin: "rsync",
+      port: 8022,
+      user: "u",
+      partialDir: "/tmp/p",
+      spawn: NEVER,
+      timeoutMs: 20,
+    } as ConstructorParameters<typeof RsyncTransport>[0]).available("dev");
+    expect(breakerFor("/tmp").consecutiveTimeouts).toBe(0);
+    expect(breakerFor("/").consecutiveTimeouts).toBe(0);
+    resetDriveState();
+  });
+});

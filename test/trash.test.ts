@@ -262,3 +262,29 @@ describe("trashRootFor", () => {
     expect(trashRootFor("/media/node/2TB/Move/")).toBe("/media/node/2TB/Move/.portage/trash");
   });
 });
+
+describe("unreadable trash", () => {
+  test("a trash root under a regular file is unreadable, never 'no trash'", async () => {
+    const root = await drive();
+    try {
+      // ENOTDIR on `.portage/trash`: an error that is not ENOENT.
+      await writeFile(join(root, ".portage"), "not a folder");
+      const status = await readTrash(root, globIo());
+      expect(status.unreadable).toBe("the trash could not be read");
+      expect(status.exists).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a missing trash is still just empty", async () => {
+    const root = await drive();
+    try {
+      const status = await readTrash(root, globIo());
+      expect(status.unreadable).toBeUndefined();
+      expect(status.exists).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
