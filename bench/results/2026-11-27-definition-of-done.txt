@@ -1,0 +1,84 @@
+definition of done, 2026-11-27 UTC
+commit: d2166c773bc69c24366981aeb38c6025b06358e0
+branch: master
+
+=== engine typecheck ===
+dir: .
+cmd: bun run typecheck
+exit: 0
+
+=== engine tests ===
+dir: .
+cmd: bun run test
+exit: 0
+ 605 pass
+ 1 skip
+ 0 fail
+
+=== desktop svelte-check ===
+dir: apps/desktop
+cmd: bun run check
+exit: 0
+svelte-check found 0 errors and 0 warnings
+
+=== desktop tests ===
+dir: apps/desktop
+cmd: bun run test
+exit: 0
+ 213 pass
+ 0 fail
+
+=== desktop a11y contrast ===
+dir: apps/desktop
+cmd: bun run a11y
+exit: 0
+
+=== scanner cargo test ===
+dir: crates/portage-scan
+cmd: cargo test
+exit: 0
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+=== scanner clippy ===
+dir: crates/portage-scan
+cmd: cargo clippy --all-targets -- -D warnings
+exit: 0
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s
+
+=== scanner fmt ===
+dir: crates/portage-scan
+cmd: cargo fmt --check
+exit: 0
+
+=== shell cargo test ===
+dir: apps/desktop/src-tauri
+cmd: cargo test
+exit: 0
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.40s
+test result: ok. 7 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+=== shell clippy ===
+dir: apps/desktop/src-tauri
+cmd: cargo clippy --all-targets -- -D warnings
+exit: 0
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.53s
+
+=== shell fmt ===
+dir: apps/desktop/src-tauri
+cmd: cargo fmt --check
+exit: 0
+
+=== desktop build ===
+dir: apps/desktop
+cmd: bun run build
+exit: 0
+
+=== desktop headless journey ===
+dir: apps/desktop
+cmd: bun run ui:sweep
+exit: 0
+
+RESULT: pass

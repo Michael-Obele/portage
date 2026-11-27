@@ -727,7 +727,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: the script runs, in order: `bun run typecheck`; `bun run test` at the root; in `apps/desktop`, `bun run check` (0 errors and 0 warnings), `bun run test`, and `bun run a11y`; `cargo test` in `crates/portage-scan` and in `apps/desktop/src-tauri`; `cargo clippy --all-targets -- -D warnings` and `cargo fmt --check` in both Rust crates; and finally `bun run build && bun run ui:sweep` in `apps/desktop`. It writes each command, its exit code, and its test counts to `bench/results/<date>-definition-of-done.txt`, and it exits non-zero when any command fails.
     - Done when: `bash -n scripts/definition-of-done.sh` exits 0.
 
-  - [~] 7.2 Run the definition-of-done script and commit its evidence
+  - [x] 7.2 Run the definition-of-done script and commit its evidence
     - Requirements: R7.3. Design: Testing strategy, Layer 4.
     - Files: `bench/results/<date>-definition-of-done.txt` (new, committed).
     - Build: run `scripts/definition-of-done.sh`. If a command fails, fix its cause in code and run the script again.
