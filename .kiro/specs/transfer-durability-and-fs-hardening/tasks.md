@@ -721,7 +721,7 @@ This plan builds the feature in the order that requirements.md and design.md app
 
 - [ ] 7. Phase 7: definition of done (R7.3, R7.4, R7.6)
      This phase gives the evidence that AGENTS.md's definition of done asks for. Each evidence run is a script task, and its record is committed under `bench/results/`. A claim of freed space shows `df` before and after. This phase has no release task. Release is an owner step (Notes N25 and N30).
-  - [~] 7.1 Write the definition-of-done script
+  - [x] 7.1 Write the definition-of-done script
     - Requirements: R7.3. Design: Testing strategy, Layer 4 (desktop, Rust).
     - Files: `scripts/definition-of-done.sh` (new, executable).
     - Build: the script runs, in order: `bun run typecheck`; `bun run test` at the root; in `apps/desktop`, `bun run check` (0 errors and 0 warnings), `bun run test`, and `bun run a11y`; `cargo test` in `crates/portage-scan` and in `apps/desktop/src-tauri`; `cargo clippy --all-targets -- -D warnings` and `cargo fmt --check` in both Rust crates; and finally `bun run build && bun run ui:sweep` in `apps/desktop`. It writes each command, its exit code, and its test counts to `bench/results/<date>-definition-of-done.txt`, and it exits non-zero when any command fails.
