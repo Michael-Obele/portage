@@ -189,7 +189,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `src/serve/transfer-lock.ts` (new).
     - Build: class `TransferLock` with `holder()` and `acquire(kind)`. `acquire` returns a lease or a refusal that names the holder. A lease releases exactly once.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 4:"` passes.
-  - [~] 3.6 Write the phone-operation tests (red)
+  - [x] 3.6 Write the phone-operation tests (red)
     - Requirements: R7.2, R7.8, R7.12, R7.13, R8.11, R9.1, R9.7, R10.3 to R10.5, R16.2. Design: §3.6, DD-6, DD-7, D27, EH-1, EH-2. OI-17 (the four old methods do not change).
     - Files: `test/units.test.ts` (describe `send phone operations`).
     - Test, with a stubbed spawn: `sha256Phone` returns `ok`, `missing`, or `unreadable` for a timeout, a non-zero exit, no digest, and a missing tool. `syncPhone` runs `sync` through `adb shell` and never `adb sync`. `renameOver` uses `mv -f` to replace and `mv -n` to copy, then checks. `mkdirOne` has no `-p`. `statPhonePath` treats a shell that prints no word as unreadable. `freeBytesAt` reads the folder's volume, not `/sdcard`. `push` has `-Z` and no `--sync`. Every path passes through `quoteShellArg`.

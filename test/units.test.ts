@@ -2182,3 +2182,89 @@ describe("send transfer lock", () => {
     }
   });
 });
+
+describe("send phone operations", () => {
+  type Answer = (cmd: string[]) => Partial<{ code: number; stdout: string; stderr: string; signal: string }>;
+  async function rig(answer: Answer) {
+    const { Adb } = await import("../src/device/adb.ts");
+    const calls: string[][] = [];
+    const spawn = async (cmd: string[]) => {
+      calls.push(cmd);
+      return { code: 0, stdout: "", stderr: "", durationMs: 0, ...answer(cmd) };
+    };
+    return { calls, adb: new Adb("adb", spawn) };
+  }
+  const shellCmd = (cmd: string[]) => cmd[cmd.length - 1] ?? "";
+
+  test("sha256Phone is ok, missing, or unreadable, and a timeout is never a digest", async () => {
+    const hash = "a".repeat(64);
+    const ok = await rig(() => ({ stdout: `${hash}  /sdcard/f\r\n` }));
+    expect(await ok.adb.sha256Phone("S", "/sdcard/f", 1000)).toEqual({ kind: "ok", sha256: hash });
+
+    const gone = await rig(() => ({ code: 1, stderr: "sha256sum: /sdcard/f: No such file or directory" }));
+    expect((await gone.adb.sha256Phone("S", "/sdcard/f", 1000)).kind).toBe("missing");
+
+    const timeout = await rig(() => ({ code: 124, signal: "TIMEOUT", stdout: `${hash}  x` }));
+    expect((await timeout.adb.sha256Phone("S", "/sdcard/f", 1000)).kind).toBe("unreadable");
+
+    const failed = await rig(() => ({ code: 1, stderr: "Permission denied" }));
+    expect((await failed.adb.sha256Phone("S", "/sdcard/f", 1000)).kind).toBe("unreadable");
+
+    const noDigest = await rig(() => ({ stdout: "garbage" }));
+    expect((await noDigest.adb.sha256Phone("S", "/sdcard/f", 1000)).kind).toBe("unreadable");
+
+    const noTool = await rig(() => ({ code: 127, stderr: "sha256sum: not found" }));
+    expect((await noTool.adb.sha256Phone("S", "/sdcard/f", 1000)).kind).toBe("unreadable");
+  });
+
+  test("syncPhone runs the device shell's sync, never the adb sync subcommand", async () => {
+    const r = await rig(() => ({}));
+    expect(await r.adb.syncPhone("S", 1000)).toEqual({ kind: "ok" });
+    expect(r.calls[0]).toEqual(["adb", "-s", "S", "shell", "sync"]);
+    expect(r.calls.some((c) => c[2] === "sync")).toBe(false);
+  });
+
+  test("renameOver uses mv -f to replace and mv -n to copy, then checks the target", async () => {
+    const replace = await rig(() => ({}));
+    await replace.adb.renameOver("S", "/sdcard/a.part", "/sdcard/a", true, 1000);
+    expect(shellCmd(replace.calls[0]!)).toBe("mv -f '/sdcard/a.part' '/sdcard/a'");
+    expect(replace.calls.length).toBeGreaterThanOrEqual(2);
+
+    const copy = await rig(() => ({}));
+    await copy.adb.renameOver("S", "/sdcard/a.part", "/sdcard/a", false, 1000);
+    expect(shellCmd(copy.calls[0]!)).toBe("mv -n '/sdcard/a.part' '/sdcard/a'");
+  });
+
+  test("mkdirOne makes one level, with no -p, and quotes its path", async () => {
+    const r = await rig(() => ({}));
+    expect(await r.adb.mkdirOne("S", "/sdcard/It's", 1000)).toEqual({ kind: "created" });
+    expect(shellCmd(r.calls[0]!)).toBe("mkdir '/sdcard/It'\\''s'");
+    expect(shellCmd(r.calls[0]!)).not.toContain("-p");
+
+    const exists = await rig(() => ({ code: 1, stderr: "mkdir: File exists" }));
+    expect(await exists.adb.mkdirOne("S", "/sdcard/x", 1000)).toEqual({ kind: "exists" });
+  });
+
+  test("statPhonePath treats a shell that prints no word as unreadable", async () => {
+    const file = await rig(() => ({ stdout: "file 12\r\n" }));
+    expect(await file.adb.statPhonePath("S", "/sdcard/f", 1000)).toEqual({ kind: "file", size: 12 });
+    const silent = await rig(() => ({ stdout: "" }));
+    expect((await silent.adb.statPhonePath("S", "/sdcard/f", 1000)).kind).toBe("unreadable");
+  });
+
+  test("freeBytesAt reads the folder's own volume, not /sdcard", async () => {
+    const r = await rig(() => ({
+      stdout: "Filesystem 1K-blocks Used Available Use% Mounted\n/x 100 40 60 40% /storage/emulated/0\n",
+    }));
+    const free = await r.adb.freeBytesAt("S", "/storage/emulated/0/Movies", 1000);
+    expect(shellCmd(r.calls[0]!)).toContain("'/storage/emulated/0/Movies'");
+    expect(free).toEqual({ free: 60 * 1024, total: 100 * 1024 });
+  });
+
+  test("push has -Z and no --sync", async () => {
+    const r = await rig(() => ({}));
+    await r.adb.push("S", "/host/a", "/sdcard/a", 1000);
+    expect(r.calls[0]).toContain("-Z");
+    expect(r.calls[0]).not.toContain("--sync");
+  });
+});
