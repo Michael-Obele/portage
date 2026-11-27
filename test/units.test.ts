@@ -2075,3 +2075,71 @@ describe("exact messages", () => {
     }
   });
 });
+
+describe("send record", () => {
+  test("sendRecordPath follows XDG_STATE_HOME and falls back to ~/.local/state", async () => {
+    const { sendRecordPath } = await import("../src/send/record.ts");
+    expect(sendRecordPath({ XDG_STATE_HOME: "/x/state" }, "/home/u")).toBe(
+      "/x/state/portage/send.db",
+    );
+    expect(sendRecordPath({}, "/home/u")).toBe(
+      "/home/u/.local/state/portage/send.db",
+    );
+  });
+
+  test("an unopenable record fails with the EH-18 text", async () => {
+    const { SendRecord } = await import("../src/send/record.ts");
+    const dir = await mkdtemp(join(tmpdir(), "send-record-"));
+    try {
+      const blocker = join(dir, "not-a-folder");
+      await writeFile(blocker, "x");
+      expect(() => SendRecord.open(join(blocker, "send.db"))).toThrow(
+        /the send record cannot be opened/,
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a job left running is marked cancelled with 'engine stopped' on the next open", async () => {
+    const { SendRecord } = await import("../src/send/record.ts");
+    const dir = await mkdtemp(join(tmpdir(), "send-record-"));
+    try {
+      const path = join(dir, "send.db");
+      const first = SendRecord.open(path);
+      first.insertJob({
+        send_id: "s-1",
+        kind: "drive-to-phone",
+        source_kind: "drive",
+        source_label: "Movies",
+        source_device_id: null,
+        target_device_id: "dev-1",
+        target_folder: "/sdcard/Movies",
+        walker: "scanner",
+        replace_included: 0,
+        move_included: 0,
+        files_planned: 1,
+        bytes_planned: 10,
+        state: "running",
+        refusal: null,
+        reason: null,
+        started_at: 1,
+        finished_at: null,
+        folders_created: "[]",
+        leftover_partials: "[]",
+        host_temp_remaining: "[]",
+        relays: "[]",
+      });
+      first.close();
+
+      const second = SendRecord.open(path);
+      expect(second.reconcileInterrupted(2)).toBe(1);
+      const [job] = second.listJobs(10);
+      expect(job?.state).toBe("cancelled");
+      expect(job?.reason).toBe("engine stopped");
+      second.close();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});

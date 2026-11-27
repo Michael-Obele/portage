@@ -164,7 +164,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Done when: `ls bench/results/*-send-*.json` lists the S1, S2, S3, S4, and listing records, and `bun test --preload ./scripts/preload.ts test/units.test.ts -t "send S"` exits 0. If the S2 record does not say `flushed`, stop here. R2.6 bars the merge of Phases 3 to 10 until the owner decides Q1 (OI-4).
 
 - [ ] 3. Phase 3: engine core, types, record, lock, phone operations (R5.7, R13.12, R15.7; design §3.1, §3.5, §3.6, §3.9, §4)
-  - [~] 3.1 Write the record tests (red)
+  - [x] 3.1 Write the record tests (red)
     - Requirements: R13.12. Design: §2.7, §3.5, U-RECORD. EH-18, EH-25. OI-6 (no pruning in v1).
     - Files: `test/units.test.ts` (describe `send record`).
     - Test: `sendRecordPath` uses `XDG_STATE_HOME`, and `~/.local/state` when it is unset. An unwritable folder fails with the EH-18 text "the send record cannot be opened". A job left `running` is marked `cancelled` with "engine stopped" at the next open.
