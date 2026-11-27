@@ -154,7 +154,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `scripts/bench/send-listing.ts` (new).
     - Build: create folders of 100, 500, and 1,000 entries in the guarded spike folder. Time `find -H` listings and single `stat` calls, then remove the folder. Exports `summarizeListingTimes`.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "send listing timing"` passes.
-  - [~] 2.17 Run the listing timing on one phone and commit its record
+  - [x] 2.17 Run the listing timing on one phone and commit its record
     - Needs the phone. Requirements: R2.2, R14.4. Design: §8.8. OI-1.
     - Files: `bench/results/<date>-send-m-listing.json` (new, committed).
     - Done when: the record lists the three sizes with their wall times, and `git log -1 --format=%s` prints `test(bench): record phone listing timings for send`. Its result is the input to OI-1.
