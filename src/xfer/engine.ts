@@ -39,7 +39,7 @@ import {
 import { sha256File } from "#lib/util/hash.ts";
 import type { Logger } from "#lib/util/log.ts";
 import { dirname } from "#lib/util/paths.ts";
-import { statDrive } from "#lib/util/probe.ts";
+import { BREAKER_STOPPED, breakerFor, statDrive } from "#lib/util/probe.ts";
 import type { CopyRequest, Transport } from "#lib/xfer/transport.ts";
 
 export interface EngineOptions {
@@ -100,6 +100,8 @@ export interface EngineSummary {
   /** Average durable throughput in bytes/sec. */
   rateBps: number;
   failures: Array<{ srcPath: string; reason: string }>;
+  /** Set when the breaker tripped and files were left untaken (EH-3). */
+  stopped?: string;
 }
 
 /**
@@ -155,6 +157,10 @@ export async function runTransfer(
   const worker = async (): Promise<void> => {
     for (;;) {
       if (opts.shouldStop?.()) return;
+      if (breakerFor(opts.root).tripped) {
+        if (cursor < queue.length) summary.stopped = BREAKER_STOPPED;
+        return;
+      }
       const index = cursor++;
       const file = queue[index];
       if (!file) return;
@@ -181,7 +187,8 @@ export async function runTransfer(
       ? (summary.bytesMoved / summary.durationMs) * 1000
       : 0;
 
-  opts.journal.finishRun(runId, summary.failed > 0 ? "failed" : "done", {
+  const failedRun = summary.failed > 0 || summary.stopped !== undefined;
+  opts.journal.finishRun(runId, failedRun ? "failed" : "done", {
     bytes_total: plan.bytesTotal,
     bytes_done: summary.bytesMoved,
     files_total: queue.length,
@@ -189,6 +196,9 @@ export async function runTransfer(
     files_failed: summary.failed,
   });
 
+  if (summary.stopped !== undefined) {
+    opts.journal.event("error", summary.stopped, runId);
+  }
   if (summary.failed > 0 || summary.kept > 0) {
     opts.journal.event(
       summary.failed > 0 ? "warn" : "info",

@@ -9,6 +9,10 @@ export const PROBE_TIMEOUT_MS = 3_000;
 /** R2.12: consecutive deadline timeouts on one root that trip its breaker. */
 export const BREAKER_LIMIT = 3;
 
+/** EH-13: what a tripped breaker tells the person. Tests match it exactly. */
+export const BREAKER_STOPPED =
+  "the archive drive stopped answering; restart the Engine after checking the drive";
+
 export type ProbeResult<T> =
   | { kind: "ok"; value: T }
   | { kind: "missing" }

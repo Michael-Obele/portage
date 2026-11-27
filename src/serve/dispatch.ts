@@ -44,7 +44,7 @@ import { applySelection, scanDuplicates } from "#lib/dedupe/index.ts";
 import { defaultScanIo, resilientScanIo } from "#lib/dedupe/scan-io.ts";
 import { emptyTrash, readTrash } from "#lib/dedupe/trash.ts";
 import { diskSpaceAsync, type DiskSpace } from "#lib/util/fs.ts";
-import { PROBE_TIMEOUT_MS, probe, statDrive } from "#lib/util/probe.ts";
+import { PROBE_TIMEOUT_MS, breakerFor, probe, statDrive } from "#lib/util/probe.ts";
 import type { Output } from "#lib/output/output.ts";
 import { doctor as doctorCommand } from "#lib/serve/doctor.ts";
 import { db as dbCommand } from "#lib/serve/db.ts";
@@ -515,7 +515,14 @@ const handlerTable = {
           ? allRuns.filter((run) => run.id === args.run)
           : allRuns;
       const recent = journal.listRecent(args.limit ?? 25);
-      ctx.frames.status({ archive, counts, pending, runs, recent });
+      ctx.frames.status({
+        archive,
+        counts,
+        pending,
+        runs,
+        recent,
+        ...(breakerFor(destRoot).tripped ? { driveUnreadable: true } : {}),
+      });
       return {
         destRoot,
         runs: runs.length,

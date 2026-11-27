@@ -1470,3 +1470,58 @@ describe("durability order", () => {
     expect(spawned).toEqual([]);
   });
 });
+
+describe("breaker run", () => {
+  const BREAKER_TEXT =
+    "the archive drive stopped answering; restart the Engine after checking the drive";
+  const never = () => new Promise<never>(() => {});
+
+  // Three deadline timeouts in a row trip the breaker (R2.12).
+  async function tripBreaker(root: string): Promise<void> {
+    const { probe } = await import("../src/util/probe.ts");
+    for (let i = 0; i < 3; i += 1) await probe(root, "stalled", never, 10);
+  }
+
+  afterEach(async () => {
+    (await import("../src/util/probe.ts")).resetDriveState();
+  });
+
+  test("a breaker that trips during a run stops new files and says why", async () => {
+    const files = [1, 2, 3].map((n) =>
+      plannedFile(`/sdcard/Movies/Frieren/ep0${n}.mkv`, 1024),
+    );
+    const copied: string[] = [];
+    const transport = recordingTransport(async (req) => {
+      copied.push(req.srcPath);
+      // The drive stops answering while the first file is in flight.
+      await tripBreaker(drive.root);
+      return copiesBytes(1024)(req);
+    });
+
+    const summary = await runTransfer(
+      planOf(files),
+      new Map([[files[0]!.candidate.deviceId, fakeDevice()]]),
+      engineFor(transport, phone(sha256OfBytes(1024))),
+    );
+
+    expect(copied).toEqual([files[0]!.candidate.srcPath]);
+    expect(summary.stopped).toBe(BREAKER_TEXT);
+    expect(transport.deleted).toEqual([]);
+    expect(journal.listRuns(1)[0]?.status).toBe("failed");
+  });
+
+  test("a tripped breaker makes flushFile and flushGate return refused", async () => {
+    const { flushFile, flushGate } = await import("../src/util/durable.ts");
+    await tripBreaker(drive.root);
+    const path = join(drive.root, "a.mkv");
+    await Bun.write(path, "x");
+    expect(await flushFile(drive.root, path, 1)).toEqual({
+      kind: "refused",
+      reason: BREAKER_TEXT,
+    });
+    expect(await flushGate(drive.root, drive.root)).toEqual({
+      kind: "refused",
+      reason: BREAKER_TEXT,
+    });
+  });
+});

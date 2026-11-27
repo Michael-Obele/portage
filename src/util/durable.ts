@@ -7,6 +7,7 @@ import { relative, resolve, sep } from "node:path";
 
 import { dirname, normPath } from "#lib/util/paths.ts";
 import {
+  BREAKER_STOPPED,
   BreakerRefusal,
   breakerFor,
   probe,
@@ -232,8 +233,6 @@ export type FlushOutcome =
 // EH-13. Tests match these texts exactly.
 const FILE_FAILED =
   "flush failed: the drive did not confirm the file was written";
-const BREAKER_STOPPED =
-  "the archive drive stopped answering; restart the Engine after checking the drive";
 const folderFailed = (dir: string): string =>
   `flush failed: the drive did not confirm the folder entry: ${dir}`;
 const folderSkipped = (dir: string): string =>

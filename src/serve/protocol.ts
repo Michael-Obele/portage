@@ -421,6 +421,8 @@ export const StatusFrameSchema = v.strictObject({
   pending: enginePayload<TransferRow[]>("pending purge rows"),
   runs: enginePayload<RunRow[]>("RunRow[]"),
   recent: enginePayload<TransferRow[]>("TransferRow[]"),
+  /** Present and true once the destination's breaker has tripped (R2.12). */
+  driveUnreadable: v.optional(v.boolean()),
 });
 
 export const BrowseEntrySchema = v.strictObject({

@@ -355,31 +355,31 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: check with grep that no caller of either function remains. Then delete `diskSpace` (lines 44 to 62) and `statSyncSafe` (lines 147 to 159). Keep `statSafe` and `isDirectory`.
     - Done when: `grep -rn "statSyncSafe\|diskSpace(" src` prints nothing, `bun run typecheck` passes, and `git log -1 --format=%s` prints `fix(probes): refuse deletes and listings that cannot be read`, once the group commit for tasks 2.16 to 2.25 is made.
 
-  - [~] 2.26 Write the breaker-run tests (red)
+  - [x] 2.26 Write the breaker-run tests (red)
     - Requirements: R2.12. Design: EH-3; Data models (`breaker`); EH-13.
     - Files: `test/verify-gate.test.ts` (new `breaker run` describe block), `test/serve.test.ts` (one example in `unreadable reads`).
     - Tests first: a breaker that trips during a run stops new files, and the run summary carries the EH-13 text "the archive drive stopped answering; restart the Engine after checking the drive". A tripped breaker makes `flushFile` and `flushGate` return `refused`. "Doctor destination row reports a tripped breaker": with the breaker tripped, the destination row prints the same EH-13 text.
     - Done when: `bun test --preload ./scripts/preload.ts test/verify-gate.test.ts -t "breaker run"` fails.
 
-  - [~] 2.27 Stop taking new files when the breaker trips
+  - [x] 2.27 Stop taking new files when the breaker trips
     - Requirements: R2.12. Design: EH-3; Components (`breakerFor`).
     - Files: `src/xfer/engine.ts` (the per-file loop in `runTransfer`).
     - Build: `runTransfer` takes no new file once `breakerFor(root).tripped` is true. It ends the run as failed with the EH-13 breaker text.
     - Done when: `bun test --preload ./scripts/preload.ts test/verify-gate.test.ts -t "breaker run"` passes.
 
-  - [~] 2.28 Add the drive-unreadable field to the status schema
+  - [x] 2.28 Add the drive-unreadable field to the status schema
     - Requirements: R2.12. Design: EH-3; Notes N13.
     - Files: `src/serve/protocol.ts` (the status schema).
     - Build: add an optional `driveUnreadable` boolean to the status schema.
     - Done when: `bun run typecheck` passes.
 
-  - [~] 2.29 Report the breaker in the status frame
+  - [x] 2.29 Report the breaker in the status frame
     - Requirements: R2.12. Design: EH-3; Notes N13.
     - Files: `src/serve/dispatch.ts` (the `ctx.frames.status` payload near line 470).
     - Build: set `driveUnreadable` to true when a breaker on the destination root is tripped.
     - Done when: `bun test --preload ./scripts/preload.ts test/serve-contract.test.ts` passes.
 
-  - [~] 2.30 Report the breaker in Doctor
+  - [x] 2.30 Report the breaker in Doctor
     - Requirements: R2.12. Design: EH-3.
     - Files: `src/serve/doctor.ts` (the destination block from task 2.16).
     - Build: while the breaker is tripped, the destination row prints the EH-13 breaker text "the archive drive stopped answering; restart the Engine after checking the drive".

@@ -18,7 +18,9 @@ import {
 import { diskSpaceAsync } from "#lib/util/fs.ts";
 import { syncFileOnly, type FlushOutcome } from "#lib/util/durable.ts";
 import {
+  BREAKER_STOPPED,
   PROBE_TIMEOUT_MS,
+  breakerFor,
   formatDeadline,
   probe as driveProbe,
   statDrive,
@@ -168,8 +170,17 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
   const spawn = ctx.deps?.spawn ?? realSpawn;
   const stat = ctx.deps?.statDrive ?? statDrive;
   const deadlineMs = ctx.deps?.timeoutMs ?? PROBE_TIMEOUT_MS;
-  const destRead = destRoot ? await stat(destRoot, destRoot, deadlineMs) : null;
-  if (!destRoot || destRead === null) {
+  const tripped = destRoot ? breakerFor(destRoot).tripped : false;
+  const destRead =
+    destRoot && !tripped ? await stat(destRoot, destRoot, deadlineMs) : null;
+  if (destRoot && tripped) {
+    rows.push({
+      mark: "fail",
+      label: "destination",
+      value: `${destRoot}: ${BREAKER_STOPPED}`,
+      fix: "check the drive, then restart the Engine",
+    });
+  } else if (!destRoot || destRead === null) {
     rows.push({
       mark: "warn",
       label: "destination",

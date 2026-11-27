@@ -1746,6 +1746,42 @@ describe("unreadable reads", () => {
     }
   });
 
+  async function tripBreaker(root: string): Promise<void> {
+    for (let i = 0; i < 3; i += 1) await probe(root, "stalled", NEVER, DEADLINE_MS);
+  }
+  const BREAKER_TEXT =
+    "the archive drive stopped answering; restart the Engine after checking the drive";
+
+  test("Doctor destination row reports a tripped breaker", async () => {
+    const drive = await makeTempDrive("portage-unreadable-breaker-");
+    try {
+      await tripBreaker(drive.root);
+      const rows = await doctorRows(drive.root, { spawn: dfOk });
+      const row = rows.find((r) => r.label === "destination");
+      expect(row?.value).toContain(BREAKER_TEXT);
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
+  test("status.get flags a tripped breaker, and says nothing otherwise", async () => {
+    const drive = await makeTempDrive("portage-status-breaker-");
+    try {
+      const run = async () => {
+        const { frames } = await runServe([cmd("g1", "status.get", {})], {
+          resolveConfig: async () => resolvedFor(drive.root),
+        });
+        const frame = frames.find((f) => f.type === "status");
+        return frame?.type === "status" ? frame.driveUnreadable : "no frame";
+      };
+      expect(await run()).toBeUndefined();
+      await tripBreaker(drive.root);
+      expect(await run()).toBe(true);
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
   test("Doctor mount check reads a timed-out findmnt as could not be read", async () => {
     const drive = await makeTempDrive("portage-unreadable-mount-");
     try {
