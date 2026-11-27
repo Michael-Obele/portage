@@ -17,6 +17,12 @@ import {
 } from "#lib/util/spawn.ts";
 import { sha1Hex } from "#lib/util/hash.ts";
 import { preconditionError } from "#lib/util/errors.ts";
+import { quoteShellArg } from "#lib/util/spawn.ts";
+import type {
+  PhoneCall,
+  PhoneHash,
+  PhoneStat,
+} from "../send/types.ts";
 
 /**
  * Why a particular adb binary is being used.
@@ -415,6 +421,200 @@ export class Adb {
   async termuxUser(serial: string): Promise<string> {
     const res = await this.shell(serial, "run-as com.termux id -u");
     return res.code === 0 ? stripCR(res.stdout).trim() : "";
+  }
+
+
+  /**
+   * Typed phone calls for the send engine. A timeout is its own answer, so a
+   * dead phone is never read as "the file is not there" (EH-1, EH-2).
+   */
+  private phoneArgs(serial: string, ...rest: string[]): string[] {
+    return [this.bin, "-s", serial, ...rest];
+  }
+
+  private phoneCall(res: RunResult): PhoneCall {
+    if (res.signal === "TIMEOUT" || res.code === 124) {
+      return { kind: "timeout", deadlineMs: Math.round(res.durationMs) };
+    }
+    if (res.code === 0) return { kind: "ok" };
+    return {
+      kind: "failed",
+      exitCode: res.code,
+      reason: stripCR(res.stderr).trim() || `exit ${res.code}`,
+    };
+  }
+
+  /** `sha256sum` on the phone. Missing, unreadable, and no-tool are different answers. */
+  async sha256Phone(
+    serial: string,
+    path: string,
+    timeoutMs: number,
+    signal?: AbortSignal,
+  ): Promise<PhoneHash> {
+    const res = await this.spawn(
+      this.phoneArgs(serial, "shell", `sha256sum ${quoteShellArg(path)}`),
+      { timeoutMs, signal },
+    );
+    if (res.signal === "TIMEOUT" || res.code === 124) {
+      return { kind: "unreadable", reason: "the phone did not answer in time" };
+    }
+    const digest = /^([0-9a-f]{64})\b/i.exec(stripCR(res.stdout).trim());
+    if (res.code === 0 && digest?.[1]) {
+      return { kind: "ok", sha256: digest[1].toLowerCase() };
+    }
+    if (res.code === 127 || /not found/i.test(res.stderr)) {
+      return { kind: "unreadable", reason: "the phone has no sha256sum" };
+    }
+    if (/no such file/i.test(res.stderr)) return { kind: "missing" };
+    return { kind: "unreadable", reason: `sha256sum exited ${res.code}` };
+  }
+
+  /** The device shell's `sync`. Never `adb sync`, which pushes system partitions. */
+  async syncPhone(
+    serial: string,
+    timeoutMs: number,
+    signal?: AbortSignal,
+  ): Promise<PhoneCall> {
+    const res = await this.spawn(this.phoneArgs(serial, "shell", "sync"), {
+      timeoutMs,
+      signal,
+    });
+    return this.phoneCall(res);
+  }
+
+  /**
+   * Move `from` over `to` (`mv -f`) or into a free `to` (`mv -n`), then check
+   * that `to` exists and `from` is gone. `mv -n` exits 0 without moving when
+   * `to` exists, so the check is what catches that.
+   */
+  async renameOver(
+    serial: string,
+    from: string,
+    to: string,
+    replace: boolean,
+    timeoutMs: number,
+  ): Promise<PhoneCall> {
+    const mv = replace ? "mv -f" : "mv -n";
+    const res = await this.spawn(
+      this.phoneArgs(
+        serial,
+        "shell",
+        `${mv} ${quoteShellArg(from)} ${quoteShellArg(to)}`,
+      ),
+      { timeoutMs },
+    );
+    const moved = this.phoneCall(res);
+    if (moved.kind !== "ok") return moved;
+    const check = await this.spawn(
+      this.phoneArgs(
+        serial,
+        "shell",
+        `test -e ${quoteShellArg(to)} && ! test -e ${quoteShellArg(from)}`,
+      ),
+      { timeoutMs },
+    );
+    return check.code === 0
+      ? { kind: "ok" }
+      : { kind: "failed", exitCode: check.code, reason: "the rename did not land" };
+  }
+
+  /** `rm -f`, then check the path is gone. */
+  async removePhone(
+    serial: string,
+    path: string,
+    timeoutMs: number,
+  ): Promise<PhoneCall> {
+    const res = await this.spawn(
+      this.phoneArgs(serial, "shell", `rm -f ${quoteShellArg(path)}`),
+      { timeoutMs },
+    );
+    const removed = this.phoneCall(res);
+    if (removed.kind !== "ok") return removed;
+    const check = await this.spawn(
+      this.phoneArgs(serial, "shell", `test -e ${quoteShellArg(path)}`),
+      { timeoutMs },
+    );
+    return check.code === 0
+      ? { kind: "failed", exitCode: 0, reason: "the file is still there" }
+      : { kind: "ok" };
+  }
+
+  /** One level only. No `-p`: a missing parent is a refusal, not a silent tree. */
+  async mkdirOne(
+    serial: string,
+    path: string,
+    timeoutMs: number,
+  ): Promise<{ kind: "created" | "exists" } | PhoneCall> {
+    const res = await this.spawn(
+      this.phoneArgs(serial, "shell", `mkdir ${quoteShellArg(path)}`),
+      { timeoutMs },
+    );
+    if (res.code === 0) return { kind: "created" };
+    if (/file exists/i.test(res.stderr)) return { kind: "exists" };
+    return this.phoneCall(res);
+  }
+
+  /**
+   * One shell `if` chain that prints one word. Empty output means the shell
+   * did not answer, which is unreadable, not missing.
+   */
+  async statPhonePath(
+    serial: string,
+    path: string,
+    timeoutMs: number,
+  ): Promise<PhoneStat> {
+    const q = quoteShellArg(path);
+    const cmd =
+      `if [ -f ${q} ]; then echo "file $(stat -c %s ${q})"; ` +
+      `elif [ -d ${q} ]; then echo folder; ` +
+      `elif [ -e ${q} ]; then echo other; else echo missing; fi`;
+    const res = await this.spawn(this.phoneArgs(serial, "shell", cmd), {
+      timeoutMs,
+    });
+    if (res.signal === "TIMEOUT" || res.code === 124) {
+      return { kind: "unreadable", reason: "the phone did not answer in time" };
+    }
+    const [word, size] = stripCR(res.stdout).trim().split(/\s+/);
+    if (word === "file" && Number.isFinite(Number(size))) {
+      return { kind: "file", size: Number(size) };
+    }
+    if (word === "folder") return { kind: "folder" };
+    if (word === "other") return { kind: "other" };
+    if (word === "missing") return { kind: "missing" };
+    return { kind: "unreadable", reason: "the phone printed no answer" };
+  }
+
+  /** Free space on the volume that holds `path`, read with `df` on that path. */
+  async freeBytesAt(
+    serial: string,
+    path: string,
+    timeoutMs: number,
+  ): Promise<{ free: number; total: number } | null> {
+    const res = await this.spawn(
+      this.phoneArgs(serial, "shell", `df -k ${quoteShellArg(path)}`),
+      { timeoutMs },
+    );
+    if (res.code !== 0) return null;
+    const cols = (stripCR(res.stdout).trim().split("\n").pop() ?? "").split(/\s+/);
+    const total = Number(cols[1]);
+    const avail = Number(cols[3]);
+    if (!Number.isFinite(total) || !Number.isFinite(avail)) return null;
+    return { free: avail * 1024, total: total * 1024 };
+  }
+
+  /** `adb push -Z`: no compression, no `--sync` (that flag pushes system partitions). */
+  async push(
+    serial: string,
+    localPath: string,
+    remotePath: string,
+    timeoutMs: number,
+    signal?: AbortSignal,
+  ): Promise<PhoneCall> {
+    const res = await this.spawn(
+      this.phoneArgs(serial, "push", "-Z", localPath, remotePath),
+      { timeoutMs, signal },
+    );
+    return this.phoneCall(res);
   }
 }
 
