@@ -199,7 +199,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `src/device/adb.ts`.
     - Build: add `sha256Phone`, `syncPhone`, `renameOver`, `removePhone`, `mkdirOne`, `statPhonePath`, `freeBytesAt`, and `push` to `Adb`. Each returns a typed result, so a timeout is never read as an answer. The existing methods keep their behaviour.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "send phone operations"` passes, and `bun run test` exits 0.
-  - [~] 3.8 Write the Property 34 test (red)
+  - [x] 3.8 Write the Property 34 test (red)
     - Requirements: R14.4, R14.5, R6.5. Design: §3.6, EH-1, EH-21. OI-1 (one retry), OI-21 (symbolic links). Property 34.
     - Files: `test/units.test.ts` (describe `send listing`).
     - Test: `Feature: send-to-phone, Property 34: a listing that is not complete is unreadable, and a long one is cut at 500`. Seeded streams. A missing end sentinel, a non-zero exit, an unparsable record, or a timeout gives `unreadable` with no entries. A complete listing shows the first min(n, 500) entries, and `truncated` is set only when n exceeds 500. A symbolic link is skipped with the reason "symbolic link".

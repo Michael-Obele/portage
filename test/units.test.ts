@@ -2268,3 +2268,55 @@ describe("send phone operations", () => {
     expect(r.calls[0]).not.toContain("--sync");
   });
 });
+
+describe("send listing", () => {
+  test("Feature: send-to-phone, Property 34: a listing that is not complete is unreadable, and a long one is cut at 500", async () => {
+    const { parseStrictListing } = await import("../src/device/adb.ts");
+    const enc = new TextEncoder();
+    const concat = (parts: Uint8Array[]) =>
+      Uint8Array.from(parts.flatMap((p) => [...p]));
+    const record = (type: string, size: string, path: string) =>
+      enc.encode(`${type}\t${size}\t1700000000.5\t${path}\0`);
+    const end = enc.encode("END\0");
+
+    for (let seed = 1; seed <= 100; seed++) {
+      let s = seed;
+      const rand = () => {
+        s = (s * 1103515245 + 12345) & 0x7fffffff;
+        return s / 0x80000000;
+      };
+      const n = Math.floor(rand() * 800);
+      const parts: Uint8Array[] = [];
+      for (let i = 0; i < n; i++) {
+        parts.push(record("f", String(10 + i), `/sdcard/d/f${i}.bin`));
+      }
+
+      const complete = parseStrictListing(concat([...parts, end]), 0);
+      if (complete.kind !== "ok") throw new Error(`seed ${seed}: ${complete.kind}`);
+      expect(complete.entries.length, `seed ${seed}`).toBe(Math.min(n, 500));
+      expect(complete.truncated, `seed ${seed}`).toBe(n > 500);
+      expect(complete.total, `seed ${seed}`).toBe(n);
+
+      expect(parseStrictListing(concat(parts), 0).kind, `seed ${seed}`).toBe("unreadable");
+      expect(parseStrictListing(concat([...parts, end]), 1).kind).toBe("unreadable");
+      expect(parseStrictListing(concat([...parts, end]), 124).kind).toBe("unreadable");
+      expect(
+        parseStrictListing(concat([...parts, record("f", "x", "/bad"), end]), 0).kind,
+      ).toBe("unreadable");
+      expect(
+        parseStrictListing(
+          concat([enc.encode("f\t1\t1\t/x"), Uint8Array.of(0xff), enc.encode("\0"), end]),
+          0,
+        ).kind,
+      ).toBe("unreadable");
+    }
+
+    const linked = parseStrictListing(
+      concat([record("l", "0", "/sdcard/link"), record("f", "3", "/sdcard/real"), end]),
+      0,
+    );
+    if (linked.kind !== "ok") throw new Error("a symbolic link is not a failure");
+    expect(linked.entries.map((e) => e.path)).toEqual(["/sdcard/real"]);
+    expect(JSON.stringify(linked)).toContain("symbolic link");
+  });
+});
