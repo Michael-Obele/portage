@@ -121,7 +121,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `test/units.test.ts` (describe `send S3 verdict`).
     - Test: `s3Verdict` passes when criterion 1 is answered, and either the two hashes are equal or the absence of `exec-in` is recorded. The record carries the file size used (R3.5).
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "send S3 verdict"` fails, because `scripts/bench/send-s3.ts` does not exist yet.
-  - [~] 2.10 Build the S3 script
+  - [x] 2.10 Build the S3 script
     - Requirements: R3.1 to R3.5. Design: §8.4.
     - Files: `scripts/bench/send-s3.ts` (new).
     - Build: record `adb version` and the `adb help` lines naming `exec-in` and `exec-out`. Run `adb exec-in` to write the 400,000,000-byte file. If it runs, hash the phone copy. If it does not, keep its error output. Exports `s3Verdict`.
