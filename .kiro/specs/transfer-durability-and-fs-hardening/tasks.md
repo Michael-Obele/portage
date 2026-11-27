@@ -415,13 +415,13 @@ This plan builds the feature in the order that requirements.md and design.md app
 
 - [ ] 3. Phase 3: whole-segment exclusions and the CI checks (R3, R6)
      This phase starts after checkpoint 2.34. The exclusion fix changes both walkers, and each walker has its own test. The CI changes come after the code, so the frozen check and the Helper build run against the fixed walker.
-  - [~] 3.1 Write the Rust exclusion tests (Property 4, red)
+  - [x] 3.1 Write the Rust exclusion tests (Property 4, red)
     - Requirements: R3.1, R3.3, R3.4, R3.5. Design: Correctness Property 4; Testing strategy, Layer 3; DV-26.
     - Files: `crates/portage-scan/src/walk.rs` (the `#[cfg(test)]` module).
     - Tests first: a tree with `Videos/Android/data/com.app/cache.bin` and `Videos/MyAndroid/data/com.app/keep.mkv`, and the exclusion `Android/data`. The walk returns `Videos/MyAndroid/data/com.app/keep.mkv` and does not return the first file. A name without a slash excludes a directory with that name at any depth. Property 4 uses a seeded generator in the test module, with no new crate. It compares `excluded` with a reference matcher on random relative paths, runs at least 100 iterations, and prints the seed on failure.
     - Done when: `cd crates/portage-scan && cargo test exclusion` fails on the `MyAndroid` case.
 
-  - [~] 3.2 Fix the Rust walker's exclusion match
+  - [x] 3.2 Fix the Rust walker's exclusion match
     - Requirements: R3.1, R3.4. Design: Components (`walk.rs`, `tail_matches`); C3.
     - Files: `crates/portage-scan/src/walk.rs` (`excluded` at line 121).
     - Build: a pattern with a slash excludes a directory only when its segments equal the last segments of `trail` followed by `name`. Compare by index, without cloning the trail, and keep the signature. A pattern without a slash matches the directory name exactly.

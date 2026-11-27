@@ -120,15 +120,23 @@ impl<'a> Walker<'a> {
 
     fn excluded(&self, name: &str) -> bool {
         self.request.exclude_dirs.iter().any(|pattern| {
-            if pattern.contains('/') {
-                // A multi-segment exclusion is a suffix of the path we would be
-                // standing in, e.g. `Android/data` inside `/sdcard`.
-                let mut candidate = self.trail.clone();
-                candidate.push(name.to_string());
-                candidate.join("/").ends_with(pattern.as_str())
-            } else {
-                pattern == name
+            if !pattern.contains('/') {
+                return pattern == name;
             }
+            // Whole segments only: `Android/data` must not match `MyAndroid/data`.
+            let segments: Vec<&str> = pattern.split('/').collect();
+            let Some(skip) = (self.trail.len() + 1).checked_sub(segments.len()) else {
+                return false;
+            };
+            segments.iter().enumerate().all(|(i, segment)| {
+                let at = skip + i;
+                let dir = if at < self.trail.len() {
+                    self.trail[at].as_str()
+                } else {
+                    name
+                };
+                dir == *segment
+            })
         })
     }
 
@@ -511,6 +519,89 @@ mod tests {
         req.exclude_dirs = vec!["Android/data".into()];
         let body = walk(&tree, req);
         assert_eq!(relatives(&body), vec!["Android/media/com.app/keep.mkv"]);
+    }
+
+    #[test]
+    fn exclusion_matches_whole_segments_only() {
+        let tree = TempTree::new("segments");
+        tree.file("Videos/Android/data/com.app/cache.bin", 5);
+        tree.file("Videos/MyAndroid/data/com.app/keep.mkv", 5);
+
+        let mut req = request();
+        req.exclude_dirs = vec!["Android/data".into()];
+        let body = walk(&tree, req);
+        assert_eq!(
+            relatives(&body),
+            vec!["Videos/MyAndroid/data/com.app/keep.mkv"]
+        );
+    }
+
+    #[test]
+    fn exclusion_without_a_slash_matches_that_name_at_any_depth() {
+        let tree = TempTree::new("anydepth");
+        tree.file("a/b/cache/x.bin", 5);
+        tree.file("a/b/cachex/keep.mkv", 5);
+
+        let mut req = request();
+        req.exclude_dirs = vec!["cache".into()];
+        let body = walk(&tree, req);
+        assert_eq!(relatives(&body), vec!["a/b/cachex/keep.mkv"]);
+    }
+
+    /// Reference: the directory path must equal the pattern, or end with `/`
+    /// plus the pattern. A pattern without `/` is a directory name.
+    fn reference_excluded(pattern: &str, dirs: &[String]) -> bool {
+        let path = dirs.join("/");
+        if pattern.contains('/') {
+            path == pattern || path.ends_with(&format!("/{pattern}"))
+        } else {
+            dirs.last().is_some_and(|name| name == pattern)
+        }
+    }
+
+    #[test]
+    fn exclusion_agrees_with_the_reference_matcher() {
+        const SEED: u64 = 0x5eed_0004;
+        const WORDS: [&str; 5] = ["Android", "data", "MyAndroid", "x", "cache"];
+        let mut state = SEED;
+        let mut next = |bound: usize| {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            ((state >> 33) as usize) % bound
+        };
+        for iteration in 0..500 {
+            let pick = |n: usize, next: &mut dyn FnMut(usize) -> usize| -> Vec<String> {
+                (0..n)
+                    .map(|_| WORDS[next(WORDS.len())].to_string())
+                    .collect()
+            };
+            let depth = 1 + next(5);
+            let mut dirs = pick(depth, &mut next);
+            let name = dirs.pop().expect("one name");
+            let segs = 1 + next(3);
+            let pattern = pick(segs, &mut next).join("/");
+            let mut req = request();
+            req.exclude_dirs = vec![pattern.clone()];
+            let walker = Walker {
+                request: &req,
+                root_index: 0,
+                trail: dirs.clone(),
+                files: Vec::new(),
+                errors: Vec::new(),
+                error_count: 0,
+                dirs: 0,
+                bytes: 0,
+                deepest: None,
+                depth_limited: 0,
+            };
+            dirs.push(name.clone());
+            assert_eq!(
+                walker.excluded(&name),
+                reference_excluded(&pattern, &dirs),
+                "seed {SEED:#x} iteration {iteration} pattern {pattern:?} path {dirs:?}"
+            );
+        }
     }
 
     #[test]
