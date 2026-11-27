@@ -172,19 +172,19 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: replace `ensureDir(dirname(to))` with `ensureDirTracked(dirname(to), opts.destRoot)`. Replace `moveFile(target, to)` with `moveFile(opts.destRoot, target, to)`. A `failed` result refuses the move and gives its reason. Import both from `#lib/util/durable.ts`. `statSafe` stays imported from `fs.ts` until Phase 2.
     - Done when: `bun test --preload ./scripts/preload.ts test/dedupe.test.ts` passes.
 
-  - [~] 1.18 Delete `fsyncPath`, `ensureDir`, and `moveFile` from `fs.ts`
+  - [x] 1.18 Delete `fsyncPath`, `ensureDir`, and `moveFile` from `fs.ts`
     - Requirements: R1 (Migration steps 4 and 5). Design: Migration; the `src/util/fs.ts` header rewrite.
     - Files: `src/util/fs.ts`.
     - Build: delete `fsyncPath` (lines 25 to 37) and its bare `sync` fallback. Delete `ensureDir` and `moveFile`. Rewrite the header in six lines or fewer, pointing to `src/util/durable.ts`. Remove the stray comment above `ensureDir`. `statSafe`, `isDirectory`, `statSyncSafe`, and `diskSpace` stay for Phase 2.
     - Done when: `grep -rn "fsyncPath\|ensureDir\b\|moveFile" src` shows only `durable.ts` and its callers. `src/serve/doctor.ts` keeps its own `sync -f` until task 2.17.
 
-  - [~] 1.19 Check the config writer
+  - [x] 1.19 Check the config writer
     - Requirements: R1.13. Design: Migration step 3 (this check applies only if the write can land under an archive root).
     - Files: `src/config/load.ts`, only if the check requires a change.
     - Build: read the directory creation near line 213. If the path can sit under `dest_root`, replace the plain `mkdir` with `ensureDirTracked`, and add a test to `test/verify-gate.test.ts` that the write creates its folders through the ledger. If it cannot, change no code, and say why in the commit body.
     - Done when: `bun run test` passes, and `git log -1 --format=%s` prints `refactor(durability): drop the sync -f fallback and move moveFile`, once the group commit for tasks 1.17 to 1.19 is made.
 
-  - [~] 1.20 Checkpoint: Phase 1 durability core
+  - [x] 1.20 Checkpoint: Phase 1 durability core
     - Run `bun run test` and `bun run typecheck`, and fix what fails.
     - Run `grep -rn "console.log" src/xfer src/util`, and fix any match.
     - Run `git diff --stat master -- src/scan`, and fix any change to src/scan.

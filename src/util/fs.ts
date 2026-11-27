@@ -1,39 +1,12 @@
 /**
- * Filesystem helpers, Bun-first.
- *
- * `Bun.spawnSync` covers the handful of places where a system tool is genuinely
- * the right tool (`sync -f`, `statvfs` via `df`, `du`). Path stat goes through
- * `node:fs/promises`, because `Bun.file().exists()` is a question about FILES and
- * answers false for a directory.
- *
- * The durability discipline lives here. Measured on this machine: about **25 %
- * of a transfer's wall time is writeback** that `adb` had already reported as
- * finished. So "the copy exited 0" is a different claim from "the bytes are on
- * the platters", and Portage never makes the first claim on the second's
- * behalf.
+ * Stat and drive-space helpers. Durable writes (fsync, mkdir, move) live in
+ * `src/util/durable.ts`. `Bun.file().exists()` is false for a directory, so
+ * path stat goes through node:fs. `Bun.spawnSync` cannot be interrupted;
+ * prefer the async, deadline-bound variants on drive paths.
  */
 
-import { mkdir, rm, rename, stat as statPath } from "node:fs/promises";
+import { mkdir, stat as statPath } from "node:fs/promises";
 import { join } from "node:path";
-
-/**
- * Flush one path to stable storage.
- *
- * Prefers `sync -f <file>` (fsync that single file, cheap). Falls back to a
- * bare `sync` where `sync -f` is unsupported. Returns true when a flush ran.
- */
-export function fsyncPath(path: string): boolean {
-  const scoped = Bun.spawnSync(["sync", "-f", path], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  if (scoped.exitCode === 0) return true;
-  const global = Bun.spawnSync(["sync"], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  return global.exitCode === 0;
-}
 
 export interface DiskSpace {
   free: number;
@@ -157,12 +130,6 @@ export function statSyncSafe(path: string): FileStat | null {
   };
 }
 
-/** Move a file, falling back to copy+unlink across a device boundary. */
-/** Create a directory (and parents) if missing. */
-export async function ensureDir(path: string): Promise<void> {
-  await mkdir(path, { recursive: true });
-}
-
 /** Create the whole `.portage` state tree on a drive. */
 export async function ensureStateDirs(
   destRoot: string,
@@ -187,17 +154,4 @@ export async function isDirectory(path: string): Promise<boolean> {
   // with it. A caller that needs to try harder can; this never lies and never
   // blocks.
   return stat?.isDir ?? false;
-}
-
-/** Move a file, falling back to copy+unlink across a device boundary. */
-export async function moveFile(from: string, to: string): Promise<void> {
-  try {
-    await rename(from, to);
-    return;
-  } catch (err) {
-    const code = (err as { code?: string }).code;
-    if (code !== "EXDEV") throw err;
-  }
-  await Bun.write(to, Bun.file(from));
-  await rm(from, { force: true });
 }
