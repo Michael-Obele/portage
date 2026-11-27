@@ -1,0 +1,94 @@
+{
+  "experiment": "send-s2-sync",
+  "startedAt": "2026-11-27T04:24:09.767Z",
+  "finishedAt": "2026-11-27T04:25:00.736Z",
+  "commit": {
+    "sha": "174a7c7e5527085ea90d173ace3c74ebf52fb46f",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "verdict": {
+    "result": "pass",
+    "pass": true,
+    "flushed": "yes",
+    "ownerDecision": null,
+    "problems": []
+  },
+  "raw": {
+    "syncExists": true,
+    "syncExit": 0,
+    "runs": [
+      {
+        "dirtyBeforeKb": 285080,
+        "writebackBeforeKb": 0,
+        "dirtyAfterKb": 240,
+        "writebackAfterKb": 256,
+        "syncMs": 463
+      },
+      {
+        "dirtyBeforeKb": 293528,
+        "writebackBeforeKb": 0,
+        "dirtyAfterKb": 4,
+        "writebackAfterKb": 0,
+        "syncMs": 633
+      },
+      {
+        "dirtyBeforeKb": 293420,
+        "writebackBeforeKb": 0,
+        "dirtyAfterKb": 96,
+        "writebackAfterKb": 436,
+        "syncMs": 459
+      },
+      {
+        "dirtyBeforeKb": 293256,
+        "writebackBeforeKb": 0,
+        "dirtyAfterKb": 212,
+        "writebackAfterKb": 168,
+        "syncMs": 1013
+      },
+      {
+        "dirtyBeforeKb": 293368,
+        "writebackBeforeKb": 0,
+        "dirtyAfterKb": 0,
+        "writebackAfterKb": 0,
+        "syncMs": 646
+      }
+    ],
+    "flushed": "yes",
+    "measure": null,
+    "syncPath": "/system/bin/sync",
+    "sizeBytes": 300000000,
+    "repeats": 5,
+    "flushRule": "yes: every run had Dirty+Writeback >= 10% of the file before sync and <= 10% of that after; no: after > 50% of before in every run; otherwise undetermined. meminfo is phone-global, so background writes add noise.",
+    "adbVersion": "Android Debug Bridge version 1.0.41\nVersion 36.0.0-13206524\nInstalled as /home/node/android/platform-tools/adb\nRunning on Linux 7.0.0-43-generic (x86_64)",
+    "devices": [
+      {
+        "id": "57041FDCQ006HS",
+        "model": "Pixel 10 Pro XL",
+        "android": "17"
+      }
+    ],
+    "hostKernel": "7.0.0-43-generic",
+    "bunVersion": "1.4.5",
+    "cleanup": {
+      "removed": [
+        "s2-5.bin",
+        "s2-4.bin",
+        "s2-3.bin",
+        "s2-2.bin",
+        "s2-1.bin"
+      ],
+      "failed": []
+    },
+    "evidence": "/home/node/Documents/GitHub/portage/bench/evidence/send-to-phone/2026-11-27-send-s2-sync"
+  }
+}

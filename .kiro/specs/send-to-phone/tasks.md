@@ -112,7 +112,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `scripts/bench/send-s2.ts` (new).
     - Build: check `command -v sync` and its status. Write 300,000,000 bytes with `push -Z`. Read `/proc/meminfo` Dirty and Writeback before and after `sync`, and time `sync`. Repeat five times and delete the file after each run. If Dirty or Writeback is missing, record that and name the measure used. Exports `s2Verdict`.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "send S2 verdict"` passes.
-  - [~] 2.8 Run S2 on one phone and commit its record
+  - [x] 2.8 Run S2 on one phone and commit its record
     - Needs the phone. Requirements: R2.1 to R2.7. Design: §8.3, §2.5. OI-4.
     - Files: `bench/results/<date>-send-s2-sync.json` (new, committed).
     - Done when: `ls bench/results/*-send-s2-sync.json` lists one record, and `git log -1 --format=%s` prints `test(bench): record S2 phone sync results`. Checkpoint 2.18 reads the verdict.

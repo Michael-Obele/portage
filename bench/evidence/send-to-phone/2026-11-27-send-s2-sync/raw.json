@@ -1,0 +1,60 @@
+[
+  {
+    "run": 1,
+    "pushCode": 0,
+    "pushMs": 8368,
+    "phoneSize": "300000000",
+    "before": "Dirty:            285080 kB\nWriteback:             0 kB",
+    "after": "Dirty:               240 kB\nWriteback:           256 kB",
+    "sync": "rc=0"
+  },
+  {
+    "run": 2,
+    "pushCode": 0,
+    "pushMs": 8488,
+    "phoneSize": "300000000",
+    "before": "Dirty:            293528 kB\nWriteback:             0 kB",
+    "after": "Dirty:                 4 kB\nWriteback:             0 kB",
+    "sync": "rc=0"
+  },
+  {
+    "run": 3,
+    "pushCode": 0,
+    "pushMs": 8661,
+    "phoneSize": "300000000",
+    "before": "Dirty:            293420 kB\nWriteback:             0 kB",
+    "after": "Dirty:                96 kB\nWriteback:           436 kB",
+    "sync": "rc=0"
+  },
+  {
+    "run": 4,
+    "pushCode": 0,
+    "pushMs": 7927,
+    "phoneSize": "300000000",
+    "before": "Dirty:            293256 kB\nWriteback:             0 kB",
+    "after": "Dirty:               212 kB\nWriteback:           168 kB",
+    "sync": "rc=0"
+  },
+  {
+    "run": 5,
+    "pushCode": 0,
+    "pushMs": 7980,
+    "phoneSize": "300000000",
+    "before": "Dirty:            293368 kB\nWriteback:             0 kB",
+    "after": "Dirty:                 0 kB\nWriteback:             0 kB",
+    "sync": "rc=0"
+  },
+  {
+    "cleanup": {
+      "removed": [
+        "s2-5.bin",
+        "s2-4.bin",
+        "s2-3.bin",
+        "s2-2.bin",
+        "s2-1.bin"
+      ],
+      "failed": []
+    },
+    "rmdir": "ls: /sdcard/Download/portage-spike-S2: No such file or directory\n"
+  }
+]
