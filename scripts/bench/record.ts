@@ -232,8 +232,10 @@ export function writeRecord(
   experiment: string,
   verdict: Verdict,
   raw: unknown,
+  // A phone spike has no archive mount. The caller owns the claim that none applies.
+  opts: { noMount?: boolean } = {},
 ): string {
-  if (guarded === null) {
+  if (guarded === null && !opts.noMount) {
     throw new Error("writeRecord: run mountGuard on the destination first");
   }
   if (!/^[a-z0-9][a-z0-9-]*$/.test(experiment)) {
@@ -259,14 +261,18 @@ export function writeRecord(
         readFileSync(join(REPO, ".github", "workflows", "ci.yml"), "utf8"),
       ),
     },
-    mount: {
-      root: guarded.root,
-      mountPoint: guarded.mountPoint,
-      line: guarded.line,
-      findmnt: findmnt(guarded.root),
-    },
-    driver: guarded.driver,
-    ...blockState(guarded.source),
+    ...(guarded === null || opts.noMount
+      ? {}
+      : {
+          mount: {
+            root: guarded.root,
+            mountPoint: guarded.mountPoint,
+            line: guarded.line,
+            findmnt: findmnt(guarded.root),
+          },
+          driver: guarded.driver,
+          ...blockState(guarded.source),
+        }),
     verdict,
     raw,
   };
