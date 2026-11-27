@@ -56,6 +56,12 @@ import {
   readCiBunPin,
 } from "../scripts/bench/record.ts";
 
+import {
+  cleanupManifest,
+  guardFolder,
+  writeSpikeRecord,
+} from "../scripts/bench/send-spike.ts";
+
 const OLD = secondsAgo(3600); // an hour ago — comfortably quiescent
 
 describe("eligibility", () => {
@@ -1295,5 +1301,37 @@ describe("send shared helpers", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("send spike guard", () => {
+  test("refuses a folder holding a file the manifest does not list", () => {
+    const r = guardFolder(["a.bin", "keep-me.jpg"], ["a.bin"]);
+    expect(r.ok).toBe(false);
+    expect(r.foreign).toEqual(["keep-me.jpg"]);
+  });
+
+  test("accepts an empty folder and a folder of manifest files only", () => {
+    expect(guardFolder([], []).ok).toBe(true);
+    expect(guardFolder(["a.bin", "b.bin"], ["b.bin", "a.bin", "c.bin"]).ok).toBe(true);
+  });
+
+  test("cleanup removes only manifest paths", () => {
+    const removed: string[] = [];
+    const out = cleanupManifest(["/p/a.bin", "/p/b.bin"], (p) => removed.push(p));
+    expect(removed).toEqual(["/p/a.bin", "/p/b.bin"]);
+    expect(out.failed).toEqual([]);
+  });
+
+  test("cleanup reports a path that would not go and keeps going", () => {
+    const out = cleanupManifest(["/p/a", "/p/b"], (p) => {
+      if (p === "/p/a") throw new Error("busy");
+    });
+    expect(out.removed).toEqual(["/p/b"]);
+    expect(out.failed).toEqual(["/p/a"]);
+  });
+
+  test("the writer refuses a bad experiment name", () => {
+    expect(() => writeSpikeRecord("../x", { result: "pass" }, {})).toThrow();
   });
 });
