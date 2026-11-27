@@ -88,6 +88,25 @@ describe("the plan reads the destination, not only the journal", () => {
     expect(plan.toTransfer[0]!.destPath).toBe(join(drive.root, relative));
   });
 
+  test("an archive row whose file is gone from the drive does not skip the file", async () => {
+    const relative = "Toradora/ep02.mkv";
+    const destPath = join(drive.root, relative);
+    // The journal remembers an identical copy, but the drive no longer has it.
+    journal.upsertArchive({
+      path: destPath,
+      pathNorm: destPath.toLowerCase(),
+      size: SIZE,
+      hash: "ab".repeat(32),
+      hashKind: "sha256",
+      verified: true,
+    });
+
+    const plan = await planFor([candidate(relative)]);
+
+    expect(plan.toTransfer).toHaveLength(1);
+    expect(plan.skipped).toHaveLength(0);
+  });
+
   test("a file already at the destination with the same size is skipped", async () => {
     const relative = "Frieren/S01/ep02.mkv";
     const destPath = join(drive.root, relative);

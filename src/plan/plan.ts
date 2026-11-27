@@ -250,11 +250,8 @@ export function buildPlan(
 
     // A file is only worth transferring bytes for when we do not already have
     // it. Everything else is free to skip — and skipping is the feature.
-    const skip =
-      alreadyTransferred ||
-      archiveHit?.relation === "identical" ||
-      alreadyOnDisk ||
-      collision;
+    // An archive row alone is not proof: the drive must still hold the file.
+    const skip = alreadyTransferred || alreadyOnDisk || collision;
 
     files.push({
       candidate,
@@ -265,11 +262,9 @@ export function buildPlan(
       skipReason: skip
         ? alreadyTransferred
           ? "already transferred and verified in an earlier run"
-          : archiveHit?.relation === "identical"
-            ? "identical content is already on the drive"
-            : collision
-              ? `collision: ${diskSize} on the drive, ${candidate.size} on the phone — will not overwrite`
-              : "already on the drive (same size)"
+          : collision
+            ? `collision: ${diskSize} on the drive, ${candidate.size} on the phone — will not overwrite`
+            : "already on the drive (same size)"
         : undefined,
       bytes: skip ? 0 : candidate.size,
     });
