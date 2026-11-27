@@ -1964,3 +1964,23 @@ fi
     }
   });
 });
+
+describe("path name", () => {
+  test("flushFile names the TypeScript path for its directory sync while the branch is B", async () => {
+    const { DIRECTORY_SYNC_BRANCH, flushFile } = await import("../src/util/durable.ts");
+    expect(DIRECTORY_SYNC_BRANCH).toBe("B");
+    const dir = await mkdtemp(join(tmpdir(), "portage-flush-"));
+    try {
+      const file = join(dir, "a.bin");
+      await writeFile(file, "x");
+      const open = async () => ({ sync: async () => {}, close: async () => {} });
+
+      const outcome = await flushFile(dir, file, 1, { open });
+
+      expect(outcome.kind).toBe("ok");
+      expect((outcome as { path?: string }).path).toBe("typescript");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});

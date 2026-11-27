@@ -288,3 +288,20 @@ describe("unreadable trash", () => {
     }
   });
 });
+
+describe("path name", () => {
+  test("emptyTrash with no Helper names the TypeScript path and says why", async () => {
+    const root = await drive();
+    try {
+      const trash = trashRootFor(root);
+      await file(join(trash, "2026-11-07", "a.mkv"), 10);
+
+      const result = await emptyTrash(root, [join(trash, "2026-11-07")], globIo());
+
+      expect(result.path).toBe("typescript");
+      expect(result.reason).toMatch(/\S/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});

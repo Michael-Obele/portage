@@ -618,7 +618,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Run `bun run test` and `bun run typecheck`, and fix what fails.
     - In `crates/portage-scan`, run `cargo test` and `cargo clippy --all-targets -- -D warnings`, and fix what fails.
     - Done when: each command passes.
-  - [~] 4.26 Write the tests that name the path that ran (red)
+  - [x] 4.26 Write the tests that name the path that ran (red)
     - Requirements: R4.10, R4.13, R1.14. Design: Requirement 4, criterion 10; Components (`src/dedupe/trash.ts`, `src/dedupe/index.ts`, `src/util/durable.ts`); Testing strategy, Layer 1.
     - Files: `test/trash.test.ts` (new `path name` describe block), `test/dedupe.test.ts` (new `path name` describe block), `test/units.test.ts` (new `path name` describe block).
     - Tests first: (1) `emptyTrash` with no Helper returns a result whose `path` is `"typescript"`, with a `reason`. (2) The cross-folder move's apply step, on its copy-and-remove branch, returns `path: "typescript"`. (3) The survivor check returns `path: "typescript"` for each candidate. (4) `flushFile` returns `path: "typescript"` for its directory sync while `DIRECTORY_SYNC_BRANCH` is `"B"`. Each test fails until task 4.27 is done.

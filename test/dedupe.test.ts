@@ -597,3 +597,49 @@ describe("survivor check", () => {
     }
   });
 });
+
+describe("path name", () => {
+  test("the copy-and-remove move names the TypeScript path", async () => {
+    const root = await drive();
+    try {
+      const from = await put(root, "Anime/a/ep01.mkv", 64);
+      const to = join(root, "trash", "ep01.mkv");
+      await mkdir(join(root, "trash"));
+      const exdev = async () => {
+        throw Object.assign(new Error("cross-device"), { code: "EXDEV" });
+      };
+      const { moveFile } = await import("../src/util/durable.ts");
+
+      const outcome = await moveFile(root, from, to, { rename: exdev as never });
+
+      expect(outcome).toMatchObject({ kind: "moved", via: "copy" });
+      expect((outcome as { path?: string }).path).toBe("typescript");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("the survivor check names the TypeScript path for each candidate", async () => {
+    const root = await drive();
+    try {
+      const a = await put(root, "Anime/a/ep01.mkv", 4096);
+      const b = await put(root, "Anime/b/ep01.mkv", 4096);
+      const c = await put(root, "Anime/c/ep01.mkv", 4096);
+      const report = await scanDuplicates({ roots: [root] });
+      const group = report.groups[0];
+      if (!group) throw new Error("no duplicate group");
+      const { checkSurvivors } = await import("../src/dedupe/index.ts");
+
+      const check = await checkSurvivors(root, group, a, [a]);
+
+      expect(check.path).toBe("typescript");
+      expect(check.survivors).toBe(2);
+      expect(check.candidates.map((x) => x.file).sort()).toEqual([b, c].sort());
+      for (const candidate of check.candidates) {
+        expect(candidate.path).toBe("typescript");
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
