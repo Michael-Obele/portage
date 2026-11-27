@@ -1,0 +1,197 @@
+{
+  "experiment": "doctor-check",
+  "startedAt": "2026-11-27T08:51:04.196Z",
+  "finishedAt": "2026-11-27T08:51:09.119Z",
+  "commit": {
+    "sha": "a24e35c28ad4af22ae13f48a4c582ac849e03e01",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "mount": {
+    "root": "/media/node/2TB",
+    "mountPoint": "/media/node/2TB",
+    "line": "/dev/sdb1 /media/node/2TB fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096 0 0",
+    "findmnt": "/dev/sdb1 fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096"
+  },
+  "driver": "ntfs-3g",
+  "device": {
+    "partition": "/dev/sdb1",
+    "disk": "/dev/sdb"
+  },
+  "usb": {
+    "port": "3-4",
+    "speedMbit": 480
+  },
+  "block": {
+    "disk": "/dev/sdb",
+    "rotational": true,
+    "writeCache": "write back",
+    "model": "HN-M201RAD"
+  },
+  "verdict": {
+    "result": "pass",
+    "expect": {
+      "unmountedDestination": "the archive drive is not mounted",
+      "neverSays": "healthy"
+    },
+    "observed": {
+      "unmountedDestination": [
+        {
+          "status": "fail",
+          "label": "destination",
+          "value": "/home/node/portage-doctor-exercise-2026-11-27T08-51-08-713Z: the archive drive is not mounted",
+          "fix": "mount the drive, or set dest_root with: portage config set dest_root <path>"
+        }
+      ]
+    }
+  },
+  "raw": {
+    "mountedRun": {
+      "root": "/media/node/2TB",
+      "destination": [
+        {
+          "status": "ok",
+          "label": "destination",
+          "value": "/media/node/2TB  (fuseblk)",
+          "fix": null
+        }
+      ],
+      "checks": [
+        {
+          "status": "ok",
+          "label": "adb",
+          "value": "1.0.41  /home/node/android/platform-tools/adb",
+          "fix": null
+        },
+        {
+          "status": "warn",
+          "label": "devices",
+          "value": "none attached",
+          "fix": "a transfer needs one: plug in a phone, enable USB debugging, and accept the RSA prompt on the device"
+        },
+        {
+          "status": "ok",
+          "label": "usb link",
+          "value": "10000M",
+          "fix": null
+        },
+        {
+          "status": "ok",
+          "label": "destination",
+          "value": "/media/node/2TB  (fuseblk)",
+          "fix": null
+        },
+        {
+          "status": "ok",
+          "label": "  free",
+          "value": "399 GB of 1.8 TB (79% used)",
+          "fix": null
+        },
+        {
+          "status": "ok",
+          "label": "journal",
+          "value": "2 files tracked, 3.5 MB",
+          "fix": null
+        },
+        {
+          "status": "ok",
+          "label": "scanner",
+          "value": "0.1.15  /home/node/Documents/GitHub/portage/crates/portage-scan/target/release/portage-scan",
+          "fix": null
+        },
+        {
+          "status": "ok",
+          "label": "walk",
+          "value": "33361 files in 3.8 s",
+          "fix": null
+        },
+        {
+          "status": "ok",
+          "label": "trash",
+          "value": "empty",
+          "fix": null
+        },
+        {
+          "status": "info",
+          "label": "throughput",
+          "value": "not measured — use `portage doctor --bench`",
+          "fix": null
+        }
+      ]
+    },
+    "unmountedRun": {
+      "root": "/home/node/portage-doctor-exercise-2026-11-27T08-51-08-713Z",
+      "checks": [
+        {
+          "status": "ok",
+          "label": "adb",
+          "value": "1.0.41  /home/node/android/platform-tools/adb",
+          "fix": null
+        },
+        {
+          "status": "warn",
+          "label": "devices",
+          "value": "none attached",
+          "fix": "a transfer needs one: plug in a phone, enable USB debugging, and accept the RSA prompt on the device"
+        },
+        {
+          "status": "ok",
+          "label": "usb link",
+          "value": "10000M",
+          "fix": null
+        },
+        {
+          "status": "fail",
+          "label": "destination",
+          "value": "/home/node/portage-doctor-exercise-2026-11-27T08-51-08-713Z: the archive drive is not mounted",
+          "fix": "mount the drive, or set dest_root with: portage config set dest_root <path>"
+        },
+        {
+          "status": "warn",
+          "label": "  free",
+          "value": "26.7 GB of 468 GB (94% used)",
+          "fix": "portage dupes  — reclaim space from duplicate groups"
+        },
+        {
+          "status": "ok",
+          "label": "journal",
+          "value": "0 files tracked, 0 B",
+          "fix": null
+        },
+        {
+          "status": "ok",
+          "label": "scanner",
+          "value": "0.1.15  /home/node/Documents/GitHub/portage/crates/portage-scan/target/release/portage-scan",
+          "fix": null
+        },
+        {
+          "status": "ok",
+          "label": "walk",
+          "value": "0 files in 0.0 s",
+          "fix": null
+        },
+        {
+          "status": "ok",
+          "label": "trash",
+          "value": "empty",
+          "fix": null
+        },
+        {
+          "status": "info",
+          "label": "throughput",
+          "value": "not measured — use `portage doctor --bench`",
+          "fix": null
+        }
+      ]
+    }
+  }
+}

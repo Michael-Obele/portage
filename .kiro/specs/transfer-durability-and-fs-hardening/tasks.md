@@ -745,7 +745,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: the script calls `mountGuard` and the fixture guard, and creates a fixture file under `<destRoot>/.portage/trash/<day>/`. It runs trash emptying through its confirmation step, and records `df` before and after, and the bytes the engine reports as freed. The verdict is `pass` when the freed bytes are within one 4,096-byte block per removed file of the `df` change (Notes N10).
     - Done when: the record's `verdict.result` is `pass`, and `git log -1 --format=%s` prints `test(bench): record the trash run on the archive drive`.
 
-  - [~] 7.5 Write the Doctor exercise, run it on the archive drive, and commit the record
+  - [x] 7.5 Write the Doctor exercise, run it on the archive drive, and commit the record
     - Needs the archive drive mounted. Requirements: R2.3, R2.14, R7.4. Design: Testing strategy, Layer 4 (step 3); Notes N9.
     - Files: `scripts/bench/exercise-doctor.ts` (new), `bench/results/<date>-doctor-check.json` (new, committed).
     - Build: the script runs Doctor with the drive mounted and records its destination row. It then points `dest_root` at an empty, unmounted directory on the system disk and runs Doctor again. The expected text is "the archive drive is not mounted", and the output never says "healthy". The script restores the config afterwards. Call `mountGuard` for the mounted run only.
