@@ -470,7 +470,7 @@ This plan builds the feature in the order that requirements.md and design.md app
 
 - [ ] 4. Phase 4: measured Helper moves (R4, R1.14 branch A)
      Tasks 4.1 to 4.3 are required. Tasks 4.2 and 4.3 produce the records that decide the gates. Tasks 4.4 to 4.24 are gated and optional, and each carries `*`. Each gated test reads its gate's record and fails unless that record allows the gate, so no Helper code can pass its gate without a committed record (R4.11). Task 4.25 is a required checkpoint. Tasks 4.26 and 4.27 are required and come after the checkpoint. They name the path that ran in the TypeScript results (R4.10, R4.13), which no required task covered before. The owner's step to enable a gated task is in the Notes owner checklist (N30).
-  - [~] 4.1 Build the bench-only Rust example for E2 and E3
+  - [x] 4.1 Build the bench-only Rust example for E2 and E3
     - Requirements: R4.1, R4.2, R4.3. Design: Measurement plan (E2, E3; Rust candidates in `examples/fsbench.rs`).
     - Files: `crates/portage-scan/examples/fsbench.rs` (new). It uses the crate's existing libc dependency and adds no crate.
     - Build: three candidates, each printing one JSON line per run. The removal candidate uses std `remove_dir_all` on a fixture. The move candidate uses `renameat` with two directory handles. The stat candidate makes one group call over all moved paths. The example is for benchmarks only.
