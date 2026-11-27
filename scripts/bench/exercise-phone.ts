@@ -6,6 +6,9 @@
  * (R7.7, Notes N11).
  *
  * Usage: bun scripts/bench/exercise-phone.ts <archive-root> <show-name-on-phone>
+ *        bun scripts/bench/exercise-phone.ts <archive-root> <show-name-on-phone> --from-run <id>
+ *
+ * --from-run writes the record for a run that already finished, without pulling again.
  */
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
@@ -39,7 +42,10 @@ async function main(): Promise<void> {
   const eng = await startEngine(guard.root);
   try {
     const startedAt = Date.now();
-    const answer = await eng.send("pull-1", "pull.start", { show, mode: "keep" });
+    const fromRun = process.argv[4] === "--from-run" ? Number(process.argv[5]) : null;
+    const answer = fromRun === null
+      ? await eng.send("pull-1", "pull.start", { show, mode: "keep" })
+      : { v: 1, type: "answer", id: "pull-1", ok: true, data: { fromRun } };
     if (!answer.ok) throw new Error(`pull.start failed: ${answer.error?.message ?? "no reason"}`);
 
     // pull.start returns before the run ends. Wait for this run's journal row to close.
@@ -47,11 +53,15 @@ async function main(): Promise<void> {
     let run: { id: number; status: string } | null = null;
     const deadline = Date.now() + 30 * 60_000;
     while (Date.now() < deadline) {
-      run = db
-        .query<{ id: number; status: string }, [number]>(
-          "SELECT id, status FROM runs WHERE started_at >= ? ORDER BY id DESC LIMIT 1",
-        )
-        .get(startedAt) ?? null;
+      run = fromRun === null
+        ? db
+            .query<{ id: number; status: string }, [number]>(
+              "SELECT id, status FROM runs WHERE started_at >= ? ORDER BY id DESC LIMIT 1",
+            )
+            .get(startedAt) ?? null
+        : db
+            .query<{ id: number; status: string }, [number]>("SELECT id, status FROM runs WHERE id = ?")
+            .get(fromRun) ?? null;
       if (run && run.status !== "running") break;
       await Bun.sleep(2000);
     }

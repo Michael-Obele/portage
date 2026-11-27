@@ -1,0 +1,88 @@
+{
+  "experiment": "phone-copy",
+  "startedAt": "2026-11-27T09:46:46.002Z",
+  "finishedAt": "2026-11-27T09:46:46.019Z",
+  "commit": {
+    "sha": "f109ba3aabe3a80533de9d1c29c7d69ed38a0d7b",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "mount": {
+    "root": "/media/node/2TB/Move",
+    "mountPoint": "/media/node/2TB",
+    "line": "/dev/sdb1 /media/node/2TB fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096 0 0",
+    "findmnt": "/dev/sdb1 fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096"
+  },
+  "driver": "ntfs-3g",
+  "device": {
+    "partition": "/dev/sdb1",
+    "disk": "/dev/sdb"
+  },
+  "usb": {
+    "port": "3-4",
+    "speedMbit": 480
+  },
+  "block": {
+    "disk": "/dev/sdb",
+    "rotational": true,
+    "writeCache": "write back",
+    "model": "HN-M201RAD"
+  },
+  "verdict": {
+    "result": "pass",
+    "expect": {
+      "finalState": "verified",
+      "hashScope": "full",
+      "phoneDeleted": false
+    },
+    "observed": {
+      "run": 11,
+      "status": "done",
+      "states": [
+        "verified"
+      ]
+    },
+    "transitionsObserved": false
+  },
+  "raw": {
+    "serials": [
+      "57041FDCQ006HS"
+    ],
+    "show": "[S1 02] Toradora",
+    "mode": "keep",
+    "journal": [
+      {
+        "src_path": "/sdcard/Download/Move/Toradora/[S1 02] Toradora [1080p] [Dual] [T4TSA.cc].mkv",
+        "dest_path": "/media/node/2TB/Move/Toradora/[S1 02] Toradora [1080p] [Dual] [T4TSA.cc].mkv",
+        "size": 255741032,
+        "state": "verified",
+        "hash": "47beaa2a5b6ba520e7244c7f9869c93f8e0067b4c126edef8858da1a1122a318",
+        "hash_scope": "full",
+        "attempts": 8,
+        "last_error": null
+      }
+    ],
+    "df": {
+      "start": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sdb1      2000397791232 1571828609024 428569182208  79% /media/node/2TB\n",
+      "end": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sdb1      2000397791232 1571828609024 428569182208  79% /media/node/2TB\n"
+    },
+    "engineAnswer": {
+      "v": 1,
+      "type": "answer",
+      "id": "pull-1",
+      "ok": true,
+      "data": {
+        "fromRun": 11
+      }
+    }
+  }
+}

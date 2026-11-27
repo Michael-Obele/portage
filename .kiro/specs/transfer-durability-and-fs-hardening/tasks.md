@@ -751,7 +751,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: the script runs Doctor with the drive mounted and records its destination row. It then points `dest_root` at an empty, unmounted directory on the system disk and runs Doctor again. The expected text is "the archive drive is not mounted", and the output never says "healthy". The script restores the config afterwards. Call `mountGuard` for the mounted run only.
     - Done when: the record holds both outputs, its `verdict.result` is `pass` when the second output contains "the archive drive is not mounted", and `git log -1 --format=%s` prints `test(bench): record the Doctor check on the archive drive`.
 
-  - [~] 7.6 Write the phone-copy exercise, run it, and commit the record
+  - [x] 7.6 Write the phone-copy exercise, run it, and commit the record
     - Needs the phone. Requirements: R1.1, R1.6, R7.7. Design: Notes N11; Testing strategy, Layer 4 (phone run).
     - Files: `scripts/bench/exercise-phone.ts` (new), `bench/results/<date>-phone-copy.json` (new, committed).
     - Build: the script pulls one small file over adb through the changed copy path, with `delete_source` set to `never`. It reads the journal rows for that file and checks that the row moved through `copying`, `written`, and `verified`, and that the flush and the hash check ran. It deletes nothing on the phone. Deleting from the phone is a one-way door under AGENTS.md rule 6, so the script does not do it.
