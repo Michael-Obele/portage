@@ -715,7 +715,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: the test asserts that each text below appears, quoted exactly, in at least one of the source files named beside it. It also asserts that no text describing an unreadable result contains "missing", "zero", or "healthy". The texts and their files: "flush failed: the drive did not confirm the file was written" and "flush timed out after " (`src/util/durable.ts`); "flush failed: the drive did not confirm the folder entry: " and "flush skipped: an earlier flush of this folder failed; restart the Engine to retry: " (`src/util/durable.ts`); "the destination could not be read; nothing was changed" (`src/index/recovery.ts`, `src/dedupe/index.ts`, `src/xfer/adb.ts`); "the archive drive stopped answering; restart the Engine after checking the drive" (`src/xfer/engine.ts`, `src/serve/doctor.ts`); "check failed: no answer within " (`src/serve/doctor.ts`, `src/xfer/adb.ts`); "the archive drive is not mounted" (`src/index/recovery.ts`); "drive copy unreadable" (`src/xfer/purge.ts`, `src/serve/dispatch.ts`); "the mount check could not be read" (`src/serve/doctor.ts`); "the drive copy could not be read" (`src/xfer/engine.ts`); "the path could not be read; not transferred over" (`src/plan/plan.ts`); "the trash could not be read" (`src/dedupe/trash.ts`).
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "exact messages"` passes.
 
-  - [~] 6.8 Checkpoint: documentation and exact texts
+  - [x] 6.8 Checkpoint: documentation and exact texts
     - Run `bun run test` and `bun run typecheck`, and fix what fails.
     - Done when: both commands pass.
 
