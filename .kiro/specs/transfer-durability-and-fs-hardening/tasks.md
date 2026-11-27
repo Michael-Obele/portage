@@ -463,7 +463,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: (a) The `commits` job calls `./scripts/range-start.sh` in place of its inline logic. (b) The `engine` job gets the job-level environment `PORTAGE_SCAN: ${{ github.workspace }}/dist/portage-scan` and `PORTAGE_REQUIRE_SCANNER: "1"`, a `dtolnay/rust-toolchain@stable` step, a `swatinem/rust-cache@v2` step with `workspaces: crates/portage-scan -> target`, and a `bun run build:scanner` step before the Test step. (c) The frozen step follows the shell in design.md's CI changes: `range_start` from the script, `base` from `git merge-base`, then `git diff --name-only "$base" HEAD -- src/scan`, with the error text that design.md gives. The `git status --porcelain` step is removed.
     - Done when: `/home/node/.local/bin/actionlint .github/workflows/ci.yml` exits 0, `grep -n 'build:scanner\|bun run test' .github/workflows/ci.yml` shows the build line before the test line inside the engine job (R6.5), and `bun test --preload ./scripts/preload.ts test/units.test.ts -t "ci frozen check"` still passes.
 
-  - [~] 3.9 Checkpoint: Phase 3 exclusions and CI
+  - [x] 3.9 Checkpoint: Phase 3 exclusions and CI
     - Run `bun run test`, and fix what fails.
     - In `crates/portage-scan`, run `cargo test`, `cargo clippy --all-targets -- -D warnings`, and `cargo fmt --check`, and fix what fails.
     - Done when: each command passes.
