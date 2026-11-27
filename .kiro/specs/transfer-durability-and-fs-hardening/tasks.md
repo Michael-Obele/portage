@@ -385,14 +385,14 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: while the breaker is tripped, the destination row prints the EH-13 breaker text "the archive drive stopped answering; restart the Engine after checking the drive".
     - Done when: `bun test --preload ./scripts/preload.ts test/serve.test.ts -t "Doctor destination row reports a tripped breaker"` passes, and `git log -1 --format=%s` prints `feat(probes): stop drive work after three deadline timeouts`, once the group commit for tasks 2.26 to 2.30 is made.
 
-  - [~] 2.31 Refuse a root-filesystem destination (R2.14)
+  - [x] 2.31 Refuse a root-filesystem destination (R2.14)
     - Requirements: R2.14. Design: Components (destination check, the root-filesystem rule); DV-14; RK-10; Notes N9.
     - Files: `test/units.test.ts` (the root-filesystem examples in `destination check`), `src/index/recovery.ts` (`judgeDestination`).
     - Tests first: a mount whose target is `/` is refused, with `status` `refused`, `ok` false, and the R2.14 text "the archive drive is not mounted". A mount whose target is not `/` passes. The judgement covers both the plan path and the run path.
     - Build: `judgeDestination` refuses a target of `/`. An exit-1 `not-mounted` result keeps its current reason text, "destination is not on a mounted filesystem", as the design's destination-check section states.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "destination check"` passes every example.
 
-  - [~] 2.32 Move Doctor's findmnt probes onto `readMount` at 3 seconds (row P19)
+  - [x] 2.32 Move Doctor's findmnt probes onto `readMount` at 3 seconds (row P19)
     - Requirements: R2.2, R2.3. Design: Appendix A row P19; Components (`readMount`); Doctor section; DV-12; O-1.
     - Files: `src/serve/doctor.ts` (`probeFstype` and `isReadOnly`, lines 390 to 410, and their call sites at lines 171 and 172).
     - Build: `probeFstype` and `isReadOnly` each call `readMount(spawn, destRoot, 3000)` under `probe()`. The 3-second deadline is also the kill timer, and the 5-second kill timer is removed. A timeout prints "the mount check could not be read", and it never prints an unknown filesystem or a drive that is not read-only.

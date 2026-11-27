@@ -15,7 +15,8 @@ import {
   parseLsusbTree,
   type DeviceInfo,
 } from "#lib/device/adb.ts";
-import { diskSpaceAsync } from "#lib/util/fs.ts";
+import { diskSpaceAsync, readMount, type MountState } from "#lib/util/fs.ts";
+import { isReadOnlyMount } from "#lib/index/recovery.ts";
 import { syncFileOnly, type FlushOutcome } from "#lib/util/durable.ts";
 import {
   BREAKER_STOPPED,
@@ -209,10 +210,19 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
       deadlineMs,
     );
     const space = read.kind === "ok" ? read.value : null;
-    const fstype = await probeFstype(destRoot);
-    const readonly = await isReadOnly(destRoot);
+    const mount = await readMountRow(spawn, destRoot, deadlineMs);
+    const mounted = mount?.kind === "mounted" ? mount : null;
+    const readonly = mounted ? isReadOnlyMount(mounted.options) : false;
+    const fstype = mounted ? describeFstype(mounted) : "unknown filesystem";
 
-    if (readonly) {
+    if (mount === null) {
+      rows.push({
+        mark: "warn",
+        label: "destination",
+        value: `${destRoot}: the mount check could not be read`,
+        fix: "the drive did not answer the mount check — run doctor again",
+      });
+    } else if (readonly) {
       rows.push({
         mark: "fail",
         label: "destination",
@@ -435,29 +445,26 @@ async function probeLinkSpeed(): Promise<{
   return { speeds: parseLsusbTree(res.stdout) };
 }
 
-async function probeFstype(path: string): Promise<string> {
-  const res = await realSpawn(["findmnt", "-no", "FSTYPE", "--target", path], {
-    timeoutMs: 3_000,
-  }).catch(() => null);
-  if (!res || res.code !== 0) return "unknown filesystem";
-  const fstype = res.stdout.trim();
-  const driver = await realSpawn(
-    ["findmnt", "-no", "OPTIONS", "--target", path],
-    {
-      timeoutMs: 3_000,
-    },
-  ).catch(() => null);
-  const opts = driver?.stdout ?? "";
-  const isFuse = opts.includes("fuseblk") || opts.includes("ntfs-3g");
-  return isFuse ? `${fstype} via ntfs-3g (FUSE)` : fstype;
+/** One findmnt under the probe deadline. Null means it could not be read (R2.2). */
+async function readMountRow(
+  spawn: SpawnFn,
+  path: string,
+  deadlineMs: number,
+): Promise<Extract<MountState, { kind: "mounted" | "not-mounted" }> | null> {
+  const read = await driveProbe(
+    path,
+    "findmnt",
+    () => readMount(spawn, path, deadlineMs),
+    deadlineMs,
+  );
+  if (read.kind !== "ok" || read.value.kind === "unreadable") return null;
+  return read.value;
 }
 
-async function isReadOnly(path: string): Promise<boolean> {
-  const res = await realSpawn(["findmnt", "-no", "OPTIONS", "--target", path], {
-    timeoutMs: 3_000,
-  }).catch(() => null);
-  const opts = res?.stdout.trim() ?? "";
-  return opts === "ro" || opts.startsWith("ro,");
+function describeFstype(mount: { fsType: string; options: string }): string {
+  const isFuse =
+    mount.options.includes("fuseblk") || mount.options.includes("ntfs-3g");
+  return isFuse ? `${mount.fsType} via ntfs-3g (FUSE)` : mount.fsType;
 }
 
 /** Pure. A flush that got no answer is "check failed", never "healthy". */

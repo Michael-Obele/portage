@@ -247,6 +247,20 @@ export function judgeDestination(
     };
   }
 
+  // R2.14: an unmounted drive's folder sits on the system disk, and findmnt
+  // then reports the parent filesystem. Never copy there.
+  if (read.mount.target === "/") {
+    return {
+      ok: false,
+      status: "refused",
+      reason: "the archive drive is not mounted",
+      fix: "mount the drive, or set dest_root with: portage config set dest_root <path>",
+      freeBytes: 0,
+      totalBytes: 0,
+      usedFraction: 0,
+    };
+  }
+
   if (isReadOnlyMount(read.mount.options)) {
     return {
       ok: false,

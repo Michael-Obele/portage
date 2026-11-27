@@ -1660,6 +1660,31 @@ describe("destination check", () => {
     await reset();
   });
 
+  test("a mount whose target is / is refused as not mounted", async () => {
+    await reset();
+    const { checkDestination, judgeDestination, probeDestination } =
+      await loadRecovery();
+    const onRoot = () => reply(0, "ext4 rw,relatime /\n");
+    const verdict = await checkDestination(fake(onRoot, DF), ROOT, 0, 0.02);
+    expect(verdict).toMatchObject({
+      ok: false,
+      status: "refused",
+      reason: "the archive drive is not mounted",
+    });
+    // The run path reads and judges separately; it must refuse the same way.
+    const probed = await probeDestination(fake(onRoot, DF), ROOT);
+    expect(judgeDestination(probed, 0, 0.02, ROOT).status).toBe("refused");
+    await reset();
+  });
+
+  test("a mount whose target is not / passes the root rule", async () => {
+    await reset();
+    const { checkDestination } = await loadRecovery();
+    const verdict = await checkDestination(fake(MOUNTED, DF), ROOT, 0, 0.02);
+    expect(verdict.ok).toBe(true);
+    await reset();
+  });
+
   test("a mounted destination with room is ok", async () => {
     await reset();
     const { checkDestination } = await loadRecovery();
