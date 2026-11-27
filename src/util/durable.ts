@@ -218,9 +218,15 @@ export interface FlushDeps {
   deadlineMs?: number;
 }
 
-/** DV-30. A timeout carries no reason: `flushReason` builds its text. */
+/** Which implementation ran. Every outcome is "typescript" until a Helper branch lands (R4.10). */
+export type ExecPath = "helper" | "typescript";
+
+/**
+ * DV-30. A timeout carries no reason: `flushReason` builds its text. An `ok`
+ * names the path that ran. The other kinds keep `path` for the drive path.
+ */
 export type FlushOutcome =
-  | { kind: "ok" }
+  | { kind: "ok"; path: ExecPath }
   | { kind: "failed"; reason: string; target: "file" | "dir"; path: string }
   | {
       kind: "timeout";
@@ -283,7 +289,8 @@ function outcomeOf(
   target: "file" | "dir",
   path: string,
 ): FlushOutcome {
-  if (result.kind === "ok") return { kind: "ok" };
+  // Branch B is the only directory sync that works, and it is TypeScript (R1.14).
+  if (result.kind === "ok") return { kind: "ok", path: "typescript" };
   if (result.kind === "timeout") {
     return { kind: "timeout", deadlineMs: result.deadlineMs, target, path };
   }
@@ -394,7 +401,7 @@ export async function flushGate(
     ledger.clearIfUnchanged(mark.dir, mark.version);
   }
   // A sync in the loop can poison a folder on this copy's chain (EH-10).
-  return blocked() ?? { kind: "ok" };
+  return blocked() ?? { kind: "ok", path: "typescript" };
 }
 
 /**
@@ -415,7 +422,7 @@ export async function syncFileOnly(
     () => syncPath(opener, path, FLUSH_OPEN_MODE),
     deadlineMs,
   );
-  if (result.kind === "ok") return { kind: "ok" };
+  if (result.kind === "ok") return { kind: "ok", path: "typescript" };
   if (result.kind === "unreadable" && result.reason === "timeout") {
     return { kind: "timeout", deadlineMs, target: "file", path };
   }
@@ -423,7 +430,7 @@ export async function syncFileOnly(
 }
 
 export type MoveOutcome =
-  | { kind: "moved"; via: "rename" | "copy" }
+  | { kind: "moved"; via: "rename" | "copy"; path: ExecPath }
   | { kind: "failed"; reason: string };
 
 const messageOf = (error: unknown): string =>
@@ -442,7 +449,7 @@ export async function moveFile(
 ): Promise<MoveOutcome> {
   try {
     await (deps.rename ?? rename)(from, to);
-    return { kind: "moved", via: "rename" };
+    return { kind: "moved", via: "rename", path: "typescript" };
   } catch (error) {
     // Only EXDEV means another device. Copying past any other error hides its cause.
     if ((error as { code?: unknown } | null)?.code !== "EXDEV") {
@@ -486,5 +493,5 @@ export async function moveFile(
       reason: `the copy at ${to} is flushed, but ${from} could not be removed: ${messageOf(error)}`,
     };
   }
-  return { kind: "moved", via: "copy" };
+  return { kind: "moved", via: "copy", path: "typescript" };
 }

@@ -1037,6 +1037,7 @@ describe("durable drive copy", () => {
 
     expect(await flushFile(drive.root, file, 7, { open })).toEqual({
       kind: "ok",
+      path: "typescript",
     });
     // Linux does not open a directory for writing, so the folder opens with "r".
     expect(events).toEqual([
@@ -1094,7 +1095,7 @@ describe("durable drive copy", () => {
       kind: "refused",
       reason: `flush skipped: an earlier flush of this folder failed; restart the Engine to retry: ${poisoned}`,
     });
-    expect(await flushGate(drive.root, elsewhere)).toEqual({ kind: "ok" });
+    expect(await flushGate(drive.root, elsewhere)).toEqual({ kind: "ok", path: "typescript" });
   });
 
   test("a cross-device move flushes and gates the copy before it unlinks the source", async () => {
@@ -1107,7 +1108,7 @@ describe("durable drive copy", () => {
 
     expect(
       await moveFile(drive.root, from, to, { rename: crossDevice }),
-    ).toEqual({ kind: "moved", via: "copy" });
+    ).toEqual({ kind: "moved", via: "copy", path: "typescript" });
     expect(await Bun.file(to).text()).toBe("episode");
     expect(await exists(from)).toBe(false);
     // The gate clears a folder's mark only after its fsync succeeds.
@@ -1189,7 +1190,7 @@ describe("durable drive copy", () => {
     expect(flushed).toBe(false);
 
     release();
-    expect(await flush).toEqual({ kind: "ok" });
+    expect(await flush).toEqual({ kind: "ok", path: "typescript" });
   });
 });
 
@@ -1345,13 +1346,13 @@ describe("durability order", () => {
         if (copy.dirFlush !== "ok") {
           return badFlush(copy.dirFlush, "dir", dir, FILE_DEADLINE_MS);
         }
-        return { kind: "ok" };
+        return { kind: "ok", path: "typescript" };
       },
       flushGate: async (_root: string, dir: string) => {
         events.push("gate");
         const copy = byDir.get(dir)!;
         return copy.gate === "ok"
-          ? { kind: "ok" }
+          ? { kind: "ok", path: "typescript" }
           : badFlush(copy.gate, "dir", dir, GATE_DEADLINE_MS);
       },
     };

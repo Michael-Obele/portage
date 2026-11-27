@@ -9,7 +9,7 @@
  * has a test. A rule that is "usually true" is not a rule.
  */
 import { ALWAYS_EXCLUDED_DIRS } from "#lib/config/schema.ts";
-import { ensureDirTracked, moveFile } from "#lib/util/durable.ts";
+import { ensureDirTracked, moveFile, type ExecPath } from "#lib/util/durable.ts";
 import { statDrive } from "#lib/util/probe.ts";
 import { dirname, localDayKey, normPath, resolveInside } from "#lib/util/paths.ts";
 
@@ -423,20 +423,12 @@ export async function applySelection(
       g.members.some((m) => m.path === raw),
     );
     if (group) {
-      let survivors = 0;
-      let unreadable = false;
-      for (const other of group.members) {
-        if (other.path === raw) continue;
-        if (pathsIncludes(selected, other.path)) continue;
-        const seen = await statDrive(opts.destRoot, other.path);
-        if (seen.kind === "ok") survivors += 1;
-        else if (seen.kind === "unreadable") unreadable = true;
-      }
-      if (survivors === 0) {
+      const check = await checkSurvivors(opts.destRoot, group, raw, selected);
+      if (check.survivors === 0) {
         // A copy that could not be read may still exist: say so, not "last copy".
         result.refused.push({
           path: raw,
-          reason: unreadable
+          reason: check.unreadable
             ? "the destination could not be read; nothing was changed"
             : "would remove the last copy",
         });
@@ -475,6 +467,37 @@ export async function applySelection(
     }
   }
   return result;
+}
+
+export interface SurvivorCheck {
+  survivors: number;
+  unreadable: boolean;
+  /** Each candidate carries the path that read it (R4.13). */
+  candidates: { file: string; seen: "ok" | "missing" | "unreadable"; path: ExecPath }[];
+  path: ExecPath;
+}
+
+/** Re-reads the other members of `group` on disk. Selected members do not count as survivors. */
+export async function checkSurvivors(
+  destRoot: string,
+  group: DupeGroup,
+  raw: string,
+  selected: readonly string[],
+): Promise<SurvivorCheck> {
+  const check: SurvivorCheck = { survivors: 0, unreadable: false, candidates: [], path: "typescript" };
+  for (const other of group.members) {
+    if (other.path === raw) continue;
+    if (pathsIncludes(selected, other.path)) continue;
+    const seen = await statDrive(destRoot, other.path);
+    if (seen.kind === "ok") check.survivors += 1;
+    else if (seen.kind === "unreadable") check.unreadable = true;
+    check.candidates.push({
+      file: other.path,
+      seen: seen.kind === "ok" ? "ok" : seen.kind === "unreadable" ? "unreadable" : "missing",
+      path: "typescript",
+    });
+  }
+  return check;
 }
 
 function pathsIncludes(paths: Iterable<string>, candidate: string): boolean {

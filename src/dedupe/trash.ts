@@ -10,6 +10,7 @@ import { lstat, rm } from "node:fs/promises";
 
 import { STATE_DIR } from "#lib/config/schema.ts";
 import { resolveInside } from "#lib/util/paths.ts";
+import type { ExecPath } from "#lib/util/durable.ts";
 import { statDrive } from "#lib/util/probe.ts";
 
 import type { ScanIo } from "#lib/dedupe/scan-io.ts";
@@ -135,7 +136,13 @@ export interface EmptyResult {
   /** Bytes actually freed, counted from what was there before the delete. */
   bytesFreed: number;
   refused: TrashRefusal[];
+  /** Which implementation deleted. `reason` says why it was not the Helper (R4.10, R4.13). */
+  path: ExecPath;
+  reason?: string;
 }
+
+const NO_HELPER =
+  "the Helper delete is not built: its E2 gate has not passed";
 
 /**
  * Permanently delete trash contents.
@@ -153,7 +160,14 @@ export async function emptyTrash(
   io: ScanIo
 ): Promise<EmptyResult> {
   const root = trashRootFor(destRoot);
-  const result: EmptyResult = { removedDays: 0, removedFiles: 0, bytesFreed: 0, refused: [] };
+  const result: EmptyResult = {
+    removedDays: 0,
+    removedFiles: 0,
+    bytesFreed: 0,
+    refused: [],
+    path: 'typescript',
+    reason: NO_HELPER
+  };
 
   for (const target of targets) {
     // Containment, re-checked. `resolveInside` refuses `..`, an absolute path

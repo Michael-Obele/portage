@@ -249,7 +249,7 @@ describe("emptyTrash", () => {
     const root = await drive();
     try {
       const result = await emptyTrash(root, [], globIo());
-      expect(result).toEqual({ removedDays: 0, removedFiles: 0, bytesFreed: 0, refused: [] });
+      expect(result).toMatchObject({ removedDays: 0, removedFiles: 0, bytesFreed: 0, refused: [] });
     } finally {
       await rm(root, { recursive: true, force: true });
     }
