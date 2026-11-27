@@ -209,7 +209,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `src/device/adb.ts`.
     - Build: `parseStrictListing(bytes, exitCode)` decodes names with a fatal UTF-8 decoder, requires the end sentinel, and returns `unreadable` when a record fails. `listPhoneStrict` runs `find -H` on the root through `quoteShellArg`, retries once on a timeout, and does not follow symbolic links.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 34:"` passes.
-  - [~] 3.10 Write the exec-out stream test (red)
+  - [x] 3.10 Write the exec-out stream test (red)
     - Requirements: R1.1, R8.1, R8.2. Design: §3.6 (`StreamProcess`), SD-8. X1.
     - Files: `test/units.test.ts` (describe `send exec-out stream`).
     - Test: `execOutStream` yields the phone's bytes unchanged, including 0x0D 0x0A pairs and 0x00 bytes. `kill()` ends the child, and `exited` resolves with its status.

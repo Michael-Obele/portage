@@ -2320,3 +2320,36 @@ describe("send listing", () => {
     expect(JSON.stringify(linked)).toContain("symbolic link");
   });
 });
+
+describe("send exec-out stream", () => {
+  test("execOutStream yields the phone's bytes unchanged and kill ends the child", async () => {
+    const { Adb } = await import("../src/device/adb.ts");
+    const { realSpawn } = await import("../src/util/spawn.ts");
+    const dir = await mkdtemp(join(tmpdir(), "exec-out-"));
+    try {
+      const payload = Uint8Array.from([0x0d, 0x0a, 0x00, 0xff, 0x41, 0x0d, 0x0a]);
+      await writeFile(join(dir, "payload.bin"), payload);
+      const fake = join(dir, "adb");
+      await writeFile(
+        fake,
+        `#!/bin/sh\nif [ "$5" = "sleep" ]; then exec sleep 30; fi\nexec cat "${join(dir, "payload.bin")}"\n`,
+      );
+      await Bun.$`chmod +x ${fake}`.quiet();
+      const adb = new Adb(fake, realSpawn);
+
+      const stream = await adb.execOutStream("S", "/sdcard/x");
+      const bytes = new Uint8Array(await new Response(stream.stdout).arrayBuffer());
+      expect([...bytes]).toEqual([...payload]);
+      expect(await stream.exited).toBe(0);
+
+      const sleeper = await adb.execOutStream("S", "sleep");
+      const started = Date.now();
+      sleeper.kill();
+      const code = await sleeper.exited;
+      expect(code).not.toBe(0);
+      expect(Date.now() - started).toBeLessThan(5000);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
