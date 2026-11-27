@@ -2353,3 +2353,395 @@ describe("send exec-out stream", () => {
     }
   });
 });
+
+describe("send archive mount", () => {
+  test("Feature: send-to-phone, Property 6: the archive mount decides admission, and an unreadable mount is never healthy", async () => {
+    const { judgeArchiveMount } = await import("../src/send/plan.ts");
+    const { seededCases } = await import("./helpers.ts");
+    seededCases(6, 150, (rng) => {
+      const kind = rng.pick(["mounted", "not-mounted", "unreadable"] as const);
+      const state =
+        kind === "mounted"
+          ? {
+              kind,
+              fsType: "ext4",
+              options: rng.pick(["rw,relatime", "ro,relatime", "rw", "ro"]),
+              target: rng.pick(["/", "/mnt/archive", "/media/x"]),
+            }
+          : kind === "not-mounted"
+            ? { kind }
+            : { kind, reason: "findmnt was killed" };
+      const folder = rng.pick([
+        "Movies",
+        "Movies/Old",
+        "Movies/.portage/x",
+        "../etc",
+        "Movies/../x",
+        "/abs",
+      ]);
+      const segs = folder.split("/");
+      const folderOk =
+        !folder.startsWith("/") &&
+        !segs.includes("..") &&
+        !segs.includes(".portage");
+      const j = judgeArchiveMount(state, "/mnt/archive", folder);
+      if (kind === "unreadable") {
+        expect(j.ok).toBe(false);
+        expect(j.reason).toContain("could not be read");
+        expect(j.reason).not.toContain("not mounted");
+        return;
+      }
+      if (kind === "not-mounted") {
+        expect(j.ok).toBe(false);
+        expect(j.reason).toContain("not mounted");
+        return;
+      }
+      const expected =
+        state.target !== "/" &&
+        !state.options.split(",").includes("ro") &&
+        folderOk;
+      expect(j.ok).toBe(expected);
+    });
+  });
+});
+
+describe("send free space", () => {
+  test("Feature: send-to-phone, Property 13: free space gates for the phone and the host", async () => {
+    const { judgeFreeSpace } = await import("../src/send/plan.ts");
+    const { seededCases } = await import("./helpers.ts");
+    seededCases(13, 150, (rng) => {
+      const total = rng.int(1, 1000);
+      const free = rng.int(0, total);
+      const headroomFraction = rng.pick([0, 0.02, 0.1]);
+      const bytesToWrite = rng.int(1, 1200);
+      const j = judgeFreeSpace({ free, total, bytesToWrite, headroomFraction });
+      const usable = free - Math.ceil(total * headroomFraction);
+      const refused = bytesToWrite > usable;
+      expect(j.ok).toBe(!refused);
+      if (refused && !j.ok) {
+        expect(j.shortfall).toBe(bytesToWrite - usable);
+      }
+    });
+    const unknown = judgeFreeSpace({
+      free: null,
+      total: 100,
+      bytesToWrite: 1,
+      headroomFraction: 0,
+    });
+    expect(unknown.ok).toBe(false);
+    expect(unknown.ok ? "" : unknown.reason).toContain("could not be read");
+  });
+});
+
+describe("send device identity", () => {
+  test("Feature: send-to-phone, Property 3: device identity and phone choice", async () => {
+    const { judgeDevices } = await import("../src/send/plan.ts");
+    const { seededCases } = await import("./helpers.ts");
+    seededCases(3, 150, (rng) => {
+      const count = rng.int(1, 3);
+      const phones = Array.from({ length: count }, (_, i) => ({
+        id: `dev-${i}`,
+        serial: `SER${i}`,
+        model: "Pixel 10 Pro XL",
+        state: rng.pick(["device", "unauthorized", "offline"]),
+        serialno: rng.pick(["SER" + i, ""]),
+      }));
+      const kind = rng.pick(["drive-to-phone", "phone-to-phone"] as const);
+      const targetDeviceId = rng.pick(["dev-0", "dev-1", "dev-9", ""]);
+      const sourceDeviceId = rng.pick(["dev-0", "dev-1", null]);
+      const request = { kind, sourceDeviceId, targetDeviceId };
+      const j = judgeDevices(request, phones);
+
+      if (kind === "drive-to-phone" && targetDeviceId === "") {
+        expect(j.ok).toBe(true);
+        expect(j.ok && j.target).toBeNull();
+        return;
+      }
+      const target = phones.find((p) => p.id === targetDeviceId);
+      if (!target) {
+        expect(j.ok).toBe(false);
+        return;
+      }
+      if (target.state !== "device") {
+        expect(j.ok).toBe(false);
+        return;
+      }
+      if (target.serialno === "") {
+        expect(j.ok).toBe(false);
+        expect(j.ok ? "" : j.reason).toContain("serial number");
+        return;
+      }
+      if (kind === "phone-to-phone") {
+        const ready = phones.filter(
+          (p) => p.state === "device" && p.serialno !== "",
+        );
+        const ok =
+          ready.length === 2 &&
+          sourceDeviceId !== null &&
+          sourceDeviceId !== targetDeviceId;
+        expect(j.ok).toBe(ok);
+        return;
+      }
+      expect(j.ok).toBe(true);
+      expect(j.ok && j.target?.id).toBe(targetDeviceId);
+    });
+    const twins = judgeDevices(
+      { kind: "drive-to-phone", sourceDeviceId: null, targetDeviceId: "a" },
+      [
+        { id: "a", serial: "S", model: "m", state: "device", serialno: "S" },
+        { id: "b", serial: "S", model: "m", state: "device", serialno: "S" },
+      ],
+    );
+    expect(twins.ok).toBe(false);
+  });
+});
+
+describe("send target paths", () => {
+  test("Feature: send-to-phone, Property 9: target paths stay inside the target folder", async () => {
+    const { targetPathFor, missingFolderChain } = await import(
+      "../src/send/plan.ts"
+    );
+    const { seededCases } = await import("./helpers.ts");
+    const target = "/sdcard/Movies/Target";
+    seededCases(9, 150, (rng) => {
+      const sourceName = rng.pick(["Show", "Trip 2026", "a'b"]);
+      const relSegs = Array.from({ length: rng.int(1, 4) }, () =>
+        rng.pick(["x", "y", "z"]),
+      );
+      const relative = [...relSegs, "file.mkv"].join("/");
+      const path = targetPathFor(target, sourceName, relative);
+      expect(path).toBe(`${target}/${sourceName}/${relative}`);
+      expect(path.startsWith(`${target}/`)).toBe(true);
+
+      const dir = path.slice(0, path.lastIndexOf("/"));
+      const chainSegs = dir.slice(target.length + 1).split("/");
+      const k = rng.int(1, chainSegs.length);
+      const existing = new Set<string>([target]);
+      for (let i = 0; i < k; i++) {
+        existing.add(`${target}/${chainSegs.slice(0, i + 1).join("/")}`);
+      }
+      const chain = missingFolderChain(dir, existing);
+      const expected = chainSegs
+        .slice(0, chainSegs.length)
+        .map((_, i) => `${target}/${chainSegs.slice(0, i + 1).join("/")}`)
+        .filter((p) => !existing.has(p));
+      expect(chain).toEqual(expected);
+      for (const folder of chain) {
+        expect(folder.startsWith(`${target}/`)).toBe(true);
+      }
+    });
+  });
+});
+
+describe("send skip rule", () => {
+  test("Feature: send-to-phone, Property 10: a file is skipped only when both sides hash the same", async () => {
+    const { judgePlanFile } = await import("../src/send/plan.ts");
+    const { seededCases } = await import("./helpers.ts");
+    seededCases(10, 150, (rng) => {
+      const sourceSize = rng.int(1, 50);
+      const targetSize = rng.pick([sourceSize, sourceSize + 1]);
+      const same = rng.bool();
+      let hashCalls = 0;
+      const hashes = () => {
+        hashCalls++;
+        return { source: "aa", target: same ? "aa" : "bb" };
+      };
+      const j = judgePlanFile({
+        sourceSize,
+        target: { kind: "file", size: targetSize },
+        replace: false,
+        hashes,
+      });
+      if (targetSize !== sourceSize) {
+        expect(hashCalls).toBe(0);
+        expect(j.verdict).not.toBe("skip-already-there");
+      } else {
+        expect(hashCalls).toBe(1);
+        expect(j.verdict).toBe(same ? "skip-already-there" : "skip-different-file");
+      }
+    });
+    const missing = judgePlanFile({
+      sourceSize: 3,
+      target: { kind: "missing" },
+      replace: false,
+      hashes: () => {
+        throw new Error("hashed a missing target");
+      },
+    });
+    expect(missing.verdict).toBe("copy");
+  });
+});
+
+describe("send replace rule", () => {
+  test("Feature: send-to-phone, Property 11: a differing file is replaced only when the owner chose replace", async () => {
+    const { judgePlanFile } = await import("../src/send/plan.ts");
+    const { seededCases } = await import("./helpers.ts");
+    seededCases(11, 100, (rng) => {
+      const replace = rng.bool();
+      const j = judgePlanFile({
+        sourceSize: 5,
+        target: { kind: "file", size: 5 },
+        replace,
+        hashes: () => ({ source: "aa", target: "bb" }),
+      });
+      if (replace) {
+        expect(j.verdict).toBe("replace");
+        expect(j.replaces).toEqual({ oldSize: 5, oldSha256: "bb" });
+      } else {
+        expect(j.verdict).toBe("skip-different-file");
+        expect(j.replaces).toBeNull();
+      }
+    });
+  });
+});
+
+describe("send names", () => {
+  test("Feature: send-to-phone, Property 12: names keep their bytes, and case collisions are refused", async () => {
+    const { nameVerdict } = await import("../src/send/plan.ts");
+    const { quoteShellArg } = await import("../src/util/spawn.ts");
+    const { seededCases } = await import("./helpers.ts");
+    seededCases(12, 100, (rng) => {
+      const names = Array.from({ length: rng.int(1, 4) }, () =>
+        rng.text("aAbB .'[]\u00e9\u65e5\u0001\ufffd", 12),
+      ).filter((n) => n.length > 0);
+      if (rng.bool()) names.push("x".repeat(rng.int(200, 260)));
+      const verdicts = nameVerdict(names);
+      expect(verdicts.length).toBe(names.length);
+      verdicts.forEach((v, i) => {
+        const name = names[i] as string;
+        expect(v.name).toBe(name);
+        const bytes = new TextEncoder().encode(name).length;
+        if (/[\u0000-\u001f\u007f\ufffd]/.test(name)) {
+          expect(v.action).toBe("skip");
+        } else if (bytes + 31 > 255) {
+          expect(v.action).toBe("refuse");
+          expect(v.reason).toContain("name too long for the phone");
+        } else {
+          const lower = name.toLowerCase();
+          const collides = names.some(
+            (other, j) =>
+              j !== i &&
+              other.toLowerCase() === lower &&
+              !/[\u0000-\u001f\u007f\ufffd]/.test(other) &&
+              new TextEncoder().encode(other).length + 31 <= 255,
+          );
+          expect(v.action).toBe(collides ? "refuse" : "keep");
+          if (v.action === "keep") {
+            const out = Bun.spawnSync([
+              "sh",
+              "-c",
+              `printf '%s' ${quoteShellArg(name)}`,
+            ]);
+            expect(out.stdout.toString()).toBe(name);
+          }
+        }
+      });
+    });
+  });
+});
+
+describe("send phone source skips", () => {
+  test("Feature: send-to-phone, Property 36: zero-byte, in-flight, and recent phone files are skipped, and only those", async () => {
+    const { judgeSourcePhoneFile } = await import("../src/send/plan.ts");
+    const { IN_FLIGHT_SUFFIXES } = await import("../src/config/schema.ts");
+    const { seededCases } = await import("./helpers.ts");
+    const now = 1_800_000_000_000;
+    seededCases(36, 150, (rng) => {
+      const path = rng.pick([
+        "/sdcard/a.jpg",
+        "/sdcard/b.part",
+        "/sdcard/c.TMP",
+        "/sdcard/d.crdownload",
+        "/sdcard/e.mp4.!ut",
+      ]);
+      const size = rng.pick([0, 1, 4096]);
+      const quietSeconds = rng.pick([0, 60, 120]);
+      const mtime = now / 1000 - rng.int(0, 300);
+      const skip =
+        size === 0 ||
+        IN_FLIGHT_SUFFIXES.some((s) => path.toLowerCase().endsWith(s)) ||
+        now / 1000 - mtime < quietSeconds;
+      const got = judgeSourcePhoneFile({ path, size, mtime }, now, quietSeconds);
+      expect(got.skip).toBe(skip);
+    });
+  });
+});
+
+describe("send source queue", () => {
+  test("Feature: send-to-phone, Property 8: a source file is queued only when it was read and did not change", async () => {
+    const { judgeSourceFile } = await import("../src/send/plan.ts");
+    const { seededCases } = await import("./helpers.ts");
+    seededCases(8, 120, (rng) => {
+      const planned = rng.int(1, 100);
+      const stat = rng.pick([
+        { kind: "file", size: planned },
+        { kind: "file", size: planned + 1 },
+        { kind: "missing" },
+        { kind: "unreadable", reason: "EACCES" },
+        { kind: "folder" },
+      ] as const);
+      const j = judgeSourceFile(stat, planned);
+      if (stat.kind === "missing") expect(j.verdict).toBe("missing-since-plan");
+      else if (stat.kind === "unreadable" || stat.kind === "folder")
+        expect(j.verdict).toBe("could-not-read-source");
+      else if (stat.size !== planned) expect(j.verdict).toBe("refuse");
+      else expect(j.verdict).toBe("copy");
+    });
+  });
+});
+
+describe("send request rules", () => {
+  test("Feature: send-to-phone, Property 24: move is offered only for phone sources", async () => {
+    const { judgeRequest } = await import("../src/send/plan.ts");
+    const { ALWAYS_EXCLUDED_DIRS } = await import("../src/config/schema.ts");
+    const { seededCases } = await import("./helpers.ts");
+    const target = { deviceId: "dev-1", folder: "/sdcard/Movies" };
+    seededCases(24, 150, (rng) => {
+      const phone = rng.bool();
+      const folder = rng.pick([
+        "/sdcard/Download",
+        "/storage/emulated/0/DCIM",
+        "/sdcard/Download/",
+        "/data/local",
+        "/sdcard/../etc",
+        "/sdcard/Android/data/app",
+        "/sdcard2/x",
+        "/sdcard//Download",
+      ]);
+      const move = rng.bool();
+      const request = phone
+        ? { source: { kind: "phone" as const, deviceId: "dev-2", folder }, target, replace: false, move }
+        : { source: { kind: "drive" as const, folder: "Movies" }, target, replace: false, move };
+      const j = judgeRequest(request);
+      if (!phone && move) {
+        expect(j.ok).toBe(false);
+        return;
+      }
+      if (!phone) {
+        expect(j.ok).toBe(true);
+        return;
+      }
+      const norm = folder.replace(/\/+$/, "");
+      const segs = norm.split("/");
+      const inRoot =
+        norm === "/sdcard" ||
+        norm.startsWith("/sdcard/") ||
+        norm === "/storage/emulated/0" ||
+        norm.startsWith("/storage/emulated/0/");
+      const hasDot = segs.includes("..");
+      const hasEmpty = segs.slice(1).includes("");
+      const excluded = ALWAYS_EXCLUDED_DIRS.some(
+        (d) => norm.includes(`/${d}/`) || norm.endsWith(`/${d}`),
+      );
+      expect(j.ok).toBe(inRoot && !hasDot && !hasEmpty && !excluded);
+    });
+    const single = judgeRequest({
+      source: { kind: "phone", deviceId: "dev-2", folder: "/sdcard/a.mp4" },
+      target,
+      replace: false,
+      move: false,
+      single: true,
+    });
+    expect(single.ok).toBe(true);
+  });
+});
