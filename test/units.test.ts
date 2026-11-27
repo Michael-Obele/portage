@@ -57,6 +57,7 @@ import {
 } from "../scripts/bench/record.ts";
 
 import { s1Verdict } from "../scripts/bench/send-s1.ts";
+import { s2Verdict } from "../scripts/bench/send-s2.ts";
 import {
   cleanupManifest,
   guardFolder,
@@ -1386,5 +1387,57 @@ describe("send S1 verdict", () => {
       renameNoClobber: { ok: false },
     });
     expect(v.result).toBe("pass");
+  });
+});
+
+describe("send S2 verdict", () => {
+  const run = {
+    dirtyBeforeKb: 290_000,
+    writebackBeforeKb: 0,
+    dirtyAfterKb: 0,
+    writebackAfterKb: 0,
+    syncMs: 900,
+  };
+  const good = {
+    syncExists: true,
+    syncExit: 0,
+    runs: [run, run, run, run, run],
+    flushed: "yes" as const,
+    measure: null,
+  };
+
+  test("passes when criteria 1, 2 and 4 are answered", () => {
+    const v = s2Verdict(good);
+    expect(v.result).toBe("pass");
+    expect(v.ownerDecision).toBeNull();
+  });
+
+  test("a negative flush answer is a valid pass that goes to the owner", () => {
+    const v = s2Verdict({ ...good, flushed: "no" });
+    expect(v.result).toBe("pass");
+    expect(v.ownerDecision).toBe("OI-4");
+  });
+
+  test("an undetermined flush answer is not a pass and names the owner decision", () => {
+    const v = s2Verdict({ ...good, flushed: "undetermined" });
+    expect(v.result).toBe("fail");
+    expect(v.ownerDecision).toBe("OI-4");
+  });
+
+  test("criterion 1: sync existence and exit status must be stated", () => {
+    expect(s2Verdict({ ...good, syncExists: null }).result).toBe("fail");
+    expect(s2Verdict({ ...good, syncExit: null }).result).toBe("fail");
+    // No sync command: no exit status to state.
+    expect(
+      s2Verdict({ ...good, syncExists: false, syncExit: null, flushed: "undetermined" }).result,
+    ).toBe("fail");
+  });
+
+  test("criterion 2: every run needs sync time and meminfo, or a named measure", () => {
+    expect(s2Verdict({ ...good, runs: [] }).result).toBe("fail");
+    const missing = { ...run, dirtyBeforeKb: null, dirtyAfterKb: null };
+    expect(s2Verdict({ ...good, runs: [missing] }).result).toBe("fail");
+    expect(s2Verdict({ ...good, runs: [missing], measure: "sync wall time" }).result).toBe("pass");
+    expect(s2Verdict({ ...good, runs: [{ ...run, syncMs: null }] }).result).toBe("fail");
   });
 });

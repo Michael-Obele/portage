@@ -102,7 +102,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Needs the phone. Requirements: R1.1 to R1.8. Design: §8.2, §2.5. Gate: S1 decides Phase 7.
     - Files: `bench/results/<date>-send-s1-binary-stream.json` (new, committed). Raw output goes to `bench/evidence/send-to-phone/<date>-send-s1-binary-stream/`.
     - Done when: `ls bench/results/*-send-s1-binary-stream.json` lists one record whose `verdict.result` is `pass` or `fail`. Either result is accepted here. If it is `fail`, the temporary-file relay is the only relay (R1.6). `git log -1 --format=%s` prints `test(bench): record S1 binary stream results on a phone`.
-  - [~] 2.6 Write the S2 verdict tests (red)
+  - [x] 2.6 Write the S2 verdict tests (red)
     - Requirements: R2.4, R2.5, R2.6. Design: §8.3 pass rule, §2.5. OI-4.
     - Files: `test/units.test.ts` (describe `send S2 verdict`).
     - Test: `s2Verdict(record)` passes when criteria 1, 2, and 4 are answered. A negative answer on flushing is a valid pass. An undetermined answer is not a pass, and the verdict names the owner decision (OI-4).
