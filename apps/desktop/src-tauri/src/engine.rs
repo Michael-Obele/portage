@@ -114,7 +114,10 @@ fn remember_frame(last: &mut HashMap<&'static str, Box<RawValue>>, line: &str) {
     let Ok(peek) = serde_json::from_str::<TypePeek>(raw.get()) else {
         return;
     };
-    let Some(Ok(name)) = peek.0.map(|kind| serde_json::from_str::<String>(kind.get())) else {
+    let Some(Ok(name)) = peek
+        .0
+        .map(|kind| serde_json::from_str::<String>(kind.get()))
+    else {
         return;
     };
     if let Some(kind) = known_type(&name) {
@@ -381,8 +384,8 @@ fn on_stdout(app: &AppHandle, bytes: &[u8]) {
 mod tests {
     use super::one_line;
     use super::{remember_frame, status_last};
-    use serde_json::value::RawValue;
     use serde_json::Value;
+    use serde_json::value::RawValue;
     use std::collections::HashMap;
 
     fn remembered(lines: &[&str]) -> HashMap<&'static str, Box<RawValue>> {
@@ -474,8 +477,13 @@ mod tests {
                 format!(r#"{{"type":{},"n":1}}"#, other[rng.below(other.len())])
             }
             3 => ["[1,2]", "42", "null", "\"plan\"", "true"][rng.below(5)].to_string(),
-            _ => ["{\"type\":\"plan\"", "{", "", "not json", "{\"type\":\"plan\"} x"]
-                [rng.below(5)]
+            _ => [
+                "{\"type\":\"plan\"",
+                "{",
+                "",
+                "not json",
+                "{\"type\":\"plan\"} x",
+            ][rng.below(5)]
             .to_string(),
         }
     }
@@ -493,13 +501,13 @@ mod tests {
             }
 
             let reference = legacy_last(&lines);
-            let status: HashMap<String, Value> = serde_json::from_str(
-                &serde_json::to_string(&status_last(&last)).unwrap(),
-            )
-            .unwrap();
+            let status: HashMap<String, Value> =
+                serde_json::from_str(&serde_json::to_string(&status_last(&last)).unwrap()).unwrap();
             assert_eq!(status, reference, "seed {seed}");
             for kind in super::FRAME_TYPES {
-                let got = last.get(kind).map(|raw| serde_json::from_str::<Value>(raw.get()).unwrap());
+                let got = last
+                    .get(kind)
+                    .map(|raw| serde_json::from_str::<Value>(raw.get()).unwrap());
                 assert_eq!(got.as_ref(), reference.get(kind), "seed {seed} type {kind}");
             }
         }
@@ -517,7 +525,7 @@ mod tests {
 
     /// One dupes-shaped frame of `files` entries, from a fixed seed.
     fn bench_frame(files: usize) -> String {
-        let mut rng = Rng(0x5EED_E5);
+        let mut rng = Rng(0x005E_EDE5);
         let mut out = String::from(r#"{"type":"dupes","files":["#);
         for i in 0..files {
             if i > 0 {
