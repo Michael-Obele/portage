@@ -214,7 +214,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `test/units.test.ts` (describe `send exec-out stream`).
     - Test: `execOutStream` yields the phone's bytes unchanged, including 0x0D 0x0A pairs and 0x00 bytes. `kill()` ends the child, and `exited` resolves with its status.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "send exec-out stream"` fails, because `execOutStream` does not exist in `src/device/adb.ts` yet.
-  - [~] 3.11 Build execOutStream
+  - [x] 3.11 Build execOutStream
     - Requirements: R8.1, R8.2. Design: §3.6, SD-8. Precedent: `execOutTail` (`src/device/adb.ts:335-351`).
     - Files: `src/device/adb.ts`.
     - Build: `execOutStream(serial, path, signal?)` uses `Bun.spawn` with stdin ignored and stdout as a binary `ReadableStream`. It does not use `realSpawn`.

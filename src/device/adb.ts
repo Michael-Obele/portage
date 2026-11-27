@@ -26,6 +26,13 @@ import type {
   PhoneStat,
 } from "../send/types.ts";
 
+/** A child whose stdout the caller pumps. */
+export interface StreamProcess {
+  stdout: ReadableStream<Uint8Array>;
+  exited: Promise<number>;
+  kill(): void;
+}
+
 /** Entries a listing shows; the rest are counted, not shown (R14.5). */
 export const LISTING_LIMIT = 500;
 
@@ -358,6 +365,30 @@ export class Adb {
       ],
       { stdin: "ignore", stdout: "pipe", stderr: "pipe" },
     );
+  }
+
+  /**
+   * `adb exec-out cat` as a byte stream, pumped by the caller (R8.1, D3).
+   * Not `realSpawn`: that buffers the whole output as text.
+   */
+  async execOutStream(
+    serial: string,
+    remotePath: string,
+    signal?: AbortSignal,
+  ): Promise<StreamProcess> {
+    const proc = Bun.spawn(
+      this.phoneArgs(serial, "exec-out", "cat", remotePath),
+      { stdin: "ignore", stdout: "pipe", stderr: "pipe" },
+    );
+    const onAbort = () => proc.kill();
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener("abort", onAbort, { once: true });
+    return {
+      stdout: proc.stdout,
+      // A signal death has no exit code; 128 is the shell's convention for it.
+      exited: proc.exited.then((code) => code ?? 128),
+      kill: () => proc.kill(),
+    };
   }
 
   /** Tunnel a device TCP port to localhost. Used by the rsync fallback. */
