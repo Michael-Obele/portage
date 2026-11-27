@@ -153,7 +153,20 @@ export type PhoneStat =
   | { kind: "missing" }
   | { kind: "unreadable"; reason: string };
 
+export interface PhoneEntry {
+  path: string;
+  kind: "file" | "folder";
+  size: number;
+  mtime: number;
+}
+
 export type ListingResult<T> =
-  | { kind: "ok"; entries: T[]; truncated: boolean; total: number }
+  | {
+      kind: "ok";
+      entries: T[];
+      truncated: boolean;
+      total: number;
+      skipped: { path: string; reason: string }[];
+    }
   | { kind: "unreadable"; reason: string }
   | { kind: "missing" };

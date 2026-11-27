@@ -204,7 +204,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `test/units.test.ts` (describe `send listing`).
     - Test: `Feature: send-to-phone, Property 34: a listing that is not complete is unreadable, and a long one is cut at 500`. Seeded streams. A missing end sentinel, a non-zero exit, an unparsable record, or a timeout gives `unreadable` with no entries. A complete listing shows the first min(n, 500) entries, and `truncated` is set only when n exceeds 500. A symbolic link is skipped with the reason "symbolic link".
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 34:"` fails, because `parseStrictListing` does not exist in `src/device/adb.ts` yet.
-  - [~] 3.9 Build the strict listing
+  - [x] 3.9 Build the strict listing
     - Requirements: R14.4, R14.5, R6.2. Design: §3.6, EH-1, EH-21. OI-1, OI-21.
     - Files: `src/device/adb.ts`.
     - Build: `parseStrictListing(bytes, exitCode)` decodes names with a fatal UTF-8 decoder, requires the end sentinel, and returns `unreadable` when a record fails. `listPhoneStrict` runs `find -H` on the root through `quoteShellArg`, retries once on a timeout, and does not follow symbolic links.

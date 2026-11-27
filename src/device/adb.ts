@@ -19,10 +19,15 @@ import { sha1Hex } from "#lib/util/hash.ts";
 import { preconditionError } from "#lib/util/errors.ts";
 import { quoteShellArg } from "#lib/util/spawn.ts";
 import type {
+  ListingResult,
   PhoneCall,
+  PhoneEntry,
   PhoneHash,
   PhoneStat,
 } from "../send/types.ts";
+
+/** Entries a listing shows; the rest are counted, not shown (R14.5). */
+export const LISTING_LIMIT = 500;
 
 /**
  * Why a particular adb binary is being used.
@@ -616,6 +621,100 @@ export class Adb {
     );
     return this.phoneCall(res);
   }
+  /**
+   * `find -H` on a phone root, NUL-separated, with an end marker. The root is
+   * followed, symbolic links below it are not (OI-21). One retry on a timeout.
+   */
+  async listPhoneStrict(
+    serial: string,
+    root: string,
+    mode: "folders" | "tree",
+    timeoutMs: number,
+    limit = LISTING_LIMIT,
+  ): Promise<ListingResult<PhoneEntry>> {
+    const typeArg = mode === "folders" ? "-type d " : "";
+    const cmd =
+      `find -H ${quoteShellArg(root)} ${typeArg}-printf '%y\\t%s\\t%T@\\t%p\\0'; ` +
+      `printf 'END\\0'`;
+    let res = await this.spawn(this.phoneArgs(serial, "shell", cmd), { timeoutMs });
+    if (res.signal === "TIMEOUT" || res.code === 124) {
+      res = await this.spawn(this.phoneArgs(serial, "shell", cmd), { timeoutMs });
+    }
+    // shortcut: SpawnFn returns text, so a non-UTF-8 byte arrives as U+FFFD and
+    // is refused by parseStrictListing. Upgrade when SpawnFn returns bytes.
+    return parseStrictListing(new TextEncoder().encode(res.stdout), res.code, limit);
+  }
+}
+
+/**
+ * Parse a `find -printf '%y\t%s\t%T@\t%p\0'` listing that ends with `END\0`.
+ * Anything short of a complete, parsable listing is unreadable, never a partial answer.
+ */
+export function parseStrictListing(
+  bytes: Uint8Array,
+  exitCode: number,
+  limit = LISTING_LIMIT,
+): ListingResult<PhoneEntry> {
+  if (exitCode === 124) {
+    return { kind: "unreadable", reason: "the phone did not answer in time" };
+  }
+  if (exitCode !== 0) {
+    return { kind: "unreadable", reason: `find exited ${exitCode}` };
+  }
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return { kind: "unreadable", reason: "a name is not valid UTF-8" };
+  }
+  const records = text.split("\0");
+  if (records.pop() !== "") {
+    return { kind: "unreadable", reason: "the listing is cut off" };
+  }
+  if (records.pop() !== "END") {
+    return { kind: "unreadable", reason: "the listing has no end marker" };
+  }
+
+  const entries: PhoneEntry[] = [];
+  const skipped: { path: string; reason: string }[] = [];
+  for (const record of records) {
+    const [type, size, mtime, ...rest] = record.split("\t");
+    const path = rest.join("\t");
+    if (
+      type === undefined ||
+      size === undefined ||
+      mtime === undefined ||
+      !path ||
+      !Number.isFinite(Number(size)) ||
+      !Number.isFinite(Number(mtime))
+    ) {
+      return { kind: "unreadable", reason: "a listing record did not parse" };
+    }
+    if (path.includes("\uFFFD")) {
+      return { kind: "unreadable", reason: "a name is not valid UTF-8" };
+    }
+    if (/[\x00-\x1f\x7f]/.test(path)) {
+      skipped.push({ path, reason: "a control character in the name" });
+    } else if (type === "l") {
+      skipped.push({ path, reason: "symbolic link" });
+    } else if (type === "f" || type === "d") {
+      entries.push({
+        path,
+        kind: type === "d" ? "folder" : "file",
+        size: Number(size),
+        mtime: Math.floor(Number(mtime)),
+      });
+    } else {
+      skipped.push({ path, reason: "not a file or folder" });
+    }
+  }
+  return {
+    kind: "ok",
+    entries: entries.slice(0, limit),
+    truncated: entries.length > limit,
+    total: entries.length,
+    skipped,
+  };
 }
 
 /** `sha1(ro.serialno)` — the journal key. Hashed so the DB is safe to share. */
