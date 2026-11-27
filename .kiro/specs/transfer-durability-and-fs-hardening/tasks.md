@@ -673,31 +673,31 @@ This plan builds the feature in the order that requirements.md and design.md app
 
 - [ ] 6. Phase 6: documentation, the approved checks, and the exact texts (R6.8, R7.5, Appendix A)
      Tasks 6.6 and 6.7 are the approved checks from the revision. They are required, and they write only tests.
-  - [~] 6.1 Update the README state machine, the flush text, and the destination check
+  - [x] 6.1 Update the README state machine, the flush text, and the destination check
     - Requirements: R7.5. Design: Documents and comments (README lines 75, 104 to 108, and 298); EH-13.
     - Files: `README.md`.
     - Build: line 75 shows that `written` follows the flush: the file fsync, the directory fsync, and the gate for created directories. Rewrite the flush description at lines 104 to 108 to give the file and directory fsyncs, the gate, and the deadline rule: 30 seconds plus 1 second for each started 10,000,000 bytes, with a 30-second floor. Add the R2.13 rule: a probe's 3-second deadline starts only after the flushes pending when it starts. Describe the destination check's 3-second deadline and its "could not be read" result, which refuses the run. Line 298 ("Local drive only.") stays. Confirm each line's current text before editing, because the line numbers come from design.md (Notes N29).
     - Done when: `grep -n "sync -f\|bytes landed, then fsync" README.md` prints nothing, and `grep -c "could not be read" README.md` prints 1 or more.
 
-  - [~] 6.2 Update the TODO freeze lines and the benchmark entry
+  - [x] 6.2 Update the TODO freeze lines and the benchmark entry
     - Requirements: R6.8, R7.5. Design: Documents and comments (TODO.md lines 70, 222, 366, and 368); DV-1.
     - Files: `TODO.md`.
     - Build: lines 222, 366, and 368 name the freeze. Change them to the new list, which is `src/scan` only (R6.8). Line 70: the stat latency now has an E1 record, while the 4.1 s and 175 s walk claims still have none, so their entry stays open. Name the E1 record in the entry. Add the R2.13 deadline rule to the probe entry (R7.5). Confirm each line's current text before editing (Notes N29).
     - Done when: `grep -n "frozen" TODO.md` names `src/scan` only, and `grep -c "bench/results" TODO.md` prints 1 or more.
 
-  - [~] 6.3 Remove the `src/xfer` freeze claim from the dispatch comment
+  - [x] 6.3 Remove the `src/xfer` freeze claim from the dispatch comment
     - Requirements: R6.8. Design: Documents and comments (`src/serve/dispatch.ts`, lines 251 to 255).
     - Files: `src/serve/dispatch.ts`.
     - Build: rewrite the sentence that calls `src/xfer` a frozen acceptance surface, in fewer lines. Keep the rest of the comment.
     - Done when: `grep -n "frozen" src/serve/dispatch.ts` shows no claim about `src/xfer`.
 
-  - [~] 6.4 Remove the `src/index` freeze claim from the prefs comment
+  - [x] 6.4 Remove the `src/index` freeze claim from the prefs comment
     - Requirements: R6.8. Design: Documents and comments (`apps/desktop/src/lib/state/prefs.ts`, lines 15 to 18).
     - Files: `apps/desktop/src/lib/state/prefs.ts`.
     - Build: remove the claim that `src/index` is frozen. If those lines make no such claim, change nothing.
     - Done when: `grep -n "frozen" apps/desktop/src/lib/state/prefs.ts` shows no claim about `src/index`.
 
-  - [~] 6.5 Record the accepted risks in TODO.md
+  - [x] 6.5 Record the accepted risks in TODO.md
     - Requirements: R7.5. Design: Risks and ceilings (RK-1, RK-2, RK-3, RK-5, RK-6, RK-7, RK-14); the accepted items O-2, O-4, O-5, O-7, O-9, and O-13.
     - Files: `TODO.md`.
     - Build: add one entry for each ID, giving its effect, its handling, and its upgrade path, as the design states them. The IDs are RK-1 (the journal's synchronous drive calls), RK-2 (a stuck kernel call holds its Bun worker), RK-3 (the fsyncgate residual after restart, O-5), RK-5 (a probe can wait about 533 seconds for a 5 GB flush, O-13), RK-6 (a same-device rename does not fsync the source directory, O-4), RK-7 (rsync sibling writes, O-2), and RK-14 (rows left in `written` after a crash, O-7). Also record O-9 (the host values come from the record) and DV-8 (the poison lasts until restart).

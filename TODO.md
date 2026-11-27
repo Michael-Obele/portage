@@ -67,7 +67,7 @@ describe a surface that no longer exists, and their tests were deleted with it.
 - `[!]` Real Tauri window: `driver_session` connects, but every `webview_*` / `ipc_*` tool on that MCP server is disabled here, so no DOM/screenshot/click of the actual window. Enable those tools to close this.
 - `[ ]` `portage trash` does not exist. The CLI's `dupes` output no longer names it, but there is no CLI/TUI path to empty the trash — reclaim is desktop-only today.
 - `[ ]` Purge happy path needs a phone; only refusals are covered by tests.
-- `[ ]` No benchmark artefact for the 4.1 s / 175 s claim; `doctor --bench` does not measure a walk.
+- `[ ]` No benchmark artefact for the 4.1 s / 175 s walk claims; `doctor --bench` does not measure a walk. Stat and flush latency now has the E1 record `bench/results/2026-11-26-e1-flush.json`, but it says nothing about walks.
 
 ---
 
@@ -219,7 +219,7 @@ tracked status surface.
 | M5-2    | Title normalisation                                                              | `[x]` |                                                                                                                  |
 | M5-3    | Group key `(show, season ?? ABSOLUTE, episode)`; unparsed never guessed          | `[x]` |                                                                                                                  |
 | M5-4    | Scoring heuristic, advisory, with a printed reason                               | `[x]` |                                                                                                                  |
-| M5-5    | Populate `archive.anime_key` during transfers                                    | `[ ]` | **Not done** — needs a journal writer that avoids frozen `src/index/`                                            |
+| M5-5    | Populate `archive.anime_key` during transfers                                    | `[ ]` | **Not done** — needs a journal writer in `src/index/`                                            |
 | M5-6    | `dupes --tier 2` review flow, no `--yes`                                         | `[x]` |                                                                                                                  |
 | M5 acc. | Michael-naming sample set; 1080p/720p grouped, never auto-deleted; no bad merges | `[x]` | Caveat: `Frieren - 07 [1080p][SubsPlease].mkv` (bare `- 07`) parses to `undefined` → lands in `unparsed`, per §5 |
 
@@ -363,7 +363,7 @@ CLI commands explicitly listed in `src/cli/index.ts` help as missing:
 
 Not built, not in the help:
 
-- [ ] **Journalling dedupe decisions** — write `dupe_groups` / `dupe_members` (`decided_at`, `decided_by`, `keeper_path`, `reclaimable_bytes`) without touching frozen `src/index/`
+- [ ] **Journalling dedupe decisions** — write `dupe_groups` / `dupe_members` (`decided_at`, `decided_by`, `keeper_path`, `reclaimable_bytes`) in the journal in `src/index/`
 - [ ] **`archive.anime_key` population** during transfers (M5-5) → enables Tier-2 transfer pre-check
 - [ ] **Tier-2 pre-check at plan time** (`skipped_duplicate` for an episode already in the archive)
 - [ ] **Collision detection** (M4-3) — same `path_norm`, different size/mtime, never overwrite
@@ -419,8 +419,24 @@ Not built, not in the help:
 
 ---
 
+## 8b. Durability and probe risks (transfer-durability-and-fs-hardening)
+
+Accepted for this feature. Each entry gives the effect, how the code handles it, and the upgrade path.
+
+- **RK-1, journal calls block the event loop.** `bun:sqlite` writes run synchronously on the main thread, so a wedged drive can stall a journal write, and no probe bounds it. Upgrade: move the journal to local storage, or run its writes in a worker. Both change the journal, which is out of scope.
+- **RK-2, a stuck kernel call holds its Bun worker.** The breaker stops new drive calls after three deadline timeouts, and a restart frees the workers. Whether Bun's file pool is bounded is not verified. Upgrade: run drive calls in the Helper, which a kill ends with its process.
+- **RK-3, fsyncgate after restart (O-5, DV-8).** A failed or timed-out directory sync poisons that folder until the Engine restarts. A later process can see a clean sync for entries that never reached disk. Failed copies keep their phone copies, so the next run copies them again. Upgrade: persist the poison in the journal, a schema change.
+- **RK-5, a probe can wait about 533 s (O-13).** A probe behind a 5 GB flush waits for it. The UI shows the check as pending, and no result is invented. Upgrade: shorter flush deadlines, if a healthy drive is well inside them.
+- **RK-6, a same-device rename does not sync the source folder (O-4).** After a crash, a moved copy can show at its old path as well as the new one. No data is lost, but the state is wrong. Upgrade: sync the source folder after the rename.
+- **RK-7, rsync writes siblings (O-2).** The rsync transport copies the whole remote folder, so sibling files are never flushed or recorded. Upgrade: narrow the rsync arguments to the one file. That changes the fallback, so it needs approval.
+- **RK-14, rows left in `written` after a crash (O-7).** The next run skips them, so those files are never verified. Upgrade: reconcile `written` rows in `reconcile`.
+- **O-9, host values.** The archive's device and USB speed differ from the values in the spec. Each bench record holds the values read at run time, and it names the host.
+- **Probe deadlines (R2.2, R2.13).** Each probe in the Appendix A rows P2 to P14 and P17 to P19 has a 3-second deadline. The flush and verify reads use the flush rule. A probe's clock starts only after the flushes that were pending when it began have finished or timed out.
+- **Freeze.** `src/scan` is the only frozen folder. CI checks it against the base revision.
+
 ## 9. Change log for this file
 
 | Date       | Change                                                                                                                                                                                                                                                                                      |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-10-04 | Created. Seeded from `docs/` (README, architecture, decisions, dedupe, milestones, tui-impl/06) + the `portage-tui-dedupe-2026-10-04` session record + a live read of the source tree. Snapshot: 101 tests green, typecheck clean, build renders, TUI + dedupe built, **work uncommitted**. |
+| 2026-11-27 | Documented the flush, the probe deadlines, and the accepted durability risks (RK-1 to RK-14, O-9); freeze list is `src/scan` only. |

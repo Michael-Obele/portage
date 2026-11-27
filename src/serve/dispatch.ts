@@ -288,10 +288,9 @@ function withoutMarkers(candidate: Candidate): Candidate {
  *
  * `planPurge` trusts the journal's stored hash unless `verifyHash` is set, so a
  * drive copy deleted by hand since the transfer would still be offered for
- * deletion — the plan would be describing a file that no longer exists and
- * claiming it is covered. `src/xfer` is a frozen acceptance surface, so the
- * check lands here: one local `exists()` per candidate, which costs microseconds
- * and cannot lie about the local disk.
+ * deletion, and the plan would describe a file that no longer exists. The check
+ * is one local `exists()` per candidate. It costs microseconds and reads the
+ * local disk, so it cannot lie about it.
  *
  * Anything whose drive copy is gone is REFUSED, not dropped. A silent removal
  * would make the plan's counts disagree with what the person is looking at, and

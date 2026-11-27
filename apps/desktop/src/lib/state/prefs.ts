@@ -13,8 +13,8 @@
  *  - The engine's SQLite file is the LIBRARY. UI preferences are per-window, not
  *    per-drive, and writing them into the journal's database would mean the
  *    desktop app and the CLI disagreeing about what a config table is for.
- *  - `src/index` (the journal) is frozen by the project's own acceptance gate, so
- *    a new table there is not available anyway.
+ *  - `src/index` (the journal) is the library's schema. A new table there would
+ *    couple the app's window prefs to the journal.
  *  - Tauri's own precedent is a small file: `tauri-plugin-window-state` persists
  *    window geometry to disk and never opens a database. `localStorage` is the
  *    same idea without a new dependency, and it is already how the theme and the

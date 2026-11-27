@@ -72,7 +72,7 @@ stateDiagram-v2
     direction LR
     [*] --> queued
     queued --> copying: the scheduler picks it
-    copying --> written: bytes landed, then fsync
+    copying --> written: file and folder flushed
     copying --> failed: transport error
     written --> verified: phone hash == disk hash
     written --> failed: hash mismatch
@@ -104,7 +104,15 @@ server. It uses the `adb` you already have for debugging.
 adb also reports 35 MB/s before the bytes are actually written to the disk. About
 a quarter of a transfer's time is writeback that adb has already counted as done,
 so Portage flushes each file before it calls it finished, and reports the real
-rate instead of adb's number.
+rate instead of adb's number. It syncs the file, then its folder, and for a
+folder it had to create, the new folders above it too. A flush gets 30 seconds,
+plus 1 second for each started 10,000,000 bytes.
+
+Each drive check has a 3-second deadline. That clock starts only after the
+flushes already running have finished or timed out, so a slow flush does not
+count against a healthy check. If a check cannot read the drive, Portage stops
+and says the destination could not be read. It never reports zero space or a
+healthy drive.
 
 ## It knows what you already have
 
