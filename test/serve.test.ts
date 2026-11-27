@@ -1782,6 +1782,28 @@ describe("unreadable reads", () => {
     }
   });
 
+  test("Doctor destination row refuses a root-filesystem mount (R2.14)", async () => {
+    const drive = await makeTempDrive("portage-root-mount-doctor-");
+    try {
+      const rootMount = (cmd: string[]) => {
+        if (cmd[0] === "df") {
+          return Promise.resolve({ code: 0, stdout: "B Avail\n1000 900\n", stderr: "", durationMs: 1 });
+        }
+        if (cmd[0] === "findmnt") {
+          return Promise.resolve({ code: 0, stdout: "ext4 rw,relatime /\n", stderr: "", durationMs: 1 });
+        }
+        return NEVER();
+      };
+      const rows = await doctorRows(drive.root, { spawn: rootMount, timeoutMs: DEADLINE_MS });
+      const row = rows.find((r) => r.label === "destination");
+      expect(row?.value).toContain("the archive drive is not mounted");
+      expect(row?.value).not.toContain("ext4");
+      expect(JSON.stringify(rows)).not.toContain("healthy");
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
   test("Doctor mount check reads a timed-out findmnt as could not be read", async () => {
     const drive = await makeTempDrive("portage-unreadable-mount-");
     try {

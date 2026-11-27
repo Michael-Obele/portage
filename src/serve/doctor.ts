@@ -222,6 +222,14 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
         value: `${destRoot}: the mount check could not be read`,
         fix: "the drive did not answer the mount check — run doctor again",
       });
+    } else if (mounted?.target === "/") {
+      // R2.14: findmnt reports the system disk for an unplugged drive's folder.
+      rows.push({
+        mark: "fail",
+        label: "destination",
+        value: `${destRoot}: the archive drive is not mounted`,
+        fix: "mount the drive, or set dest_root with: portage config set dest_root <path>",
+      });
     } else if (readonly) {
       rows.push({
         mark: "fail",
