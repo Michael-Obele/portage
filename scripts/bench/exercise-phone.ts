@@ -13,8 +13,6 @@ import { df } from "./fsbench.ts";
 import { startEngine } from "./engine-driver.ts";
 import { mountGuard, writeRecord } from "./record.ts";
 
-const REQUIRED_STATES = ["copying", "written", "verified"] as const;
-
 function phoneSerials(): string[] {
   const out = Bun.spawnSync(["adb", "devices"], { stdout: "pipe", stderr: "pipe" });
   return new TextDecoder()
@@ -40,27 +38,45 @@ async function main(): Promise<void> {
   const dfStart = df(guard.root);
   const eng = await startEngine(guard.root);
   try {
+    const startedAt = Date.now();
     const answer = await eng.send("pull-1", "pull.start", { show, mode: "keep" });
     if (!answer.ok) throw new Error(`pull.start failed: ${answer.error?.message ?? "no reason"}`);
 
+    // pull.start returns before the run ends. Wait for this run's journal row to close.
     const db = new Database(join(guard.root, ".portage", "portage.db"), { readonly: true });
+    let run: { id: number; status: string } | null = null;
+    const deadline = Date.now() + 30 * 60_000;
+    while (Date.now() < deadline) {
+      run = db
+        .query<{ id: number; status: string }, [number]>(
+          "SELECT id, status FROM runs WHERE started_at >= ? ORDER BY id DESC LIMIT 1",
+        )
+        .get(startedAt) ?? null;
+      if (run && run.status !== "running") break;
+      await Bun.sleep(2000);
+    }
+    if (!run || run.status === "running") throw new Error("exercise-phone: the run did not finish in 30 minutes");
+
     const rows = db
-      .query("SELECT src_path, dest_path, size, state, hash, hash_scope, attempts, last_error FROM transfers WHERE src_path LIKE ? ORDER BY id")
-      .all(`%${show}%`) as Array<{ state: string; hash: string | null; src_path: string }>;
+      .query<{ src_path: string; dest_path: string; size: number; state: string; hash: string | null; hash_scope: string | null; attempts: number; last_error: string | null }, [number, string]>(
+        "SELECT src_path, dest_path, size, state, hash, hash_scope, attempts, last_error FROM transfers WHERE run_id = ? AND src_path LIKE ? ORDER BY id",
+      )
+      .all(run.id, `%${show}%`);
     db.close();
 
+    // The journal keeps one state per row, so intermediate states are not observable here.
+    // The check is the final state plus a full-file hash.
     const states = rows.map((r) => r.state);
-    const verified = rows.some((r) => r.state === "verified" && r.hash !== null);
-    const movedThrough = REQUIRED_STATES.every((state) => states.includes(state));
-    const pass = verified && movedThrough;
+    const pass = rows.length > 0 && rows.every((r) => r.state === "verified" && r.hash_scope === "full" && r.hash !== null);
 
     const dfEnd = df(guard.root);
     const path = writeRecord(
       "phone-copy",
       {
         result: pass ? "pass" : "fail",
-        expect: { states: [...REQUIRED_STATES], hashChecked: true, phoneDeleted: false },
-        observed: { states, verified },
+        expect: { finalState: "verified", hashScope: "full", phoneDeleted: false },
+        observed: { run: run.id, status: run.status, states },
+        transitionsObserved: false,
       },
       {
         serials,
