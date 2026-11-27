@@ -1,5 +1,5 @@
 definition of done, 2026-11-27 UTC
-commit: cb33c0e3b75431ad4eda1702e9903e109f7b04a1
+commit: 5b25686c6c23fe2ef06553011db1c6e14e3c9fa4
 branch: master
 
 === engine typecheck ===
@@ -11,7 +11,7 @@ exit: 0
 dir: .
 cmd: bun run test
 exit: 0
- 606 pass
+ 607 pass
  1 skip
  0 fail
 
@@ -37,8 +37,8 @@ exit: 0
 dir: crates/portage-scan
 cmd: cargo test
 exit: 0
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
-test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 
 === scanner clippy ===
 dir: crates/portage-scan
@@ -55,7 +55,7 @@ exit: 0
 dir: apps/desktop/src-tauri
 cmd: cargo test
 exit: 0
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.47s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.55s
 test result: ok. 7 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.09s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
@@ -64,7 +64,7 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 dir: apps/desktop/src-tauri
 cmd: cargo clippy --all-targets -- -D warnings
 exit: 0
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.54s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.56s
 
 === shell fmt ===
 dir: apps/desktop/src-tauri
