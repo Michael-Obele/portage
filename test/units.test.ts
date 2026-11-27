@@ -58,6 +58,7 @@ import {
 
 import { s1Verdict } from "../scripts/bench/send-s1.ts";
 import { s2Verdict } from "../scripts/bench/send-s2.ts";
+import { s3Verdict } from "../scripts/bench/send-s3.ts";
 import {
   cleanupManifest,
   guardFolder,
@@ -1439,5 +1440,50 @@ describe("send S2 verdict", () => {
     expect(s2Verdict({ ...good, runs: [missing] }).result).toBe("fail");
     expect(s2Verdict({ ...good, runs: [missing], measure: "sync wall time" }).result).toBe("pass");
     expect(s2Verdict({ ...good, runs: [{ ...run, syncMs: null }] }).result).toBe("fail");
+  });
+});
+
+describe("send S3 verdict", () => {
+  const H = "a".repeat(64);
+  const X = "b".repeat(64);
+  const ran = {
+    adbVersion: "Android Debug Bridge version 1.0.41",
+    helpNamesExecIn: true,
+    helpNamesExecOut: true,
+    execInRuns: true as boolean | null,
+    sizeBytes: 400_000_000,
+    hostHash: H as string | null,
+    phoneHash: H as string | null,
+    errorOutput: null as string | null,
+  };
+
+  test("passes when exec-in ran and the hashes are equal", () => {
+    const v = s3Verdict(ran);
+    expect(v.result).toBe("pass");
+    expect(v.sizeBytes).toBe(400_000_000);
+    expect(v.hashesEqual).toBe(true);
+  });
+
+  test("passes when exec-in is absent and the absence is recorded", () => {
+    const v = s3Verdict({
+      ...ran,
+      execInRuns: false,
+      phoneHash: null,
+      errorOutput: "adb: unknown command exec-in",
+    });
+    expect(v.result).toBe("pass");
+    expect(v.execInAbsent).toBe(true);
+  });
+
+  test("fails when exec-in ran and the hashes differ, or an absence has no error output", () => {
+    expect(s3Verdict({ ...ran, phoneHash: X }).result).toBe("fail");
+    expect(s3Verdict({ ...ran, phoneHash: null }).result).toBe("fail");
+    expect(s3Verdict({ ...ran, execInRuns: false, errorOutput: null }).result).toBe("fail");
+  });
+
+  test("fails when criterion 1 or the file size is not recorded", () => {
+    expect(s3Verdict({ ...ran, adbVersion: "" }).result).toBe("fail");
+    expect(s3Verdict({ ...ran, execInRuns: null }).result).toBe("fail");
+    expect(s3Verdict({ ...ran, sizeBytes: null as unknown as number }).result).toBe("fail");
   });
 });

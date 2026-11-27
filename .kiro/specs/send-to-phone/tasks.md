@@ -116,7 +116,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Needs the phone. Requirements: R2.1 to R2.7. Design: §8.3, §2.5. OI-4.
     - Files: `bench/results/<date>-send-s2-sync.json` (new, committed).
     - Done when: `ls bench/results/*-send-s2-sync.json` lists one record, and `git log -1 --format=%s` prints `test(bench): record S2 phone sync results`. Checkpoint 2.18 reads the verdict.
-  - [~] 2.9 Write the S3 verdict tests (red)
+  - [x] 2.9 Write the S3 verdict tests (red)
     - Requirements: R3.1, R3.3, R3.4, R3.6. Design: §8.4, §2.5 (S3).
     - Files: `test/units.test.ts` (describe `send S3 verdict`).
     - Test: `s3Verdict` passes when criterion 1 is answered, and either the two hashes are equal or the absence of `exec-in` is recorded. The record carries the file size used (R3.5).
