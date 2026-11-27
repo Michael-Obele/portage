@@ -763,7 +763,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: for each finding, write a test that fails on the defect, then fix the code. A finding that is not a defect is answered in `bench/results/<date>-review.md` (new), with its reason, and that file is committed with the fix it belongs to.
     - Done when: `bun run test` passes, and each finding has a test, a fix, or an entry in the review file.
 
-  - [~] 7.8 Checkpoint: definition of done
+  - [x] 7.8 Checkpoint: definition of done
     - Run `bun run test` and `bun run typecheck`, and fix what fails.
     - Run `scripts/check-commits.sh "$(git merge-base origin/master HEAD)" HEAD`, and fix what fails.
     - Done when: both commands pass, and `git status --porcelain bench` prints nothing, because each evidence task committed its record.
