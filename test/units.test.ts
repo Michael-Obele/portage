@@ -1249,3 +1249,51 @@ describe("recorded decisions", () => {
     expect(verdict.directoryBranch).toBe(DIRECTORY_SYNC_BRANCH);
   });
 });
+
+describe("send shared helpers", () => {
+  test("quoteShellArg lives in util/spawn and browse re-exports it", async () => {
+    const spawn = (await import("../src/util/spawn.ts")) as Record<string, unknown>;
+    const browse = (await import("../src/serve/browse.ts")) as Record<string, unknown>;
+    expect(typeof spawn.quoteShellArg).toBe("function");
+    expect(browse.quoteShellArg).toBe(spawn.quoteShellArg);
+    const quote = spawn.quoteShellArg as (v: string) => string;
+    expect(quote("/sdcard/It's here")).toBe("'/sdcard/It'\\''s here'");
+  });
+
+  test("realSpawn kills a sleeping child on abort and resolves", async () => {
+    const { realSpawn } = await import("../src/util/spawn.ts");
+    const ctl = new AbortController();
+    setTimeout(() => ctl.abort(), 50);
+    const started = Date.now();
+    const result = await realSpawn(["sleep", "30"], { signal: ctl.signal });
+    expect(Date.now() - started).toBeLessThan(5_000);
+    expect(result.code).not.toBe(0);
+  });
+
+  test("scannerWalk honours timeoutMs and kills a child that never exits", async () => {
+    const { scannerWalk } = await import("../src/dedupe/scanner.ts");
+    const dir = await mkdtemp(join(tmpdir(), "portage-walk-"));
+    try {
+      const fake = join(dir, "fake-scan");
+      await writeFile(fake, "#!/bin/sh\nexec sleep 30\n");
+      chmodSync(fake, 0o755);
+      const started = Date.now();
+      const outcome = await scannerWalk(fake, [dir], [], 1, { timeoutMs: 50 }).then(
+        () => "resolved",
+        (err: Error) => err.message,
+      );
+      expect(Date.now() - started).toBeLessThan(5_000);
+      expect(outcome).toContain("did not answer");
+
+      const ctl = new AbortController();
+      setTimeout(() => ctl.abort(), 50);
+      const aborted = await scannerWalk(fake, [dir], [], 1, { signal: ctl.signal }).then(
+        () => "resolved",
+        (err: Error) => err.message,
+      );
+      expect(aborted).not.toBe("resolved");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
