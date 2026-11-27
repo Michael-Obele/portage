@@ -9,7 +9,8 @@
  * has a test. A rule that is "usually true" is not a rule.
  */
 import { ALWAYS_EXCLUDED_DIRS } from "#lib/config/schema.ts";
-import { ensureDir, moveFile, statSafe } from "#lib/util/fs.ts";
+import { ensureDirTracked, moveFile } from "#lib/util/durable.ts";
+import { statSafe } from "#lib/util/fs.ts";
 import { dirname, localDayKey, normPath, resolveInside } from "#lib/util/paths.ts";
 
 import {
@@ -446,8 +447,18 @@ export async function applySelection(
       continue;
     }
     try {
-      await ensureDir(dirname(to));
-      await moveFile(target, to);
+      // Creates missing folders and marks their parents for the flush gate, so new
+      // entries reach disk. A failure refuses the file and keeps its source (R1.8, R1.13).
+      const dirOutcome = await ensureDirTracked(dirname(to), opts.destRoot);
+      if (dirOutcome.kind === "failed") {
+        result.refused.push({ path: raw, reason: dirOutcome.reason });
+        continue;
+      }
+      const moveOutcome = await moveFile(opts.destRoot, target, to);
+      if (moveOutcome.kind === "failed") {
+        result.refused.push({ path: raw, reason: moveOutcome.reason });
+        continue;
+      }
       result.moved.push({ from: target, to, bytes: member.size });
       result.bytesMoved += member.size;
     } catch (err) {
