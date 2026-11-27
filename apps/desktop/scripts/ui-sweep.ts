@@ -330,6 +330,10 @@ const steps: Step[] = [
 
 // --- drive it ---------------------------------------------------------------
 
+const chromeProfile = await mkdtemp(join(tmpdir(), 'portage-ui-chrome-'));
+// stderr goes to a file: nobody reads a pipe while we wait, and a full pipe
+// blocks Chrome before it opens the port. The file is what we print on failure.
+const chromeLog = join(chromeProfile, 'chrome-stderr.log');
 const chrome = Bun.spawn(
   [
     CHROME,
@@ -345,34 +349,38 @@ const chrome = Bun.spawn(
     `--remote-debugging-port=${CDP_PORT}`,
     // A throwaway profile per run: a cached bundle or a stale service worker
     // makes a failing build look green, which is worse than no test.
-    `--user-data-dir=${await mkdtemp(join(tmpdir(), 'portage-ui-chrome-'))}`,
+    `--user-data-dir=${chromeProfile}`,
     'about:blank'
   ],
-  { stdout: 'ignore', stderr: 'pipe' }
+  { stdout: 'ignore', stderr: Bun.file(chromeLog) }
 );
 
-// Chrome from Bun.spawn races its own listener; poll rather than sleep-and-hope.
+// Cold CI runners start Chrome slowly, so the bound is 30 s, not 10 s. A Chrome
+// that exits early fails at once instead of waiting out the clock.
+const startupStarted = Date.now();
+const startupDeadline = startupStarted + 30_000;
 let ready = false;
-for (let attempt = 0; attempt < 100; attempt += 1) {
+while (!ready && chrome.exitCode === null && Date.now() < startupDeadline) {
   try {
     const response = await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`);
-    if (response.ok) {
-      ready = true;
-      break;
-    }
+    ready = response.ok;
   } catch {
     /* not up yet */
   }
-  await Bun.sleep(100);
+  if (!ready) await Bun.sleep(100);
 }
 if (!ready) {
+  const exitedEarly = chrome.exitCode !== null;
   chrome.kill();
+  await chrome.exited;
   server.stop(true);
   // Say WHY: a missing display, a sandbox refusal and a bad path all look the
   // same from here.
-  const why = await new Response(chrome.stderr as ReadableStream<Uint8Array>).text();
-  console.error(`ui-sweep: Chrome never opened its debugging port (${CHROME})`);
-  if (why.trim() !== '') console.error(why.trim().slice(0, 600));
+  const why = (await Bun.file(chromeLog).text()).trim();
+  const seconds = ((Date.now() - startupStarted) / 1000).toFixed(1);
+  const state = exitedEarly ? `exited ${chrome.exitCode}` : 'still running';
+  console.error(`ui-sweep: Chrome never opened its debugging port (${CHROME}; ${state} after ${seconds}s)`);
+  console.error(why === '' ? '(Chrome wrote nothing to stderr)' : why.slice(0, 2000));
   process.exit(2);
 }
 
