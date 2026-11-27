@@ -1,0 +1,1254 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "0.1 Checkpoint: durability probe, deadline, mount, and exclusion work is in place": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749519298
+      },
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749637466
+      },
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749821378
+      }
+    ],
+    "1.1 Write the shared-helper tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749519925
+      }
+    ],
+    "1.2 Move quoteShellArg and add the abort signal to RunOptions": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749520815
+      }
+    ],
+    "1.3 Re-export quoteShellArg from browse": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749521505
+      }
+    ],
+    "1.4 Add the walk deadline and signal to scanner.ts": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749522206
+      }
+    ],
+    "1.5 Pass the deadline and signal through scan-io": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749522855
+      }
+    ],
+    "1.6 Checkpoint: shared helpers": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749523413
+      }
+    ],
+    "2.1 Write the spike guard tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749524018
+      }
+    ],
+    "2.2 Build the spike guard and record writer": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749524942
+      }
+    ],
+    "2.3 Write the S1 verdict tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749525565
+      }
+    ],
+    "2.4 Build the S1 script": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749526287
+      }
+    ],
+    "2.5 Run S1 on one phone and commit its record": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749527221
+      }
+    ],
+    "2.6 Write the S2 verdict tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749528509
+      }
+    ],
+    "2.7 Build the S2 script": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749529543
+      }
+    ],
+    "2.8 Run S2 on one phone and commit its record": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749530607
+      }
+    ],
+    "2.9 Write the S3 verdict tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749531388
+      }
+    ],
+    "2.10 Build the S3 script": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749532139
+      }
+    ],
+    "2.11 Run S3 on one phone and commit its record": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749532720
+      }
+    ],
+    "2.12 Write the S4 verdict tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749533305
+      }
+    ],
+    "2.13 Build the S4 script": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749533783
+      }
+    ],
+    "2.14 Run S4 through the tauri-dev tools and commit its record": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749534482
+      }
+    ],
+    "2.15 Write the listing-timing tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749535239
+      }
+    ],
+    "2.16 Build the listing-timing script": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749535882
+      }
+    ],
+    "2.17 Run the listing timing on one phone and commit its record": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749536468
+      }
+    ],
+    "2.18 Checkpoint: spike gates": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749536916
+      }
+    ],
+    "3.1 Write the record tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749537410
+      }
+    ],
+    "3.2 Build the send types": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749538117
+      }
+    ],
+    "3.3 Build the send record": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749538603
+      }
+    ],
+    "3.4 Write the Property 4 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749539091
+      }
+    ],
+    "3.5 Build the transfer lock": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749539688
+      }
+    ],
+    "3.6 Write the phone-operation tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749540378
+      }
+    ],
+    "3.7 Build the typed phone methods": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749540813
+      }
+    ],
+    "3.8 Write the Property 34 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749541256
+      }
+    ],
+    "3.9 Build the strict listing": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749541718
+      }
+    ],
+    "3.10 Write the exec-out stream test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749542157
+      }
+    ],
+    "3.11 Build execOutStream": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749542607
+      }
+    ],
+    "3.12 Checkpoint: engine core": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749543276
+      }
+    ],
+    "4.1 Add the seeded generator, FakeAdb, and FakeHost to test/helpers.ts": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749543855
+      }
+    ],
+    "4.2 Write the Property 6 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749544386
+      }
+    ],
+    "4.3 Build judgeArchiveMount": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749544935
+      }
+    ],
+    "4.4 Write the Property 13 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749545583
+      }
+    ],
+    "4.5 Build judgeFreeSpace": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749546058
+      }
+    ],
+    "4.6 Write the Property 3 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749546587
+      }
+    ],
+    "4.7 Build judgeDevices": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749547080
+      }
+    ],
+    "4.8 Write the Property 9 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749547573
+      }
+    ],
+    "4.9 Build targetPathFor and missingFolderChain": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749548093
+      }
+    ],
+    "4.10 Write the Property 10 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749548652
+      }
+    ],
+    "4.11 Write the Property 11 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749549141
+      }
+    ],
+    "4.12 Build judgePlanFile": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749549650
+      }
+    ],
+    "4.13 Write the Property 12 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749550168
+      }
+    ],
+    "4.14 Build nameVerdict": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749550710
+      }
+    ],
+    "4.15 Write the Property 36 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749551183
+      }
+    ],
+    "4.16 Build judgeSourcePhoneFile": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749551681
+      }
+    ],
+    "4.17 Write the Property 8 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749552226
+      }
+    ],
+    "4.18 Build judgeSourceFile": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749552764
+      }
+    ],
+    "4.19 Write the Property 24 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749553330
+      }
+    ],
+    "4.20 Build judgeRequest": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749553882
+      }
+    ],
+    "4.21 Checkpoint: plan rules": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749554368
+      }
+    ],
+    "5.1 Write the planner examples (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749554842
+      }
+    ],
+    "5.2 Build buildSendPlan": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749555353
+      }
+    ],
+    "5.3 Checkpoint: planner": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749555896
+      }
+    ],
+    "6.1 Write the Property 22 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749556382
+      }
+    ],
+    "6.2 Build StallWatchdog": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749556940
+      }
+    ],
+    "6.3 Write the Property 21 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749557438
+      }
+    ],
+    "6.4 Build chooseRelay and countsAsCopied": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749557977
+      }
+    ],
+    "6.5 Write the Property 14 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749558540
+      }
+    ],
+    "6.6 Build hostTempPathFor and settleHostTemp": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749559088
+      }
+    ],
+    "6.7 Write the host room tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749559733
+      }
+    ],
+    "6.8 Build checkHostRoom": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749560272
+      }
+    ],
+    "6.9 Write the temporary-file relay tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749560819
+      }
+    ],
+    "6.10 Build tempFileRelay": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749561376
+      }
+    ],
+    "6.11 Checkpoint: relays": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749561887
+      }
+    ],
+    "7.1 Write the stream gate test and the stream clause of Property 21 (red). Gate: S1": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749562361
+      }
+    ],
+    "7.2 Build shellStreamIn. Gate: S1": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749562847
+      }
+    ],
+    "7.3 Build pumpWithHash and streamRelay. Gate: S1": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749563388
+      }
+    ],
+    "7.4 Checkpoint: relay choice with the gate as it stands": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749563897
+      }
+    ],
+    "8.1 Write the Property 15 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749564404
+      }
+    ],
+    "8.2 Build verifyHashes": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749564904
+      }
+    ],
+    "8.3 Write the Property 16 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749565387
+      }
+    ],
+    "8.4 Build classifyHashOutcome": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749565899
+      }
+    ],
+    "8.5 Write the Property 19 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749566404
+      }
+    ],
+    "8.6 Build nextPartialName": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749566898
+      }
+    ],
+    "8.7 Write the Property 5 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749567396
+      }
+    ],
+    "8.8 Build PhoneBreaker": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749567879
+      }
+    ],
+    "8.9 Write the copy and move order tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749568386
+      }
+    ],
+    "8.10 Build runFileSteps for the copy path": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749568923
+      }
+    ],
+    "8.11 Write the Property 18 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749569412
+      }
+    ],
+    "8.12 Build the flush outcome rules": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749569916
+      }
+    ],
+    "8.13 Write the Property 20 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749570426
+      }
+    ],
+    "8.14 Build partial cleanup and leftover listing": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749570933
+      }
+    ],
+    "8.15 Write the Property 1 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749571436
+      }
+    ],
+    "8.16 Build the outcome counts": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749571940
+      }
+    ],
+    "8.17 Write the Property 25 and U-CANCEL tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749572491
+      }
+    ],
+    "8.18 Build cancel": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749573060
+      }
+    ],
+    "8.19 Write the Property 26 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749573591
+      }
+    ],
+    "8.20 Build effectiveInFlight": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749574087
+      }
+    ],
+    "8.21 Write the Property 33 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749574575
+      }
+    ],
+    "8.22 Build runStateFor": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749575171
+      }
+    ],
+    "8.23 Write the fixed cases 1 to 5 (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749575661
+      }
+    ],
+    "8.24 Make job.ts pass fake cases 1 to 5": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749576440
+      }
+    ],
+    "8.25 Write the fixed cases 6 to 10 (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749577013
+      }
+    ],
+    "8.26 Make job.ts pass fake cases 6 to 10": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749577608
+      }
+    ],
+    "8.27 Write the fixed cases 11 to 15 (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749578124
+      }
+    ],
+    "8.28 Make job.ts pass fake cases 11 to 15": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749578668
+      }
+    ],
+    "8.29 Write the Property 23 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749579230
+      }
+    ],
+    "8.30 Build the move steps": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749579810
+      }
+    ],
+    "8.31 Write the Property 7 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749580510
+      }
+    ],
+    "8.32 Build the archive write guard": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749581052
+      }
+    ],
+    "8.33 Write the startSendJob tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749581580
+      }
+    ],
+    "8.34 Build startSendJob": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749582213
+      }
+    ],
+    "8.35 Checkpoint: job": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749582739
+      }
+    ],
+    "9.1 Write the Property 31 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749583286
+      }
+    ],
+    "9.2 Build the send schemas in protocol.ts": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749584085
+      }
+    ],
+    "9.3 Write the Property 32 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749584641
+      }
+    ],
+    "9.4 Build the send frame writers": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749585306
+      }
+    ],
+    "9.5 Write the frame-type parity test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749585890
+      }
+    ],
+    "9.6 Update FRAME_TYPES in engine.rs": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749586501
+      }
+    ],
+    "9.7 Update the desktop engine mirror": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749587070
+      }
+    ],
+    "9.8 Add the send kind to the pending register": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749587737
+      }
+    ],
+    "9.9 Build the SendController planning path": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749588280
+      }
+    ],
+    "9.10 Wire the send commands into dispatch.ts": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749588906
+      }
+    ],
+    "9.11 Checkpoint: protocol and frames": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749589499
+      }
+    ],
+    "10.1 Write the Property 27 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749590059
+      }
+    ],
+    "10.2 Build the confirm echo gate": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749590603
+      }
+    ],
+    "10.3 Write the Property 28 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749591142
+      }
+    ],
+    "10.4 Build the expiry and re-list rules": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749591664
+      }
+    ],
+    "10.5 Write the Property 29 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749592248
+      }
+    ],
+    "10.6 Build the listed-path check": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749592790
+      }
+    ],
+    "10.7 Write the Property 30 test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749593352
+      }
+    ],
+    "10.8 Build confirmWordFor and sheetPaths": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749593904
+      }
+    ],
+    "10.9 Write the U-LOCK and U-TIME tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749594425
+      }
+    ],
+    "10.10 Build the pull lock in run.ts": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749595046
+      }
+    ],
+    "10.11 Make send.confirm answer at once": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749595740
+      }
+    ],
+    "10.12 Write the destructive-handler lock tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749596318
+      }
+    ],
+    "10.13 Take the lock in the destructive handlers": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749596891
+      }
+    ],
+    "10.14 Write the contract tests C-1, C-2, and C-4 (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749597432
+      }
+    ],
+    "10.15 Make the contract tests pass in dispatch.ts": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749598023
+      }
+    ],
+    "10.16 Write the shutdown and end-of-input tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749598592
+      }
+    ],
+    "10.17 Dispose the controller at end of input": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749599229
+      }
+    ],
+    "10.18 Dispose the controller on shutdown": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749599888
+      }
+    ],
+    "10.19 Checkpoint: confirm gate and lock": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749600440
+      }
+    ],
+    "11.1 Write the send state tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749600990
+      }
+    ],
+    "11.2 Build the send state singleton": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749601592
+      }
+    ],
+    "11.3 Write the live-region test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749602119
+      }
+    ],
+    "11.4 Build the announcer": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749602628
+      }
+    ],
+    "11.5 Write the remembered-folder pref test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749603131
+      }
+    ],
+    "11.6 Build the remembered-folder pref": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749603644
+      }
+    ],
+    "11.7 Write the sheet test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749604201
+      }
+    ],
+    "11.8 Build the send.start sheet branch": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749604808
+      }
+    ],
+    "11.9 Write the rail test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749605299
+      }
+    ],
+    "11.10 Add the Send entry and the reset call to +layout.svelte": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749605854
+      }
+    ],
+    "11.11 Route send frames in screens-routing.ts": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749606450
+      }
+    ],
+    "11.12 Write the hydration test (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749607026
+      }
+    ],
+    "11.13 Add trash to HYDRATION_ORDER": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749607528
+      }
+    ],
+    "11.14 Build the Send route": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749608119
+      }
+    ],
+    "11.15 Checkpoint: desktop Send screen": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749608662
+      }
+    ],
+    "12.1 Write the J-7 and J-8 steps (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749609201
+      }
+    ],
+    "12.2 Build the send mock scenario": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749609770
+      }
+    ],
+    "12.3 Copy the send screenshots into bench/evidence and commit": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749610284
+      }
+    ],
+    "12.4 Checkpoint: sweep": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749610872
+      }
+    ],
+    "13.1 Journey T-2: no phone attached (Needs the display)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749611479
+      }
+    ],
+    "13.2 Journey T-3: archive refusals (Needs the display)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749612024
+      }
+    ],
+    "13.3 Journey T-4: engine stopped and restarting (Needs the display)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749612566
+      }
+    ],
+    "13.4 Journey T-7: keyboard only (Needs the display)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749613096
+      }
+    ],
+    "13.5 Journey T-8: phone folder listing fails (Needs the phone, Needs the display)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749613655
+      }
+    ],
+    "13.6 Checkpoint: journeys": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749614306
+      }
+    ],
+    "14.1 Write the hash record tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749614900
+      }
+    ],
+    "14.2 Build the real-run script": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749615609
+      }
+    ],
+    "14.3 Run R-1, drive-to-phone, with journey T-5 (Needs the phone, Needs the archive drive mounted, Needs the display)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749616225
+      }
+    ],
+    "14.4 Run R-2, phone-to-phone, with journey T-6 (Needs the phone, two phones attached, Needs the display)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749616893
+      }
+    ],
+    "14.5 Checkpoint: real runs": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749617530
+      }
+    ],
+    "15.1 Write the repository check tests": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749618166
+      }
+    ],
+    "15.2 Write the docs tests (red)": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749618794
+      }
+    ],
+    "15.3 Update README.md": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749619365
+      }
+    ],
+    "15.4 Update TODO.md": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749619974
+      }
+    ],
+    "15.5 Update AGENTS.md": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749620577
+      }
+    ],
+    "15.6 Checkpoint: definition of done": [
+      {
+        "executionId": "f5ca7864-dc5c-4e6f-a8be-6f09d2e9dca8",
+        "chatSessionId": "sess_5bd36e72-9eeb-47d4-a491-4cae84f01cfd",
+        "timestamp": 1795749621202
+      }
+    ]
+  }
+}
