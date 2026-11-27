@@ -41,7 +41,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
 ## Tasks
 
 - [ ] 0. Phase 0: durability prerequisites (R18.1; OI-13; design §10.1)
-  - [ ] 0.1 Checkpoint: durability probe, deadline, mount, and exclusion work is in place
+  - [x] 0.1 Checkpoint: durability probe, deadline, mount, and exclusion work is in place
     - Requirements: R18.1, R2.14, R6.1, R6.3. Design: §10.1 items 1 and 2; SD-15; F-10.
     - Files: none.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "probe classifier"`, `-t "flush deadline"`, and `-t "destination check"` exit 0. `bun test --preload ./scripts/preload.ts test/scan-io.test.ts -t "isExcludedRelative"` exits 0. `cd crates/portage-scan && cargo test exclusion` exits 0. If any fails, no send task starts.
@@ -169,12 +169,12 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `test/units.test.ts` (describe `send record`).
     - Test: `sendRecordPath` uses `XDG_STATE_HOME`, and `~/.local/state` when it is unset. An unwritable folder fails with the EH-18 text "the send record cannot be opened". A job left `running` is marked `cancelled` with "engine stopped" at the next open.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "send record"` fails, because `src/send/record.ts` does not exist yet.
-  - [~] 3.2 Build the send types
+  - [x] 3.2 Build the send types
     - Requirements: R13.2, R13.4, R12.1. Design: §3.1, §4.1, §4.2, §4.5.
     - Files: `src/send/types.ts` (new).
     - Build: the request, plan, file, outcome, run state, `FinalState`, `WriteMethod`, `ListingResult<T>`, `PhoneCall`, `PhoneHash`, and `PhoneStat` types. No logic, and no import from `src/serve`.
     - Done when: `bun run typecheck` exits 0.
-  - [~] 3.3 Build the send record
+  - [x] 3.3 Build the send record
     - Requirements: R13.12, R15.4. Design: §2.7, §3.5, §4.3, DD-9. OI-6. EH-18, EH-25.
     - Files: `src/send/record.ts` (new).
     - Build: `sendRecordPath`, and class `SendRecord` with `open`, `insertJob`, `insertFile`, `updateFile`, `finishJob`, `listJobs`, `reconcileInterrupted`, and `close`. It uses `bun:sqlite` in WAL mode, as `src/index/journal.ts` does. It never opens `.portage/portage.db`.
