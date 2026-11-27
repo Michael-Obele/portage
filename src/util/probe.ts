@@ -19,6 +19,11 @@ export type ProbeResult<T> =
       message: string;
     };
 
+/** 3000 gives "3 s", 50 gives "0.05 s". EH-13 names a deadline this way. */
+export function formatDeadline(ms: number): string {
+  return `${Number((ms / 1000).toFixed(2))} s`;
+}
+
 export interface DriveStat {
   isFile: boolean;
   isDir: boolean;

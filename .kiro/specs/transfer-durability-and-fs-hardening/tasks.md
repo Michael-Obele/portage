@@ -294,13 +294,13 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: the plan action calls `destinationsFor`, awaits `snapshotDestinations` and `probeDestination`, and then calls `buildPlan`.
     - Done when: `bun run typecheck` reports no error in `src/serve/dispatch.ts`, `bun test --preload ./scripts/preload.ts test/plan.test.ts test/verify-gate.test.ts` passes, and `git log -1 --format=%s` prints `fix(probes): report an unreadable drive read as unreadable`, once the group commit for tasks 2.8 to 2.15 is made.
 
-  - [~] 2.16 Move the Doctor destination block to the probes
+  - [x] 2.16 Move the Doctor destination block to the probes
     - Requirements: R2.2, R2.3, R2.5, R2.8. Design: Components (`src/serve/doctor.ts`, lines 160 to 178); DV-12 and O-1 (3 seconds); DV-13; EH-13.
     - Files: `src/serve/doctor.ts` (lines 160 to 178).
     - Build: the destination block takes its spawn and stat functions as parameters, so the tests in task 2.5 can pass fakes. Replace `isDirectory` at line 162 with `statDrive(destRoot, destRoot)`. A `missing` result prints "does not exist". An `unreadable` result prints "the destination could not be read", with the failure mark. Replace `diskSpace` at line 171 with `diskSpaceAsync(spawn, destRoot)`, under its 3-second deadline. The `probeFstype` and `isReadOnly` calls keep their child-process form for now, with a 3-second bound in place of the 5-second bound. Task 2.32 moves them to `readMount`.
     - Done when: `bun test --preload ./scripts/preload.ts test/serve.test.ts -t "Doctor destination row reads an unreadable root"` passes. The test checks that the row prints "could not be read" for an unreadable root, prints "does not exist" only for a missing path, and that `grep -n "isDirectory" src/serve/doctor.ts` shows no call at line 162.
 
-  - [~] 2.17 Move the Doctor walk check and the P15 flush to the probes
+  - [x] 2.17 Move the Doctor walk check and the P15 flush to the probes
     - Requirements: R2.2, R2.3, R2.8. Design: Components (`src/serve/doctor.ts`, lines 244 and 457); DV-29; EH-13.
     - Files: `src/util/probe.ts` (`formatDeadline`), `src/serve/doctor.ts` (lines 244 and 457).
     - Build: add `formatDeadline(ms)` to `src/util/probe.ts`. It returns the seconds with up to two decimals and the unit " s", so 3000 gives "3 s", 50 gives "0.05 s", and 30000 gives "30 s". At line 244, `statDrive` replaces `isDirectory` in the walk's readiness check. An unreadable destination skips the walk and prints "the destination could not be read". At line 457, `syncFileOnly(tmp, size)` replaces `Bun.spawnSync(["sync", "-f", tmp])`, under `flushDeadlineMs(size)`. Add `doctorFlushMessage(outcome)`, a pure function. A timeout gives "check failed: no answer within <s> s", with `<s>` from `formatDeadline`. The message is never "healthy".

@@ -15,7 +15,14 @@ import {
   parseLsusbTree,
   type DeviceInfo,
 } from "#lib/device/adb.ts";
-import { diskSpace, isDirectory } from "#lib/util/fs.ts";
+import { diskSpaceAsync } from "#lib/util/fs.ts";
+import { syncFileOnly, type FlushOutcome } from "#lib/util/durable.ts";
+import {
+  PROBE_TIMEOUT_MS,
+  formatDeadline,
+  probe as driveProbe,
+  statDrive,
+} from "#lib/util/probe.ts";
 import { formatBytes } from "#lib/util/paths.ts";
 import type { Output } from "#lib/output/output.ts";
 import type { ResolvedConfig } from "#lib/config/load.ts";
@@ -26,7 +33,7 @@ import { readTrash } from "#lib/dedupe/trash.ts";
 
 import { Journal } from "#lib/index/journal.ts";
 
-import { realSpawn } from "#lib/util/spawn.ts";
+import { realSpawn, type SpawnFn } from "#lib/util/spawn.ts";
 
 export interface DoctorContext {
   resolved: ResolvedConfig;
@@ -34,6 +41,12 @@ export interface DoctorContext {
   output: Output;
   /** Measure real throughput. Slow — opt in with `--bench`. */
   bench: boolean;
+  /** Test seams: a fake spawn and stat, and a shorter deadline. */
+  deps?: {
+    spawn?: SpawnFn;
+    statDrive?: typeof statDrive;
+    timeoutMs?: number;
+  };
 }
 
 /** One line of the report: a mark, a label, a value, and an optional fix. */
@@ -152,14 +165,25 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
 
   // --- destination ------------------------------------------------------------
   const destRoot = ctx.resolved.config.dest_root;
-  if (!destRoot) {
+  const spawn = ctx.deps?.spawn ?? realSpawn;
+  const stat = ctx.deps?.statDrive ?? statDrive;
+  const deadlineMs = ctx.deps?.timeoutMs ?? PROBE_TIMEOUT_MS;
+  const destRead = destRoot ? await stat(destRoot, destRoot, deadlineMs) : null;
+  if (!destRoot || destRead === null) {
     rows.push({
       mark: "warn",
       label: "destination",
       value: "not configured",
       fix: "portage config set dest_root /media/<you>/<drive>/Videos/$Anime",
     });
-  } else if (!(await isDirectory(destRoot))) {
+  } else if (destRead.kind === "unreadable") {
+    rows.push({
+      mark: "fail",
+      label: "destination",
+      value: `${destRoot}: the destination could not be read`,
+      fix: "the drive did not answer — replug it, then run doctor again",
+    });
+  } else if (destRead.kind === "missing" || !destRead.value.isDir) {
     rows.push({
       mark: "fail",
       label: "destination",
@@ -167,7 +191,13 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
       fix: "plug in the drive, or fix dest_root",
     });
   } else {
-    const space = diskSpace(destRoot);
+    const read = await driveProbe(
+      destRoot,
+      "df",
+      () => diskSpaceAsync(spawn, destRoot, deadlineMs),
+      deadlineMs,
+    );
+    const space = read.kind === "ok" ? read.value : null;
     const fstype = await probeFstype(destRoot);
     const readonly = await isReadOnly(destRoot);
 
@@ -241,8 +271,16 @@ export async function doctor(ctx: DoctorContext): Promise<number> {
   }
 
   // --- the archive's own walk -------------------------------------------------
-  const driveReady = destRoot !== "" && (await isDirectory(destRoot));
-  if (driveReady && probe !== null) {
+  const driveReady =
+    destRead?.kind === "ok" && destRead.value.isDir && destRoot !== "";
+  if (destRead?.kind === "unreadable") {
+    rows.push({
+      mark: "warn",
+      label: "walk",
+      value: "the destination could not be read",
+      fix: "the walk was skipped; replug the drive, then run doctor again",
+    });
+  } else if (driveReady && probe !== null) {
     const walked = await scannerWalk(probe.path, [destRoot], [
       ...ALWAYS_EXCLUDED_DIRS,
     ]).catch(() => null);
@@ -388,14 +426,14 @@ async function probeLinkSpeed(): Promise<{
 
 async function probeFstype(path: string): Promise<string> {
   const res = await realSpawn(["findmnt", "-no", "FSTYPE", "--target", path], {
-    timeoutMs: 5_000,
+    timeoutMs: 3_000,
   }).catch(() => null);
   if (!res || res.code !== 0) return "unknown filesystem";
   const fstype = res.stdout.trim();
   const driver = await realSpawn(
     ["findmnt", "-no", "OPTIONS", "--target", path],
     {
-      timeoutMs: 5_000,
+      timeoutMs: 3_000,
     },
   ).catch(() => null);
   const opts = driver?.stdout ?? "";
@@ -405,10 +443,22 @@ async function probeFstype(path: string): Promise<string> {
 
 async function isReadOnly(path: string): Promise<boolean> {
   const res = await realSpawn(["findmnt", "-no", "OPTIONS", "--target", path], {
-    timeoutMs: 5_000,
+    timeoutMs: 3_000,
   }).catch(() => null);
   const opts = res?.stdout.trim() ?? "";
   return opts === "ro" || opts.startsWith("ro,");
+}
+
+/** Pure. A flush that got no answer is "check failed", never "healthy". */
+export function doctorFlushMessage(outcome: FlushOutcome): string {
+  switch (outcome.kind) {
+    case "ok":
+      return "the flush was confirmed";
+    case "timeout":
+      return `check failed: no answer within ${formatDeadline(outcome.deadlineMs)}`;
+    default:
+      return `check failed: ${outcome.reason}`;
+  }
 }
 
 /**
@@ -454,11 +504,12 @@ async function benchmark(
   }
 
   // The part adb does not count.
-  const sync = Bun.spawnSync(["sync", "-f", tmp], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  void sync;
+  const flushed = await syncFileOnly(tmp, sizeBytes);
+  if (flushed.kind !== "ok") {
+    await adb.shell(device.serial, "rm -f /data/local/tmp/portage-bench.bin");
+    await Bun.$`rm -f ${tmp}`.quiet().nothrow();
+    return doctorFlushMessage(flushed);
+  }
 
   const seconds = (Bun.nanoseconds() - started) / 1_000_000_000;
   const mbPerSec = sizeBytes / 1_000_000 / seconds;
