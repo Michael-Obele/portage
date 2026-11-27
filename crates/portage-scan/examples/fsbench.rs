@@ -10,12 +10,15 @@ use std::time::Instant;
 
 const USAGE: &str = "fsbench: bench-only candidates for E2 and E3\n\
 usage:\n  \
+fsbench build <root> deep|shallow [--files N]   (untimed fixture setup)\n  \
 fsbench remove <dir>\n  \
 fsbench move <from-dir> <to-dir> [--files N]\n  \
 fsbench stat <dir> [--files N]\n\
 move and stat name files f0000.bin, f0001.bin, ... as the bench fixtures do (default N 1000)";
 
 const DEFAULT_FILES: usize = 1000;
+const DEEP_SEGMENTS: usize = 462;
+const FILE_BYTES: usize = 4096;
 
 fn cstr(s: &std::ffi::OsStr) -> Result<CString, String> {
     use std::os::unix::ffi::OsStrExt;
@@ -65,6 +68,63 @@ fn files_flag(args: &[String]) -> Result<usize, String> {
 
 fn ms(start: Instant) -> f64 {
     start.elapsed().as_secs_f64() * 1000.0
+}
+
+/// Builds a bench fixture the way `scripts/bench/fixtures.ts` names it, but one
+/// segment at a time, so setup does not cost minutes per file on ntfs-3g.
+fn build(args: &[String]) -> Result<(), String> {
+    let [root, kind, rest @ ..] = args else {
+        return Err(USAGE.to_string());
+    };
+    let files = files_flag(rest)?;
+    let segments = match kind.as_str() {
+        "deep" => DEEP_SEGMENTS,
+        "shallow" => 0,
+        _ => return Err(USAGE.to_string()),
+    };
+    let mut cur = open_dir_walk(Path::new(root))?;
+    for i in std::iter::once(None).chain((0..segments).map(Some)) {
+        let name = match i {
+            None => CString::new(kind.as_str()),
+            Some(n) => CString::new(format!("d{n}")),
+        }
+        .map_err(|e| e.to_string())?;
+        // SAFETY: the handle is open and the name is NUL-terminated.
+        if unsafe { libc::mkdirat(cur.as_raw_fd(), name.as_ptr(), 0o755) } != 0 {
+            return Err(format!(
+                "mkdirat {:?}: {}",
+                name,
+                std::io::Error::last_os_error()
+            ));
+        }
+        cur = openat_dir(cur.as_raw_fd(), &name)?;
+    }
+    let payload = [0x61u8; FILE_BYTES];
+    for name in names(files) {
+        let flags = libc::O_WRONLY | libc::O_CREAT | libc::O_EXCL | libc::O_CLOEXEC;
+        // SAFETY: as above; the new descriptor is owned right away.
+        let fd = unsafe { libc::openat(cur.as_raw_fd(), name.as_ptr(), flags, 0o644) };
+        if fd < 0 {
+            return Err(format!(
+                "create {:?}: {}",
+                name,
+                std::io::Error::last_os_error()
+            ));
+        }
+        // SAFETY: fd is open and owned by nobody else.
+        let file = unsafe { OwnedFd::from_raw_fd(fd) };
+        // SAFETY: payload is a live buffer of FILE_BYTES bytes.
+        let n = unsafe { libc::write(file.as_raw_fd(), payload.as_ptr().cast(), FILE_BYTES) };
+        if n != FILE_BYTES as isize {
+            return Err(format!(
+                "write {:?}: {}",
+                name,
+                std::io::Error::last_os_error()
+            ));
+        }
+    }
+    println!("{{\"op\":\"build\",\"kind\":\"{kind}\",\"files\":{files}}}");
+    Ok(())
 }
 
 fn remove(args: &[String]) -> Result<(), String> {
@@ -151,6 +211,7 @@ fn stat_group(args: &[String]) -> Result<(), String> {
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = match args.split_first() {
+        Some((cmd, rest)) if cmd == "build" => build(rest),
         Some((cmd, rest)) if cmd == "remove" => remove(rest),
         Some((cmd, rest)) if cmd == "move" => move_files(rest),
         Some((cmd, rest)) if cmd == "stat" => stat_group(rest),

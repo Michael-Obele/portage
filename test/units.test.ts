@@ -1214,6 +1214,75 @@ describe("flush deadline", () => {
   });
 });
 
+describe("E2 and E3 verdicts", () => {
+  // Loaded inside each test, so the other blocks pass until the scripts exist.
+  const loadE2 = () => import("../scripts/bench/e2-trash.ts");
+  const loadE3 = () => import("../scripts/bench/e3-move-stat.ts");
+
+  const pair = (ts: number[], helper: number[]) => ({ ts, helper });
+  const fast = {
+    deep: pair([10, 10, 10, 10, 10], [4, 4, 4, 4, 4]),
+    shallow: pair([10, 10, 10, 10, 10], [10, 10, 10, 10, 10]),
+  };
+
+  test("E2 verdict: pass at deep ratio 2.0 and shallow ratio 1.10", async () => {
+    const { e2Verdict } = await loadE2();
+    const edge = {
+      deep: pair([20, 20, 20], [10, 10, 10]),
+      shallow: pair([100, 100, 100], [110, 110, 110]),
+    };
+    const v = e2Verdict(edge);
+    expect(v.result).toBe("pass");
+    expect(v.deepRatio).toBeCloseTo(2.0);
+    expect(v.shallowRatio).toBeCloseTo(1.1);
+  });
+
+  test("E2 verdict: fail when the deep ratio is under 2.0", async () => {
+    const { e2Verdict } = await loadE2();
+    const v = e2Verdict({ ...fast, deep: pair([19, 19, 19], [10, 10, 10]) });
+    expect(v.result).toBe("fail");
+  });
+
+  test("E2 verdict: fail when the shallow ratio is over 1.10", async () => {
+    const { e2Verdict } = await loadE2();
+    const v = e2Verdict({
+      ...fast,
+      shallow: pair([100, 100, 100], [111, 111, 111]),
+    });
+    expect(v.result).toBe("fail");
+  });
+
+  test("E2 verdict: uses the median, so one slow run does not decide", async () => {
+    const { e2Verdict } = await loadE2();
+    const v = e2Verdict({
+      ...fast,
+      deep: pair([10, 10, 10, 10, 10], [4, 4, 4, 900, 900]),
+    });
+    expect(v.result).toBe("pass");
+  });
+
+  test("E2 verdict: fail when there are no Helper samples", async () => {
+    const { e2Verdict } = await loadE2();
+    expect(e2Verdict({ ...fast, deep: pair([10], []) }).result).toBe("fail");
+  });
+
+  test("E3 verdict: move and stat are judged separately", async () => {
+    const { e3Verdict } = await loadE3();
+    const v = e3Verdict({
+      move: fast,
+      stat: { ...fast, deep: pair([10, 10, 10], [9, 9, 9]) },
+    });
+    expect(v.move.result).toBe("pass");
+    expect(v.stat.result).toBe("fail");
+    expect(v.result).toBe("fail");
+  });
+
+  test("E3 verdict: result is pass only when both operations pass", async () => {
+    const { e3Verdict } = await loadE3();
+    expect(e3Verdict({ move: fast, stat: fast }).result).toBe("pass");
+  });
+});
+
 describe("recorded decisions", () => {
   // The constants copy the Phase 0 records. A re-run that changes a verdict
   // must change its constant too, and these tests catch the gap.
