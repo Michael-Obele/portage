@@ -2,144 +2,144 @@
   "listing": [
     {
       "entries": 100,
-      "ms": 124,
-      "counted": 0,
+      "ms": 174,
+      "counted": 100,
       "complete": true
     },
     {
       "entries": 100,
-      "ms": 74,
-      "counted": 0,
+      "ms": 195,
+      "counted": 100,
       "complete": true
     },
     {
       "entries": 100,
-      "ms": 157,
-      "counted": 0,
+      "ms": 191,
+      "counted": 100,
       "complete": true
     },
     {
       "entries": 100,
-      "ms": 159,
-      "counted": 0,
+      "ms": 145,
+      "counted": 100,
       "complete": true
     },
     {
       "entries": 100,
-      "ms": 164,
-      "counted": 0,
+      "ms": 180,
+      "counted": 100,
       "complete": true
     },
     {
       "entries": 500,
-      "ms": 137,
-      "counted": 0,
+      "ms": 334,
+      "counted": 500,
       "complete": true
     },
     {
       "entries": 500,
-      "ms": 94,
-      "counted": 0,
+      "ms": 305,
+      "counted": 500,
       "complete": true
     },
     {
       "entries": 500,
-      "ms": 166,
-      "counted": 0,
+      "ms": 337,
+      "counted": 500,
       "complete": true
     },
     {
       "entries": 500,
-      "ms": 115,
-      "counted": 0,
+      "ms": 291,
+      "counted": 500,
       "complete": true
     },
     {
       "entries": 500,
-      "ms": 49,
-      "counted": 0,
+      "ms": 334,
+      "counted": 500,
       "complete": true
     },
     {
       "entries": 1000,
-      "ms": 125,
-      "counted": 0,
+      "ms": 471,
+      "counted": 1000,
       "complete": true
     },
     {
       "entries": 1000,
-      "ms": 123,
-      "counted": 0,
+      "ms": 516,
+      "counted": 1000,
       "complete": true
     },
     {
       "entries": 1000,
-      "ms": 107,
-      "counted": 0,
+      "ms": 372,
+      "counted": 1000,
       "complete": true
     },
     {
       "entries": 1000,
-      "ms": 183,
-      "counted": 0,
+      "ms": 468,
+      "counted": 1000,
       "complete": true
     },
     {
       "entries": 1000,
-      "ms": 108,
-      "counted": 0,
+      "ms": 488,
+      "counted": 1000,
       "complete": true
     }
   ],
   "stat": [
     {
       "entries": 100,
-      "ms": 149,
+      "ms": 135,
       "ok": true
     },
     {
       "entries": 100,
-      "ms": 145,
+      "ms": 95,
       "ok": true
     },
     {
       "entries": 100,
-      "ms": 99,
+      "ms": 153,
       "ok": true
     },
     {
       "entries": 100,
-      "ms": 155,
+      "ms": 41,
       "ok": true
     },
     {
       "entries": 100,
-      "ms": 78,
+      "ms": 44,
       "ok": true
     },
     {
       "entries": 500,
-      "ms": 155,
+      "ms": 154,
       "ok": true
     },
     {
       "entries": 500,
-      "ms": 160,
+      "ms": 95,
       "ok": true
     },
     {
       "entries": 500,
-      "ms": 147,
+      "ms": 148,
       "ok": true
     },
     {
       "entries": 500,
-      "ms": 94,
+      "ms": 148,
       "ok": true
     },
     {
       "entries": 500,
-      "ms": 149,
+      "ms": 154,
       "ok": true
     },
     {
@@ -149,7 +149,7 @@
     },
     {
       "entries": 1000,
-      "ms": 140,
+      "ms": 90,
       "ok": true
     },
     {
@@ -159,21 +159,21 @@
     },
     {
       "entries": 1000,
-      "ms": 81,
+      "ms": 150,
       "ok": true
     },
     {
       "entries": 1000,
-      "ms": 156,
+      "ms": 145,
       "ok": true
     }
   ],
   "baseline": [
-    71,
-    71,
-    26,
-    32,
-    117
+    61,
+    27,
+    33,
+    28,
+    29
   ],
   "cleanup": {
     "removed": [

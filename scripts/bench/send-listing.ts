@@ -77,12 +77,15 @@ async function main(serial: string) {
       if (!/made=0/.test(mk.text)) throw new Error(`could not create ${n} entries: ${mk.text}`);
       for (let i = 0; i < REPEATS; i++) {
         const r = await run(
-          adb("exec-out", `find -H '${dir}' -mindepth 1 -maxdepth 1 -printf '%y %f\\0'; echo '${SENTINEL}'`),
+          adb("exec-out", `find -H '${dir}' -mindepth 1 -maxdepth 1 -printf '%f\\0'; echo '${SENTINEL}'`),
         );
         const text = r.out.toString("utf8");
         const complete = text.trimEnd().endsWith(SENTINEL);
         const counted = text.split("\0").filter((s) => s && !s.includes(SENTINEL)).length;
         listing.push({ entries: n, ms: r.ms, counted, complete });
+        // A listing that missed entries is not a timing of the real thing.
+        if (!complete || counted !== n)
+          throw new Error(`listing of ${n} entries was ${counted} (complete=${complete}): ${r.err}`);
       }
       for (let i = 0; i < REPEATS; i++) {
         const r = await run(adb("exec-out", `stat -c '%F %s' '${dir}/f${n - 1}'`));
@@ -112,7 +115,7 @@ async function main(serial: string) {
     {
       summary, repeats: REPEATS, deadlineMs: DEADLINE_MS, listing, stat,
       statLongestMs: statLongest, adbRoundTripMs: baseline,
-      command: `find -H <dir> -mindepth 1 -maxdepth 1 -printf '%y %f\\0'; echo ${SENTINEL}`,
+      command: `find -H <dir> -mindepth 1 -maxdepth 1 -printf '%f\\0'; echo ${SENTINEL}`,
       adbVersion, devices,
       hostKernel: (await run(["uname", "-r"])).out.toString().trim(),
       bunVersion: Bun.version, cleanup, evidence,

@@ -1,0 +1,258 @@
+{
+  "experiment": "send-m-listing",
+  "startedAt": "2026-11-27T04:27:41.390Z",
+  "finishedAt": "2026-11-27T04:28:30.320Z",
+  "commit": {
+    "sha": "06e7a59946e63c540dc4cf2fdc5746fa0e79f576",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "verdict": {
+    "result": "pass",
+    "note": "measurement only, no pass rule",
+    "summary": [
+      {
+        "entries": 100,
+        "longestMs": 164,
+        "above3000Ms": false
+      },
+      {
+        "entries": 500,
+        "longestMs": 166,
+        "above3000Ms": false
+      },
+      {
+        "entries": 1000,
+        "longestMs": 183,
+        "above3000Ms": false
+      }
+    ]
+  },
+  "raw": {
+    "summary": [
+      {
+        "entries": 100,
+        "longestMs": 164,
+        "above3000Ms": false
+      },
+      {
+        "entries": 500,
+        "longestMs": 166,
+        "above3000Ms": false
+      },
+      {
+        "entries": 1000,
+        "longestMs": 183,
+        "above3000Ms": false
+      }
+    ],
+    "repeats": 5,
+    "deadlineMs": 3000,
+    "listing": [
+      {
+        "entries": 100,
+        "ms": 124,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 100,
+        "ms": 74,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 100,
+        "ms": 157,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 100,
+        "ms": 159,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 100,
+        "ms": 164,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 500,
+        "ms": 137,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 500,
+        "ms": 94,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 500,
+        "ms": 166,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 500,
+        "ms": 115,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 500,
+        "ms": 49,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 1000,
+        "ms": 125,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 1000,
+        "ms": 123,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 1000,
+        "ms": 107,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 1000,
+        "ms": 183,
+        "counted": 0,
+        "complete": true
+      },
+      {
+        "entries": 1000,
+        "ms": 108,
+        "counted": 0,
+        "complete": true
+      }
+    ],
+    "stat": [
+      {
+        "entries": 100,
+        "ms": 149,
+        "ok": true
+      },
+      {
+        "entries": 100,
+        "ms": 145,
+        "ok": true
+      },
+      {
+        "entries": 100,
+        "ms": 99,
+        "ok": true
+      },
+      {
+        "entries": 100,
+        "ms": 155,
+        "ok": true
+      },
+      {
+        "entries": 100,
+        "ms": 78,
+        "ok": true
+      },
+      {
+        "entries": 500,
+        "ms": 155,
+        "ok": true
+      },
+      {
+        "entries": 500,
+        "ms": 160,
+        "ok": true
+      },
+      {
+        "entries": 500,
+        "ms": 147,
+        "ok": true
+      },
+      {
+        "entries": 500,
+        "ms": 94,
+        "ok": true
+      },
+      {
+        "entries": 500,
+        "ms": 149,
+        "ok": true
+      },
+      {
+        "entries": 1000,
+        "ms": 135,
+        "ok": true
+      },
+      {
+        "entries": 1000,
+        "ms": 140,
+        "ok": true
+      },
+      {
+        "entries": 1000,
+        "ms": 103,
+        "ok": true
+      },
+      {
+        "entries": 1000,
+        "ms": 81,
+        "ok": true
+      },
+      {
+        "entries": 1000,
+        "ms": 156,
+        "ok": true
+      }
+    ],
+    "statLongestMs": 160,
+    "adbRoundTripMs": [
+      71,
+      71,
+      26,
+      32,
+      117
+    ],
+    "command": "find -H <dir> -mindepth 1 -maxdepth 1 -printf '%y %f\\0'; echo __PORTAGE_END__",
+    "adbVersion": "Android Debug Bridge version 1.0.41\nVersion 36.0.0-13206524\nInstalled as /home/node/android/platform-tools/adb\nRunning on Linux 7.0.0-43-generic (x86_64)",
+    "devices": [
+      {
+        "id": "57041FDCQ006HS",
+        "model": "Pixel 10 Pro XL",
+        "android": "17"
+      }
+    ],
+    "hostKernel": "7.0.0-43-generic",
+    "bunVersion": "1.4.5",
+    "cleanup": {
+      "removed": [
+        "n1000",
+        "n500",
+        "n100"
+      ],
+      "failed": []
+    },
+    "evidence": "/home/node/Documents/GitHub/portage/bench/evidence/send-to-phone/2026-11-27-send-m-listing"
+  }
+}
