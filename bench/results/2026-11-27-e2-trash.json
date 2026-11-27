@@ -1,0 +1,238 @@
+{
+  "experiment": "e2-trash",
+  "startedAt": "2026-11-27T06:24:11.962Z",
+  "finishedAt": "2026-11-27T06:33:34.332Z",
+  "commit": {
+    "sha": "d92c56da0d0520bce86a24e019acb6ff8b1c240c",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "mount": {
+    "root": "/media/node/2TB",
+    "mountPoint": "/media/node/2TB",
+    "line": "/dev/sdb1 /media/node/2TB fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096 0 0",
+    "findmnt": "/dev/sdb1 fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096"
+  },
+  "driver": "ntfs-3g",
+  "device": {
+    "partition": "/dev/sdb1",
+    "disk": "/dev/sdb"
+  },
+  "usb": {
+    "port": "3-4",
+    "speedMbit": 480
+  },
+  "block": {
+    "disk": "/dev/sdb",
+    "rotational": true,
+    "writeCache": "write back",
+    "model": "HN-M201RAD"
+  },
+  "verdict": {
+    "result": "pass",
+    "deepRatio": 25.89389861379169,
+    "shallowRatio": 0.9802467420461358,
+    "helper": "examples/fsbench.rs remove (std remove_dir_all); process start and a --help query included",
+    "samples": {
+      "deep": {
+        "ts": [
+          102491.995858,
+          87896.520831,
+          83048.02815099998,
+          94950.72706400004,
+          94532.33030100004
+        ],
+        "helper": [
+          3759.594444999995,
+          3912.554890999978,
+          3527.2584680000436,
+          3354.244776000094,
+          3650.756948999944
+        ]
+      },
+      "shallow": {
+        "ts": [
+          105.92965400000685,
+          78.30566499999259,
+          89.50221400003647,
+          68.02636200003326,
+          62.656000999966636
+        ],
+        "helper": [
+          76.75887299999886,
+          81.4445190000115,
+          83.34686300007161,
+          72.41191899991827,
+          63.61636400001589
+        ]
+      }
+    }
+  },
+  "raw": {
+    "runs": [
+      {
+        "run": 1,
+        "kind": "deep",
+        "which": "ts",
+        "ms": 102491.995858
+      },
+      {
+        "run": 1,
+        "kind": "deep",
+        "which": "helper",
+        "ms": 3759.594444999995,
+        "capabilityMs": 1.7544769999949494,
+        "commandMs": 3757.839968,
+        "inProcessMs": 3755.529
+      },
+      {
+        "run": 1,
+        "kind": "shallow",
+        "which": "ts",
+        "ms": 105.92965400000685
+      },
+      {
+        "run": 1,
+        "kind": "shallow",
+        "which": "helper",
+        "ms": 76.75887299999886,
+        "capabilityMs": 1.6163979999982985,
+        "commandMs": 75.14247500000056,
+        "inProcessMs": 73.679
+      },
+      {
+        "run": 2,
+        "kind": "deep",
+        "which": "helper",
+        "ms": 3912.554890999978,
+        "capabilityMs": 1.8664599999901839,
+        "commandMs": 3910.6884309999878,
+        "inProcessMs": 3907.311
+      },
+      {
+        "run": 2,
+        "kind": "deep",
+        "which": "ts",
+        "ms": 87896.520831
+      },
+      {
+        "run": 2,
+        "kind": "shallow",
+        "which": "helper",
+        "ms": 81.4445190000115,
+        "capabilityMs": 1.2325239999918267,
+        "commandMs": 80.21199500001967,
+        "inProcessMs": 78.806
+      },
+      {
+        "run": 2,
+        "kind": "shallow",
+        "which": "ts",
+        "ms": 78.30566499999259
+      },
+      {
+        "run": 3,
+        "kind": "deep",
+        "which": "ts",
+        "ms": 83048.02815099998
+      },
+      {
+        "run": 3,
+        "kind": "deep",
+        "which": "helper",
+        "ms": 3527.2584680000436,
+        "capabilityMs": 1.8537190000060946,
+        "commandMs": 3525.4047490000376,
+        "inProcessMs": 3523.556
+      },
+      {
+        "run": 3,
+        "kind": "shallow",
+        "which": "ts",
+        "ms": 89.50221400003647
+      },
+      {
+        "run": 3,
+        "kind": "shallow",
+        "which": "helper",
+        "ms": 83.34686300007161,
+        "capabilityMs": 1.5963300000294112,
+        "commandMs": 81.7505330000422,
+        "inProcessMs": 80.367
+      },
+      {
+        "run": 4,
+        "kind": "deep",
+        "which": "helper",
+        "ms": 3354.244776000094,
+        "capabilityMs": 1.2856740000424907,
+        "commandMs": 3352.9591020000516,
+        "inProcessMs": 3351.171
+      },
+      {
+        "run": 4,
+        "kind": "deep",
+        "which": "ts",
+        "ms": 94950.72706400004
+      },
+      {
+        "run": 4,
+        "kind": "shallow",
+        "which": "helper",
+        "ms": 72.41191899991827,
+        "capabilityMs": 1.3083369999658316,
+        "commandMs": 71.10358199995244,
+        "inProcessMs": 69.748
+      },
+      {
+        "run": 4,
+        "kind": "shallow",
+        "which": "ts",
+        "ms": 68.02636200003326
+      },
+      {
+        "run": 5,
+        "kind": "deep",
+        "which": "ts",
+        "ms": 94532.33030100004
+      },
+      {
+        "run": 5,
+        "kind": "deep",
+        "which": "helper",
+        "ms": 3650.756948999944,
+        "capabilityMs": 2.1464299999643117,
+        "commandMs": 3648.61051899998,
+        "inProcessMs": 3646.326
+      },
+      {
+        "run": 5,
+        "kind": "shallow",
+        "which": "ts",
+        "ms": 62.656000999966636
+      },
+      {
+        "run": 5,
+        "kind": "shallow",
+        "which": "helper",
+        "ms": 63.61636400001589,
+        "capabilityMs": 1.2716240000445396,
+        "commandMs": 62.34473999997135,
+        "inProcessMs": 60.948
+      }
+    ],
+    "df": {
+      "start": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sdb1      2000397791232 1571572834304 428824956928  79% /media/node/2TB\n",
+      "end": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sdb1      2000397791232 1571572834304 428824956928  79% /media/node/2TB\n"
+    }
+  }
+}

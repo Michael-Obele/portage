@@ -476,7 +476,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: three candidates, each printing one JSON line per run. The removal candidate uses std `remove_dir_all` on a fixture. The move candidate uses `renameat` with two directory handles. The stat candidate makes one group call over all moved paths. The example is for benchmarks only.
     - Done when: `cd crates/portage-scan && cargo clippy --all-targets -- -D warnings` passes, and `cargo run --release --example fsbench -- --help` prints the usage.
 
-  - [~] 4.2 Write the E2 script, run it on the archive drive, and commit its record
+  - [x] 4.2 Write the E2 script, run it on the archive drive, and commit its record
     - Needs the archive drive mounted. Requirements: R4.1, R4.12. Design: Measurement plan (E2, protocol); O-12.
     - Files: `scripts/bench/e2-trash.ts` (new), `bench/results/<date>-e2-trash.json` (new, committed).
     - Build: on the deep and shallow fixtures, each with 1,000 files of 4,096 bytes (4,096,000 bytes per fixture), time the TypeScript removal (Bun `rm` with recursive set) and the Rust candidate from 4.1. Run five times per path, alternating the order between runs. Each run builds a new fixture and times only the removal. Call `mountGuard` before any write. The verdict's `result` is `pass` when the deep ratio, the TypeScript median over the Helper median, is at least 2.0, and the shallow ratio, the Helper median over the TypeScript median, is at most 1.10. Otherwise it is `fail`.
