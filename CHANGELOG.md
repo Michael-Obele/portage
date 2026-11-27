@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.20](https://github.com/Michael-Obele/portage/compare/v0.1.19...v0.1.20) (2026-11-27)
+
+
+### Bug Fixes
+
+* **test:** sort readdir before comparing in dupes.apply refusal test ([5098af6](https://github.com/Michael-Obele/portage/commit/5098af62c02c1834a9a477d6e81d0870b1e6bf4f))
+* **test:** sort readdir before comparing in dupes.apply refusal test ([9da99b1](https://github.com/Michael-Obele/portage/commit/9da99b1b66a3d3054d846c06916c34399369d626))
+
 ## [0.1.19](https://github.com/Michael-Obele/portage/compare/v0.1.18...v0.1.19) (2026-11-27)
 
 
