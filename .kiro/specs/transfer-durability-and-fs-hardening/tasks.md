@@ -739,7 +739,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: the script calls `mountGuard` and the fixture guard. It creates `Videos/Android/data/` and `Videos/MyAndroid/data/` under a dedicated exercise folder on the drive, not in the owner's library, and records `df` before and after. It runs the scan through the engine's JSON protocol, with `dist/portage-scan` in place. The expected result is that the `Android/data` file is absent and the `MyAndroid/data` file is listed. It removes only the fixtures it created. The record holds both expectations and the observed result.
     - Done when: the record's `verdict.result` is `pass`, and `git log -1 --format=%s` prints `test(bench): record the scan exclusion on the archive drive`.
 
-  - [~] 7.4 Write the trash exercise, run it on the archive drive, and commit the record
+  - [x] 7.4 Write the trash exercise, run it on the archive drive, and commit the record
     - Needs the archive drive mounted. Requirements: R4.8, R4.9, R7.4. Design: Testing strategy, Layer 4 (step 2); Notes N10.
     - Files: `scripts/bench/exercise-trash.ts` (new), `bench/results/<date>-trash-run.json` (new, committed).
     - Build: the script calls `mountGuard` and the fixture guard, and creates a fixture file under `<destRoot>/.portage/trash/<day>/`. It runs trash emptying through its confirmation step, and records `df` before and after, and the bytes the engine reports as freed. The verdict is `pass` when the freed bytes are within one 4,096-byte block per removed file of the `df` change (Notes N10).

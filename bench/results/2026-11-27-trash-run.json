@@ -1,0 +1,73 @@
+{
+  "experiment": "trash-run",
+  "startedAt": "2026-11-27T08:46:51.958Z",
+  "finishedAt": "2026-11-27T08:46:52.255Z",
+  "commit": {
+    "sha": "fe88876bb070fe405e3d327c4792beed55bc2efc",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "mount": {
+    "root": "/media/node/2TB",
+    "mountPoint": "/media/node/2TB",
+    "line": "/dev/sdb1 /media/node/2TB fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096 0 0",
+    "findmnt": "/dev/sdb1 fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096"
+  },
+  "driver": "ntfs-3g",
+  "device": {
+    "partition": "/dev/sdb1",
+    "disk": "/dev/sdb"
+  },
+  "usb": {
+    "port": "3-4",
+    "speedMbit": 480
+  },
+  "block": {
+    "disk": "/dev/sdb",
+    "rotational": true,
+    "writeCache": "write back",
+    "model": "HN-M201RAD"
+  },
+  "verdict": {
+    "result": "pass",
+    "tolerance": {
+      "rule": "one 4096-byte block per removed file (N10)",
+      "bytes": 12288
+    },
+    "engine": {
+      "removedFiles": 3,
+      "bytesFreed": 1572864,
+      "freeBytesBefore": 428823384064,
+      "freeBytesAfter": 428824956928
+    },
+    "df": {
+      "deltaBytes": 1572864
+    }
+  },
+  "raw": {
+    "day": "exercise-2026-11-27T08-46-51-961Z",
+    "command": "trash.status, trash.empty (days: [this run's folder path]), then trash.empty with confirm",
+    "df": {
+      "before": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sdb1      2000397791232 1571572834304 428824956928  79% /media/node/2TB\n",
+      "afterFixtures": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sdb1      2000397791232 1571574407168 428823384064  79% /media/node/2TB\n",
+      "afterEmpty": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sdb1      2000397791232 1571572834304 428824956928  79% /media/node/2TB\n"
+    },
+    "reply": {
+      "removedDays": 1,
+      "removedFiles": 3,
+      "bytesFreed": 1572864,
+      "refused": [],
+      "freeBytesBefore": 428823384064,
+      "freeBytesAfter": 428824956928
+    }
+  }
+}
