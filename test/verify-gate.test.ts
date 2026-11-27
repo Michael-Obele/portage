@@ -1525,3 +1525,100 @@ describe("breaker run", () => {
     });
   });
 });
+
+describe("read deadline", () => {
+  const DEADLINE_MS = 50;
+  const never = () => new Promise<never>(() => {});
+  const spies: Array<{ mockRestore(): void }> = [];
+
+  afterEach(async () => {
+    for (const spy of spies.splice(0)) spy.mockRestore();
+    (await import("../src/util/probe.ts")).resetDriveState();
+  });
+
+  test("verify read deadline fails the file with the drive-copy text", async () => {
+    const hash = await import("../src/util/hash.ts");
+    spies.push(spyOn(hash, "sha256File").mockImplementation(never));
+    const file = plannedFile("/sdcard/Movies/Frieren/ep01.mkv", 1024);
+    const transport = recordingTransport(copiesBytes(1024));
+
+    const summary = await runTransfer(
+      planOf([file]),
+      new Map([[file.candidate.deviceId, fakeDevice()]]),
+      engineFor(transport, phone(sha256OfBytes(1024)), {
+        hashDeadlineMs: DEADLINE_MS,
+      }),
+    );
+
+    expect(summary.failed).toBe(1);
+    expect(summary.failures[0]?.reason).toBe("the drive copy could not be read");
+    // The phone copy is kept.
+    expect(transport.deleted).toEqual([]);
+  });
+
+  test("purge read deadline refuses with drive copy unreadable", async () => {
+    const hash = await import("../src/util/hash.ts");
+    const { planPurge } = await import("../src/xfer/purge.ts");
+    spies.push(spyOn(hash, "sha256File").mockImplementation(never));
+    const device = fakeDevice();
+    const dest = join(drive.root, "here.mkv");
+    await Bun.write(dest, "bytes");
+    journal.upsertTransfer({
+      runId: null,
+      deviceId: device.id,
+      srcPath: "/sdcard/Movies/here.mkv",
+      destPath: dest,
+      pathNorm: dest.toLowerCase(),
+      size: 5,
+      srcMtime: 1,
+      state: "verified",
+    });
+
+    const plan = await planPurge(
+      new Map([[device.id, device]]),
+      phone("abc") as unknown as Parameters<typeof planPurge>[1],
+      {
+        journal,
+        transport: recordingTransport(copiesBytes(5)),
+        verifyHash: true,
+        dryRun: true,
+        apply: false,
+        root: drive.root,
+        hashDeadlineMs: DEADLINE_MS,
+      },
+    );
+
+    expect(plan.eligible).toEqual([]);
+    expect(plan.refused.map((r) => r.reason)).toEqual(["drive copy unreadable"]);
+  });
+
+  // R2.7. The code is from task 1.14, so this passes when written.
+  test("read deadline: verify-size stat fails the file with the destination text", async () => {
+    const probeModule = await import("../src/util/probe.ts");
+    const real = probeModule.statDrive;
+    let calls = 0;
+    spies.push(
+      spyOn(probeModule, "statDrive").mockImplementation((root, path) => {
+        calls += 1;
+        // The first stat is the partial check before the copy; the second is the verify-size stat.
+        return calls < 2
+          ? real(root, path)
+          : probeModule.probe(root, `stat ${path}`, never, DEADLINE_MS);
+      }),
+    );
+    const file = plannedFile("/sdcard/Movies/Frieren/ep02.mkv", 1024);
+    const transport = recordingTransport(copiesBytes(1024));
+
+    const summary = await runTransfer(
+      planOf([file]),
+      new Map([[file.candidate.deviceId, fakeDevice()]]),
+      engineFor(transport, phone(sha256OfBytes(1024))),
+    );
+
+    expect(summary.failed).toBe(1);
+    expect(summary.failures[0]?.reason).toBe(
+      "the destination could not be read; nothing was changed",
+    );
+    expect(transport.deleted).toEqual([]);
+  });
+});

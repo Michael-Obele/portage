@@ -34,12 +34,18 @@ import {
   ensureDirTracked,
   flushFile,
   flushGate,
+  flushDeadlineMs,
   flushReason,
 } from "#lib/util/durable.ts";
 import { sha256File } from "#lib/util/hash.ts";
 import type { Logger } from "#lib/util/log.ts";
 import { dirname } from "#lib/util/paths.ts";
-import { BREAKER_STOPPED, breakerFor, statDrive } from "#lib/util/probe.ts";
+import {
+  BREAKER_STOPPED,
+  breakerFor,
+  probe,
+  statDrive,
+} from "#lib/util/probe.ts";
 import type { CopyRequest, Transport } from "#lib/xfer/transport.ts";
 
 export interface EngineOptions {
@@ -67,6 +73,8 @@ export interface EngineOptions {
   onFileEvent?: (event: FileEvent) => void;
   /** Called on SIGINT/SIGTERM to stop cleanly. */
   shouldStop?: () => boolean;
+  /** Test seam: the deadline for the drive-copy hash read. Default `flushDeadlineMs(size)`. */
+  hashDeadlineMs?: number;
 }
 
 /** The flush calls. Tests replace them to fake each outcome. */
@@ -445,9 +453,18 @@ async function verifyFile(
     };
   }
 
-  const localHash = await sha256File(file.destPath);
-  if (!localHash)
-    return { ok: false, reason: "could not read the destination for hashing" };
+  // A hash read of a stalled drive must not hang the run (R2.3). A timeout
+  // counts toward the breaker through `probe`.
+  const read = await probe(
+    opts.root,
+    `hash ${file.destPath}`,
+    () => sha256File(file.destPath),
+    opts.hashDeadlineMs ?? flushDeadlineMs(candidate.size),
+  );
+  const localHash = read.kind === "ok" ? read.value : null;
+  if (!localHash) {
+    return { ok: false, reason: "the drive copy could not be read" };
+  }
 
   if (!device) {
     // No device means we cannot ask the phone. A file of unknown provenance is

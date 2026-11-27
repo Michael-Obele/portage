@@ -398,7 +398,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: `probeFstype` and `isReadOnly` each call `readMount(spawn, destRoot, 3000)` under `probe()`. The 3-second deadline is also the kill timer, and the 5-second kill timer is removed. A timeout prints "the mount check could not be read", and it never prints an unknown filesystem or a drive that is not read-only.
     - Done when: `bun test --preload ./scripts/preload.ts test/serve.test.ts -t "Doctor mount check reads a timed-out findmnt"` passes.
 
-  - [~] 2.33 Set the flush deadline on the verify read and the purge read (row P20)
+  - [x] 2.33 Set the flush deadline on the verify read and the purge read (row P20)
     - Requirements: R2.2, R2.3, R2.7, R2.10. Design: Appendix A row P20; DV-21; RK-8; Per-file order, step 8.
     - Files: `test/verify-gate.test.ts` (two new tests, first), `src/xfer/engine.ts` (`verifyFile`, the hash read at line 374 and the message at line 376), `src/xfer/purge.ts` (the verify read near line 82).
     - Tests first, with a 50 ms seam in the engine and purge options (`hashDeadlineMs`):
@@ -408,7 +408,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: in `verifyFile`, wrap `sha256File` on the drive copy in `probe(root, ...)` with `flushDeadlineMs(size)`. A null result or a timeout fails the file with "the drive copy could not be read" (R2.3). The line-376 message changes to that text. In `src/xfer/purge.ts`, wrap the verify read of `row.dest_path` with `flushDeadlineMs(row.size)`. A null result or a timeout refuses with "drive copy unreadable". A timeout counts toward the breaker through `probe()`. `src/util/hash.ts` does not change.
     - Done when: `bun test --preload ./scripts/preload.ts test/verify-gate.test.ts -t "read deadline"` passes all three tests.
 
-  - [~] 2.34 Checkpoint: Phase 2 probes
+  - [x] 2.34 Checkpoint: Phase 2 probes
     - Run `bun run test` and `bun run typecheck`, and fix what fails.
     - Run `grep -rn "statSyncSafe\|diskSpace(" src`, and fix any match.
     - Done when: both commands pass, and the grep prints nothing.

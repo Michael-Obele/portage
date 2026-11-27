@@ -16,7 +16,8 @@
 import type { Adb, DeviceInfo } from "#lib/device/adb.ts";
 import type { Journal } from "#lib/index/journal.ts";
 import { sha256File } from "#lib/util/hash.ts";
-import { statDrive } from "#lib/util/probe.ts";
+import { flushDeadlineMs } from "#lib/util/durable.ts";
+import { probe, statDrive } from "#lib/util/probe.ts";
 import type { Transport } from "#lib/xfer/transport.ts";
 
 export interface PurgeCandidate {
@@ -50,6 +51,8 @@ export interface PurgeOptions {
   root: string;
   /** Test seam: the drive stat. */
   statDrive?: typeof statDrive;
+  /** Test seam: the deadline for the drive-copy hash read. Default `flushDeadlineMs(size)`. */
+  hashDeadlineMs?: number;
 }
 
 /**
@@ -84,7 +87,13 @@ export async function planPurge(
       // Stronger: ask the phone and the drive, both, right now.
       const [remote, local] = await Promise.all([
         adb.hashRemote(device.serial, row.src_path),
-        sha256File(row.dest_path),
+        // A timeout counts toward the breaker through `probe` (R2.3).
+        probe(
+          opts.root,
+          `hash ${row.dest_path}`,
+          () => sha256File(row.dest_path),
+          opts.hashDeadlineMs ?? flushDeadlineMs(row.size),
+        ).then((read) => (read.kind === "ok" ? read.value : null)),
       ]);
       if (!remote) {
         refused.push({
