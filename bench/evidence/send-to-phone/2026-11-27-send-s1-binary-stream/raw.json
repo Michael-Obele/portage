@@ -1,0 +1,83 @@
+{
+  "log": {
+    "push": {
+      "code": 0,
+      "stdout": "",
+      "stderr": "/home/node/.kiro/crew/scratch/cdbe72b3/portage-s1-utkBkB/host.bin: 1 file pushed, 0 skipped. 37.5 MB/s (400000000 bytes in 10.175s)\n"
+    },
+    "phoneToHost": {
+      "code": 0,
+      "stderr": ""
+    },
+    "hostToPhone": {
+      "code": 0,
+      "stderr": ""
+    },
+    "control": {
+      "code": 0,
+      "stderr": ""
+    },
+    "cleanup": {
+      "removed": [
+        "names",
+        "writable.renamed",
+        "writable.tmp",
+        "noclobber.part",
+        "noclobber-final",
+        "over.part",
+        "over-final",
+        "control.bin",
+        "stream.bin",
+        "push.bin"
+      ],
+      "failed": [],
+      "rmdir": "ls: /sdcard/Download/portage-spike-S1: No such file or directory\n"
+    }
+  },
+  "extras": {
+    "pushProgress": {
+      "stderrBytes": 132,
+      "stdoutBytes": 0,
+      "note": "adb run with stdout and stderr both as pipes"
+    },
+    "renameOver": {
+      "finalHash": "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+      "expected": "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+      "output": "rc=0\nls: /sdcard/Download/portage-spike-S1/over.part: No such file or directory",
+      "partialRemoved": true
+    },
+    "renameNoClobber": {
+      "finalHash": "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+      "expected": "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+      "output": "rc=0\n/sdcard/Download/portage-spike-S1/noclobber.part",
+      "partialRemoved": false
+    },
+    "folderWritable": {
+      "output": "create=0\nrename=0\nremove=0",
+      "ok": true
+    },
+    "listingNul": {
+      "mkOutput": "",
+      "findCode": 0,
+      "findStderr": "",
+      "got": [
+        "sp ace",
+        "é.txt"
+      ],
+      "expected": [
+        "sp ace",
+        "ta\tb",
+        "new\nline",
+        "é.txt"
+      ],
+      "ok": false
+    },
+    "hostFileHash": "6e4350cb9381c4807503588283fa0a9e322df8a6a98832f93ac83cebeffb17a1"
+  },
+  "wallMs": {
+    "push": 10277,
+    "phoneToHost": 40991,
+    "hostToPhone": 16290,
+    "control": 13863
+  }
+}

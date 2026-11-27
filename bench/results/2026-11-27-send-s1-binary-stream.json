@@ -1,0 +1,113 @@
+{
+  "experiment": "send-s1-binary-stream",
+  "startedAt": "2026-11-27T04:16:49.196Z",
+  "finishedAt": "2026-11-27T04:18:20.338Z",
+  "commit": {
+    "sha": "5ee6af01366f87b27986878213fbd364e608e42c",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "verdict": {
+    "result": "pass",
+    "pass": true,
+    "failedDirections": []
+  },
+  "raw": {
+    "phoneToHost": {
+      "sourceHash": "6e4350cb9381c4807503588283fa0a9e322df8a6a98832f93ac83cebeffb17a1",
+      "receivedHash": "6e4350cb9381c4807503588283fa0a9e322df8a6a98832f93ac83cebeffb17a1"
+    },
+    "hostToPhone": {
+      "sourceHash": "6e4350cb9381c4807503588283fa0a9e322df8a6a98832f93ac83cebeffb17a1",
+      "receivedHash": "6e4350cb9381c4807503588283fa0a9e322df8a6a98832f93ac83cebeffb17a1"
+    },
+    "control": {
+      "sourceHash": "6e4350cb9381c4807503588283fa0a9e322df8a6a98832f93ac83cebeffb17a1",
+      "receivedHash": "6e4350cb9381c4807503588283fa0a9e322df8a6a98832f93ac83cebeffb17a1"
+    },
+    "push": {
+      "sourceHash": "6e4350cb9381c4807503588283fa0a9e322df8a6a98832f93ac83cebeffb17a1",
+      "receivedHash": "6e4350cb9381c4807503588283fa0a9e322df8a6a98832f93ac83cebeffb17a1"
+    },
+    "renameOver": {
+      "finalHash": "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+      "expected": "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+      "output": "rc=0\nls: /sdcard/Download/portage-spike-S1/over.part: No such file or directory",
+      "partialRemoved": true
+    },
+    "renameNoClobber": {
+      "finalHash": "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+      "expected": "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+      "output": "rc=0\n/sdcard/Download/portage-spike-S1/noclobber.part",
+      "partialRemoved": false
+    },
+    "pushProgress": {
+      "stderrBytes": 132,
+      "stdoutBytes": 0,
+      "note": "adb run with stdout and stderr both as pipes"
+    },
+    "folderWritable": {
+      "output": "create=0\nrename=0\nremove=0",
+      "ok": true
+    },
+    "listingNul": {
+      "mkOutput": "",
+      "findCode": 0,
+      "findStderr": "",
+      "got": [
+        "sp ace",
+        "é.txt"
+      ],
+      "expected": [
+        "sp ace",
+        "ta\tb",
+        "new\nline",
+        "é.txt"
+      ],
+      "ok": false
+    },
+    "hostFileHash": "6e4350cb9381c4807503588283fa0a9e322df8a6a98832f93ac83cebeffb17a1",
+    "sizeBytes": 400000000,
+    "adbVersion": "Android Debug Bridge version 1.0.41\nVersion 36.0.0-13206524\nInstalled as /home/node/android/platform-tools/adb\nRunning on Linux 7.0.0-43-generic (x86_64)",
+    "devices": [
+      {
+        "id": "57041FDCQ006HS",
+        "model": "Pixel 10 Pro XL",
+        "android": "17"
+      }
+    ],
+    "wallMs": {
+      "push": 10277,
+      "phoneToHost": 40991,
+      "hostToPhone": 16290,
+      "control": 13863
+    },
+    "hostKernel": "7.0.0-43-generic",
+    "bunVersion": "1.4.5",
+    "cleanup": {
+      "removed": [
+        "names",
+        "writable.renamed",
+        "writable.tmp",
+        "noclobber.part",
+        "noclobber-final",
+        "over.part",
+        "over-final",
+        "control.bin",
+        "stream.bin",
+        "push.bin"
+      ],
+      "failed": []
+    },
+    "evidence": "/home/node/Documents/GitHub/portage/bench/evidence/send-to-phone/2026-11-27-send-s1-binary-stream"
+  }
+}
