@@ -915,7 +915,7 @@ describe("dupes.apply refuses without refusing the wrong thing", () => {
       expect(stale.error?.message).toContain("not available any more");
 
       // The three refusals moved nothing, on the real filesystem.
-      expect(await readdir(join(drive.root, "Anime"))).toEqual([
+      expect((await readdir(join(drive.root, "Anime"))).sort()).toEqual([
         "a.mkv",
         "b.mkv",
       ]);
