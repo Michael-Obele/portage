@@ -1,3 +1,4 @@
+
 /**
  * Test helpers: a journal on a temp drive, and a fake device.
  *
@@ -106,3 +107,110 @@ export const mountedSpawn: SpawnFn = (cmd, opts) =>
         durationMs: 1,
       })
     : realSpawn(cmd, opts);
+
+/**
+ * Seeded case generator for the send properties. A failing case rethrows with
+ * its seed, so the case can be replayed (Conventions: no property library, N3).
+ */
+export interface Rng {
+  seed: number;
+  int(lo: number, hi: number): number;
+  pick<T>(items: readonly T[]): T;
+  bool(): boolean;
+  text(alphabet: string, max: number): string;
+}
+
+export function seededCases(
+  seed: number,
+  n: number,
+  body: (rng: Rng, index: number) => void,
+): void {
+  for (let index = 0; index < n; index++) {
+    const caseSeed = seed * 100_003 + index;
+    let s = caseSeed >>> 0 || 1;
+    const next = () => {
+      s = (Math.imul(s, 1103515245) + 12345) & 0x7fffffff;
+      return s / 0x80000000;
+    };
+    const rng: Rng = {
+      seed: caseSeed,
+      int: (lo, hi) => lo + Math.floor(next() * (hi - lo + 1)),
+      pick: (items) => items[Math.floor(next() * items.length)] as never,
+      bool: () => next() < 0.5,
+      text: (alphabet, max) => {
+        const len = Math.floor(next() * (max + 1));
+        let out = "";
+        for (let i = 0; i < len; i++) {
+          out += alphabet[Math.floor(next() * alphabet.length)];
+        }
+        return out;
+      },
+    };
+    try {
+      body(rng, index);
+    } catch (err) {
+      throw new Error(
+        `property case failed: seed ${caseSeed} (index ${index}): ${String(err)}`,
+      );
+    }
+  }
+}
+
+/** One phone call the send made, in order. */
+export interface FakeCall {
+  method: string;
+  serial: string;
+  path?: string;
+  args: string[];
+}
+
+/** Scripted outcomes a test can set per method. Unset methods succeed. */
+export type FakeOutcome =
+  | "ok"
+  | { exitCode: number }
+  | "deadline"
+  | "unplug"
+  | "wrong-digest"
+  | "missing-sentinel"
+  | "byte-stall"
+  | "removal-failure";
+
+/** Records every phone call in order and answers from a script. */
+export class FakeAdb {
+  readonly calls: FakeCall[] = [];
+  private readonly script = new Map<string, FakeOutcome>();
+
+  setOutcome(method: string, outcome: FakeOutcome): void {
+    this.script.set(method, outcome);
+  }
+
+  call(
+    method: string,
+    serial: string,
+    path?: string,
+    args: string[] = [],
+  ): FakeOutcome {
+    this.calls.push({ method, serial, path, args });
+    return this.script.get(method) ?? "ok";
+  }
+}
+
+/** Records archive reads, host temporary files, and relay handles on a fixed clock. */
+export class FakeHost {
+  readonly archiveReads: string[] = [];
+  readonly tempFiles = new Set<string>();
+  readonly relays = new Set<number>();
+  private clock: number;
+
+  constructor(startMs = 0) {
+    this.clock = startMs;
+  }
+
+  now(): number {
+    return this.clock;
+  }
+
+  advance(ms: number): void {
+    this.clock += ms;
+  }
+}

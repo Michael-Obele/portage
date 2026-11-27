@@ -225,7 +225,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Done when: `bun run test` and `bun run typecheck` exit 0.
 
 - [ ] 4. Phase 4: plan rules, pure functions (R5.1 to R5.6, R6.1, R6.2, R6.8, R7.5 to R7.10, R7.13 to R7.15, R8.10, R8.15, R14.2; design §2.8, §3.2)
-  - [~] 4.1 Add the seeded generator, FakeAdb, and FakeHost to test/helpers.ts
+  - [x] 4.1 Add the seeded generator, FakeAdb, and FakeHost to test/helpers.ts
     - Requirements: R16.1, R16.2. Design: §7.2. Notes N3, N4.
     - Files: `test/helpers.ts`.
     - Build: `seededCases(seed, n)`, a fixed-seed generator that prints its seed when a case fails. `FakeAdb` records every call in order (method, serial, path, arguments) and gives scripted outcomes: ok, exit code, deadline, unplug, wrong digest, missing sentinel, byte stall, and removal failure. `FakeHost` records archive reads, host temporary files, and relay handles, on a deterministic clock.
