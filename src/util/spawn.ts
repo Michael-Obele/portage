@@ -33,6 +33,8 @@ export interface RunOptions {
   onStderr?: (chunk: string) => void;
   /** Called once the process starts, with the handle for abort/kill. */
   onStart?: (proc: Bun.Subprocess) => void;
+  /** Aborting kills the child; the call still resolves, with a non-zero code. */
+  signal?: AbortSignal;
 }
 
 export type SpawnFn = (cmd: string[], opts?: RunOptions) => Promise<RunResult>;
@@ -70,6 +72,9 @@ export const realSpawn: SpawnFn = async (cmd, opts = {}) => {
     timedOut = true;
     terminate(proc);
   }, opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const onAbort = () => terminate(proc);
+  if (opts.signal?.aborted) onAbort();
+  else opts.signal?.addEventListener("abort", onAbort, { once: true });
 
   // Drain both pipes concurrently — reading one to completion first would
   // deadlock as soon as the other filled its pipe buffer.
@@ -80,6 +85,7 @@ export const realSpawn: SpawnFn = async (cmd, opts = {}) => {
   ]);
 
   clearTimeout(timer);
+  opts.signal?.removeEventListener("abort", onAbort);
 
   // Replay the text to the listeners: we buffered for simplicity, and the
   // consumers (progress parsers) only need chunk ordering, which is preserved.
@@ -95,6 +101,15 @@ export const realSpawn: SpawnFn = async (cmd, opts = {}) => {
   if (timedOut) result.signal = "TIMEOUT";
   return result;
 };
+
+/**
+ * Single-quote one argument for the device's shell.
+ *
+ * Mirrors `sq()` in scripts/apull.sh: an embedded single quote becomes `'\''`.
+ */
+export function quoteShellArg(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
 
 /** Strip the `\r` that every Android shell command emits over adb. */
 export function stripCR(s: string): string {

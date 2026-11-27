@@ -13,7 +13,9 @@
  * object" mistake.
  */
 import type { Adb } from "#lib/device/adb.ts";
-import { stripCR } from "#lib/util/spawn.ts";
+import { quoteShellArg, stripCR } from "#lib/util/spawn.ts";
+
+export { quoteShellArg };
 import { basename } from "#lib/util/paths.ts";
 import { preconditionError, usageError } from "#lib/util/errors.ts";
 import type { BrowseEntry } from "#lib/serve/protocol.ts";
@@ -26,16 +28,6 @@ export const MOUNT_FIX =
   "browse talks to the phone through adb, so give it a path adb sees: " +
   "/sdcard/Download, not the MTP/GVFS mount your file manager shows. " +
   "Browse /sdcard to find the real path";
-
-/**
- * Single-quote one argument for the device's shell.
- *
- * Mirrors `sq()` in scripts/apull.sh: wrap in single quotes, and write an
- * embedded single quote as `'\''` so the shell sees one literal quote.
- */
-export function quoteShellArg(value: string): string {
-  return `'${value.replace(/'/g, "'\\''")}'`;
-}
 
 /**
  * Is this a file-manager mount rather than a phone path?

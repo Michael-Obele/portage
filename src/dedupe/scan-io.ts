@@ -38,6 +38,9 @@ export interface WalkOptions {
    * accounting asks for 0 so its file count is the real number of entries.
    */
   minSize?: number;
+  /** Walk deadline; the scanner default applies when unset. */
+  timeoutMs?: number;
+  signal?: AbortSignal;
 }
 
 export interface ScanIo {
@@ -128,7 +131,10 @@ export function scannerIo(): ScanIo {
     async walk(roots: string[], options?: WalkOptions): Promise<WalkOutcome> {
       const path = requireBinary();
       const started = Bun.nanoseconds();
-      const body = await scannerWalk(path, roots, [...ALWAYS_EXCLUDED_DIRS], options?.minSize ?? 1);
+      const body = await scannerWalk(path, roots, [...ALWAYS_EXCLUDED_DIRS], options?.minSize ?? 1, {
+        timeoutMs: options?.timeoutMs,
+        signal: options?.signal
+      });
       const candidates: Candidate[] = [];
       let bytes = 0;
       for (const file of body.files) {
@@ -206,6 +212,7 @@ export function globIo(): ScanIo {
       for (const root of roots) {
         const glob = new Bun.Glob("**/*");
         for await (const relative of glob.scan({ cwd: root, dot: false, followSymlinks: false })) {
+          if (options?.signal?.aborted) throw new Error("the walk was cancelled");
           if (!relative || relative.endsWith("/")) continue;
           const segments = relative.split("/");
           if (isExcludedRelative(relative, ALWAYS_EXCLUDED_DIRS)) continue;

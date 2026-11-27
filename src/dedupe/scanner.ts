@@ -124,7 +124,8 @@ export function resetScanner(): void {
 async function ask<T extends { ok: boolean }>(
   binary: string,
   request: unknown,
-  timeoutMs: number
+  timeoutMs: number,
+  signal?: AbortSignal
 ): Promise<T> {
   const proc = Bun.spawn([binary], {
     stdin: "pipe",
@@ -151,6 +152,17 @@ async function ask<T extends { ok: boolean }>(
       /* already gone */
     }
   }, timeoutMs);
+  let aborted = false;
+  const onAbort = () => {
+    aborted = true;
+    try {
+      proc.kill("SIGKILL");
+    } catch {
+      /* already gone */
+    }
+  };
+  if (signal?.aborted) onAbort();
+  else signal?.addEventListener("abort", onAbort, { once: true });
 
   const [stdout, stderr, exit] = await Promise.all([
     new Response(proc.stdout).text(),
@@ -158,6 +170,9 @@ async function ask<T extends { ok: boolean }>(
     proc.exited
   ]);
   clearTimeout(timer);
+  signal?.removeEventListener("abort", onAbort);
+
+  if (aborted) throw new Error("portage-scan was cancelled");
 
   if (timedOut) {
     throw new Error(
@@ -192,7 +207,8 @@ export async function scannerWalk(
   roots: string[],
   excludeDirs: string[],
   /** Files smaller than this are not reported. 1 for a scan; 0 for accounting. */
-  minSize = 1
+  minSize = 1,
+  options?: { timeoutMs?: number; signal?: AbortSignal }
 ): Promise<ScannerWalkBody> {
   return ask<ScannerWalkBody>(
     binary,
@@ -203,7 +219,8 @@ export async function scannerWalk(
       skipHidden: true,
       excludeDirs
     },
-    WALK_TIMEOUT_MS
+    options?.timeoutMs ?? WALK_TIMEOUT_MS,
+    options?.signal
   );
 }
 
