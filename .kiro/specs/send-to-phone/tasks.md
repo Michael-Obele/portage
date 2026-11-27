@@ -126,7 +126,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `scripts/bench/send-s3.ts` (new).
     - Build: record `adb version` and the `adb help` lines naming `exec-in` and `exec-out`. Run `adb exec-in` to write the 400,000,000-byte file. If it runs, hash the phone copy. If it does not, keep its error output. Exports `s3Verdict`.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "send S3 verdict"` passes.
-  - [~] 2.11 Run S3 on one phone and commit its record
+  - [x] 2.11 Run S3 on one phone and commit its record
     - Needs the phone. Requirements: R3.1 to R3.6. Design: §8.4, §2.5 (exec-in is a write method only if S1 fails and S3 passes).
     - Files: `bench/results/<date>-send-s3-exec-in.json` (new, committed).
     - Done when: `ls bench/results/*-send-s3-exec-in.json` lists one record with `verdict.result` `pass`, and `git log -1 --format=%s` prints `test(bench): record S3 adb exec-in results`.

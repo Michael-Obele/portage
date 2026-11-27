@@ -1,0 +1,62 @@
+{
+  "experiment": "send-s3-exec-in",
+  "startedAt": "2026-11-27T04:26:05.197Z",
+  "finishedAt": "2026-11-27T04:26:39.275Z",
+  "commit": {
+    "sha": "7e541a2291b64777f9fce246609241ebaaf0ec63",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "verdict": {
+    "result": "pass",
+    "pass": true,
+    "hashesEqual": true,
+    "execInAbsent": false,
+    "sizeBytes": 400000000,
+    "problems": []
+  },
+  "raw": {
+    "adbVersion": "Android Debug Bridge version 1.0.41\nVersion 36.0.0-13206524\nInstalled as /home/node/android/platform-tools/adb\nRunning on Linux 7.0.0-43-generic (x86_64)",
+    "helpNamesExecIn": false,
+    "helpNamesExecOut": false,
+    "execInRuns": true,
+    "sizeBytes": 400000000,
+    "hostHash": "17b14e989cb947cacab0a1ec3b22c03c6bc401aa5e6b6c6aea62737ea30e8909",
+    "phoneHash": "17b14e989cb947cacab0a1ec3b22c03c6bc401aa5e6b6c6aea62737ea30e8909",
+    "errorOutput": null,
+    "helpLines": [],
+    "execIn": {
+      "code": 0,
+      "ms": 29444,
+      "stderr": "",
+      "stdout": "",
+      "phoneBytes": "400000000"
+    },
+    "apullPhoneToPhone": "exec-in exists in this build; the exec-in tar -x path of scripts/apull.sh can run (C26). Checked here with cat at 400 MB, not tar.",
+    "devices": [
+      {
+        "id": "57041FDCQ006HS",
+        "model": "Pixel 10 Pro XL",
+        "android": "17"
+      }
+    ],
+    "hostKernel": "7.0.0-43-generic",
+    "bunVersion": "1.4.5",
+    "cleanup": {
+      "removed": [
+        "exec-in.bin"
+      ],
+      "failed": []
+    },
+    "evidence": "/home/node/Documents/GitHub/portage/bench/evidence/send-to-phone/2026-11-27-send-s3-exec-in"
+  }
+}

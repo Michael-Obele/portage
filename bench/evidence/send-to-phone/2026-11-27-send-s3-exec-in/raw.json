@@ -1,0 +1,17 @@
+{
+  "execIn": {
+    "code": 0,
+    "ms": 29444,
+    "stderr": "",
+    "stdout": "",
+    "phoneBytes": "400000000"
+  },
+  "helpLines": [],
+  "cleanup": {
+    "removed": [
+      "exec-in.bin"
+    ],
+    "failed": []
+  },
+  "rmdir": "ls: /sdcard/Download/portage-spike-S3: No such file or directory\n"
+}
