@@ -144,7 +144,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Needs the display. Requirements: R4.1 to R4.5, R16.6. Design: §8.5 steps 3 to 5.
     - Files: `bench/results/<date>-send-s4-tauri-dev.json` (new, committed). Screenshot and DOM text go to `bench/evidence/send-to-phone/S4/`.
     - Done when: the record's `verdict.result` is `pass`, `git diff --quiet -- apps/desktop/src-tauri/tauri.conf.json` exits 0, and `git log -1 --format=%s` prints `test(bench): record S4 tauri-dev driver results`. If the verdict is `fail`, the Phase 13 journeys are not recorded as passed (R4.4).
-  - [~] 2.15 Write the listing-timing tests (red)
+  - [x] 2.15 Write the listing-timing tests (red)
     - Requirements: R2.2, R14.4. Design: §8.8, RK-6. OI-1, D18.
     - Files: `test/units.test.ts` (describe `send listing timing`).
     - Test: `summarizeListingTimes(samples)` returns the longest wall time for 100, 500, and 1,000 entries, and whether each is above 3,000 ms. It has no pass rule.

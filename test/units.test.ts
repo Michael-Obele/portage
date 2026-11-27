@@ -59,6 +59,7 @@ import {
 import { s1Verdict } from "../scripts/bench/send-s1.ts";
 import { s2Verdict } from "../scripts/bench/send-s2.ts";
 import { s3Verdict } from "../scripts/bench/send-s3.ts";
+import { summarizeListingTimes } from "../scripts/bench/send-listing.ts";
 import {
   cleanupManifest,
   guardFolder,
@@ -1485,5 +1486,42 @@ describe("send S3 verdict", () => {
     expect(s3Verdict({ ...ran, adbVersion: "" }).result).toBe("fail");
     expect(s3Verdict({ ...ran, execInRuns: null }).result).toBe("fail");
     expect(s3Verdict({ ...ran, sizeBytes: null as unknown as number }).result).toBe("fail");
+  });
+});
+
+describe("send listing timing", () => {
+  test("returns the longest wall time per size", () => {
+    const out = summarizeListingTimes([
+      { entries: 100, ms: 120 },
+      { entries: 100, ms: 340 },
+      { entries: 500, ms: 900 },
+      { entries: 1000, ms: 1500 },
+      { entries: 1000, ms: 1200 },
+    ]);
+    expect(out.map((s) => [s.entries, s.longestMs])).toEqual([
+      [100, 340],
+      [500, 900],
+      [1000, 1500],
+    ]);
+  });
+
+  test("flags a size above 3,000 ms, and not one at exactly 3,000 ms", () => {
+    const out = summarizeListingTimes([
+      { entries: 100, ms: 3000 },
+      { entries: 500, ms: 3001 },
+      { entries: 1000, ms: 10 },
+    ]);
+    expect(out.map((s) => s.above3000Ms)).toEqual([false, true, false]);
+  });
+
+  test("a size with no samples has no wall time and is not flagged", () => {
+    const out = summarizeListingTimes([{ entries: 100, ms: 5 }]);
+    expect(out[1]).toEqual({ entries: 500, longestMs: null, above3000Ms: false });
+    expect(out[2]).toEqual({ entries: 1000, longestMs: null, above3000Ms: false });
+  });
+
+  test("sizes outside 100, 500 and 1,000 are ignored", () => {
+    const out = summarizeListingTimes([{ entries: 7, ms: 99_999 }]);
+    expect(out.every((s) => s.longestMs === null)).toBe(true);
   });
 });
