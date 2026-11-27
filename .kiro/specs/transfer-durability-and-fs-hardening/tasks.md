@@ -614,7 +614,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: under branch A, the directory sync calls the Helper `fsync` command, and `DIRECTORY_SYNC_BRANCH` stays `"A"`. A missing Helper makes the directory fsync `failed` with the EH-13 text "flush failed: the drive did not confirm the folder entry: <dir>", and the result names TypeScript as the path that ran.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "recorded decisions"` passes, and `bun test --preload ./scripts/preload.ts test/verify-gate.test.ts -t "durable drive copy"` passes.
 
-  - [~] 4.25 Checkpoint: Phase 4 gates
+  - [x] 4.25 Checkpoint: Phase 4 gates
     - Run `bun run test` and `bun run typecheck`, and fix what fails.
     - In `crates/portage-scan`, run `cargo test` and `cargo clippy --all-targets -- -D warnings`, and fix what fails.
     - Done when: each command passes.
