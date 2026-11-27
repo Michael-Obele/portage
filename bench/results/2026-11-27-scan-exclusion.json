@@ -1,0 +1,66 @@
+{
+  "experiment": "scan-exclusion",
+  "startedAt": "2026-11-27T08:44:27.761Z",
+  "finishedAt": "2026-11-27T08:44:28.478Z",
+  "commit": {
+    "sha": "b6a338da7033a3cd0e03c778b00747db7a71defb",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "mount": {
+    "root": "/media/node/2TB",
+    "mountPoint": "/media/node/2TB",
+    "line": "/dev/sdb1 /media/node/2TB fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096 0 0",
+    "findmnt": "/dev/sdb1 fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,default_permissions,allow_other,blksize=4096"
+  },
+  "driver": "ntfs-3g",
+  "device": {
+    "partition": "/dev/sdb1",
+    "disk": "/dev/sdb"
+  },
+  "usb": {
+    "port": "3-4",
+    "speedMbit": 480
+  },
+  "block": {
+    "disk": "/dev/sdb",
+    "rotational": true,
+    "writeCache": "write back",
+    "model": "HN-M201RAD"
+  },
+  "verdict": {
+    "result": "pass",
+    "expect": {
+      "absent": "Videos/Android/data/com.app/*",
+      "listed": "Videos/MyAndroid/data/com.app/*"
+    },
+    "observed": {
+      "excludedSeen": [],
+      "keptSeen": [
+        "/media/node/2TB/.portage/exercise/scan-2026-11-27T08-44-27-766Z/Videos/MyAndroid/data/com.app/keep-copy.mkv",
+        "/media/node/2TB/.portage/exercise/scan-2026-11-27T08-44-27-766Z/Videos/MyAndroid/data/com.app/keep.mkv"
+      ]
+    }
+  },
+  "raw": {
+    "exercise": "/media/node/2TB/.portage/exercise/scan-2026-11-27T08-44-27-766Z",
+    "walker": "dupes.scan through src/serve/main.ts (scanner helper when dist/portage-scan is present)",
+    "members": [
+      "/media/node/2TB/.portage/exercise/scan-2026-11-27T08-44-27-766Z/Videos/MyAndroid/data/com.app/keep-copy.mkv",
+      "/media/node/2TB/.portage/exercise/scan-2026-11-27T08-44-27-766Z/Videos/MyAndroid/data/com.app/keep.mkv"
+    ],
+    "df": {
+      "start": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sdb1      2000397791232 1571572834304 428824956928  79% /media/node/2TB\n",
+      "end": "Filesystem         1B-blocks          Used    Available Use% Mounted on\n/dev/sdb1      2000397791232 1571572850688 428824940544  79% /media/node/2TB\n"
+    }
+  }
+}

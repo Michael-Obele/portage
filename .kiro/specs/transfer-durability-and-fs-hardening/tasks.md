@@ -733,7 +733,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: run `scripts/definition-of-done.sh`. If a command fails, fix its cause in code and run the script again.
     - Done when: the script exits 0, the evidence file is committed, and `git log -1 --format=%s` prints `test(bench): record the definition-of-done runs`.
 
-  - [~] 7.3 Write the scan-exclusion exercise, run it on the archive drive, and commit the record
+  - [x] 7.3 Write the scan-exclusion exercise, run it on the archive drive, and commit the record
     - Needs the archive drive mounted. Requirements: R3.3, R4.12, R7.4. Design: Testing strategy, Layer 4 (step 1).
     - Files: `scripts/bench/exercise-scan.ts` (new), `bench/results/<date>-scan-exclusion.json` (new, committed).
     - Build: the script calls `mountGuard` and the fixture guard. It creates `Videos/Android/data/` and `Videos/MyAndroid/data/` under a dedicated exercise folder on the drive, not in the owner's library, and records `df` before and after. It runs the scan through the engine's JSON protocol, with `dist/portage-scan` in place. The expected result is that the `Android/data` file is absent and the `MyAndroid/data` file is listed. It removes only the fixtures it created. The record holds both expectations and the observed result.
