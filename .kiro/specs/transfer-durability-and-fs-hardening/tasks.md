@@ -667,7 +667,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: the ignored test generates one 33,000-file dupes frame from a fixed seed. It times `remember_frame` on that frame, reads `VmHWM` from `/proc/self/status` before and after, and runs the legacy `Value` implementation in the same process, in the same order, five times. It prints the frame size in bytes and the commit. The script runs the ignored test, parses its output, and writes the record with `writeRecord`. The record states the host, the frame size in bytes, the shell build (the commit), and that the measurement covers the remember path only, not the whole app. E5 decides nothing (R5.6).
     - Done when: `cd apps/desktop/src-tauri && cargo test -- --ignored remember_frame_bench` prints the numbers, `ls bench/results/*-e5-frames.json` lists the record, and `git log -1 --format=%s` prints `test(bench): record E5 frame forwarding cost`.
 
-  - [~] 5.7 Checkpoint: Phase 5 shell tests
+  - [x] 5.7 Checkpoint: Phase 5 shell tests
     - Run `cd apps/desktop/src-tauri && cargo test`, `cargo clippy --all-targets -- -D warnings`, and `cargo fmt --check`, and fix what fails.
     - Done when: the three commands pass.
 
