@@ -10,7 +10,7 @@
  */
 import { ALWAYS_EXCLUDED_DIRS } from "#lib/config/schema.ts";
 import { ensureDirTracked, moveFile } from "#lib/util/durable.ts";
-import { statSafe } from "#lib/util/fs.ts";
+import { statDrive } from "#lib/util/probe.ts";
 import { dirname, localDayKey, normPath, resolveInside } from "#lib/util/paths.ts";
 
 import {
@@ -424,15 +424,21 @@ export async function applySelection(
     );
     if (group) {
       let survivors = 0;
+      let unreadable = false;
       for (const other of group.members) {
         if (other.path === raw) continue;
         if (pathsIncludes(selected, other.path)) continue;
-        if ((await statSafe(other.path)) !== null) survivors += 1;
+        const seen = await statDrive(opts.destRoot, other.path);
+        if (seen.kind === "ok") survivors += 1;
+        else if (seen.kind === "unreadable") unreadable = true;
       }
       if (survivors === 0) {
+        // A copy that could not be read may still exist: say so, not "last copy".
         result.refused.push({
           path: raw,
-          reason: "would remove the last copy",
+          reason: unreadable
+            ? "the destination could not be read; nothing was changed"
+            : "would remove the last copy",
         });
         continue;
       }

@@ -15,36 +15,10 @@ export interface DiskSpace {
   total: number;
 }
 
-/** Free/total bytes for the filesystem holding `path`. */
-export function diskSpace(path: string): DiskSpace | null {
-  // Node has no statvfs binding; `df -B1 --output=size,avail` is the portable way.
-  const res = Bun.spawnSync(["df", "-B1", "--output=size,avail", path], {
-    stdout: "pipe",
-    stderr: "ignore",
-  });
-  if (res.exitCode !== 0) return null;
-
-  const text = res.stdout.toString();
-  const lines = text.trim().split("\n");
-  const last = lines[lines.length - 1];
-  if (!last) return null;
-
-  const parts = last.trim().split(/\s+/);
-  if (parts.length < 2) return null;
-  const total = Number(parts[0]);
-  const free = Number(parts[1]);
-  if (!Number.isFinite(total) || !Number.isFinite(free)) return null;
-  return { free, total };
-}
-
 /**
- * The same reading, bounded.
- *
- * `diskSpace` above is synchronous on purpose for callers that only have a
- * path, but `Bun.spawnSync` cannot be interrupted: on a wedged FUSE mount `df`
- * blocks forever and takes the whole event loop with it, so the engine stops
- * answering ANY command — the app looks dead because one drive is sick. This
- * version goes through `SpawnFn`, which has a deadline and kills the child.
+ * Free/total bytes for the filesystem holding `path`. Goes through `SpawnFn`,
+ * which has a deadline and kills the child: a synchronous `df` on a wedged mount
+ * would block the whole event loop.
  */
 export async function diskSpaceAsync(
   spawn: (cmd: string[], opts?: { timeoutMs?: number }) => Promise<{
@@ -162,20 +136,6 @@ export async function statSafe(path: string): Promise<FileStat | null> {
     // "I cannot vouch for this path", which is what null means everywhere here.
     return null;
   }
-}
-
-/** Synchronous stat for call sites deep in sync code paths. */
-export function statSyncSafe(path: string): FileStat | null {
-  const res = Bun.spawnSync(["stat", "-c", "%s\t%Y\t%F", path], {
-    stderr: "ignore",
-  });
-  if (res.exitCode !== 0) return null;
-  const [size, mtime, kind] = res.stdout.toString().trim().split("\t");
-  return {
-    size: Number(size),
-    mtimeMs: Number(mtime) * 1000,
-    isDir: (kind ?? "").startsWith("directory"),
-  };
 }
 
 /** Create the whole `.portage` state tree on a drive. */

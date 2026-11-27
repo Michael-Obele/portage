@@ -65,7 +65,7 @@ function recordingTransport(
     name: "adb",
     deleted,
     async available() {
-      return true;
+      return { kind: "available" };
     },
     async copy(req) {
       events?.push("copy");

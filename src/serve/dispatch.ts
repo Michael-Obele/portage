@@ -43,12 +43,13 @@ import { applyPurge, planPurge, type PurgePlan } from "#lib/xfer/purge.ts";
 import { applySelection, scanDuplicates } from "#lib/dedupe/index.ts";
 import { defaultScanIo, resilientScanIo } from "#lib/dedupe/scan-io.ts";
 import { emptyTrash, readTrash } from "#lib/dedupe/trash.ts";
-import { diskSpaceAsync } from "#lib/util/fs.ts";
+import { diskSpaceAsync, type DiskSpace } from "#lib/util/fs.ts";
+import { PROBE_TIMEOUT_MS, probe, statDrive } from "#lib/util/probe.ts";
 import type { Output } from "#lib/output/output.ts";
 import { doctor as doctorCommand } from "#lib/serve/doctor.ts";
 import { db as dbCommand } from "#lib/serve/db.ts";
 import { silentLogger, type Logger } from "#lib/util/log.ts";
-import { realSpawn } from "#lib/util/spawn.ts";
+import { realSpawn, type SpawnFn } from "#lib/util/spawn.ts";
 import {
   describeError,
   preconditionError,
@@ -90,6 +91,10 @@ export interface ServeContext {
   resolveConfig(): Promise<ResolvedConfig>;
   /** adb, resolved once. Null when it is not installed. */
   adb(): Promise<Adb | null>;
+  /** Test seam: the child-process spawner for drive reads. */
+  spawn?: SpawnFn;
+  /** Test seam: the deadline for one drive read. */
+  probeTimeoutMs?: number;
 }
 
 export interface ContextInit {
@@ -99,6 +104,8 @@ export interface ContextInit {
   logger?: Logger;
   resolveConfig?: () => Promise<ResolvedConfig>;
   adb?: () => Promise<Adb | null>;
+  spawn?: SpawnFn;
+  probeTimeoutMs?: number;
 }
 
 export function createContext(init: ContextInit): ServeContext {
@@ -123,7 +130,34 @@ export function createContext(init: ContextInit): ServeContext {
     logger: init.logger ?? silentLogger,
     resolveConfig,
     adb,
+    ...(init.spawn ? { spawn: init.spawn } : {}),
+    ...(init.probeTimeoutMs ? { probeTimeoutMs: init.probeTimeoutMs } : {}),
   };
+}
+
+/**
+ * Free space under its own deadline. `space: null` means df answered but could
+ * not say; `ok: false` means the drive did not answer at all (R2.2).
+ */
+async function readFreeSpace(
+  ctx: ServeContext,
+  root: string,
+): Promise<{ ok: true; space: DiskSpace | null } | { ok: false }> {
+  const spawn = ctx.spawn ?? realSpawn;
+  const deadlineMs = ctx.probeTimeoutMs ?? PROBE_TIMEOUT_MS;
+  // A killed df must read as a timeout, not as "no number".
+  const strict: SpawnFn = async (cmd, opts) => {
+    const res = await spawn(cmd, opts);
+    if (res.signal === "TIMEOUT") throw new Error("df timed out");
+    return res;
+  };
+  const read = await probe(
+    root,
+    `df ${root}`,
+    () => diskSpaceAsync(strict, root, deadlineMs),
+    deadlineMs,
+  );
+  return read.kind === "ok" ? { ok: true, space: read.value } : { ok: false };
 }
 
 // --- shared helpers ---------------------------------------------------------
@@ -267,18 +301,26 @@ function withoutMarkers(candidate: Candidate): Candidate {
  * path, and a file that has genuinely gone from the phone fails harmlessly at
  * `applyPurge`. `verifyHash: true` does check it, by re-reading both ends.
  */
-export async function withFreshDriveCopies(plan: PurgePlan): Promise<PurgePlan> {
+export async function withFreshDriveCopies(
+  plan: PurgePlan,
+  root: string,
+  deps: { statDrive?: typeof statDrive } = {},
+): Promise<PurgePlan> {
+  const stat = deps.statDrive ?? statDrive;
   const eligible: PurgePlan["eligible"] = [];
   const refused = [...plan.refused];
   for (const candidate of plan.eligible) {
-    if (await Bun.file(candidate.destPath).exists()) {
-      eligible.push(candidate);
-    } else {
-      refused.push({
-        srcPath: candidate.srcPath,
-        reason: "the drive copy is gone — nothing was deleted",
-      });
+    const seen = await stat(root, candidate.destPath);
+    let reason: string | null = null;
+    if (seen.kind === "missing") {
+      reason = "the drive copy is gone — nothing was deleted";
+    } else if (seen.kind === "unreadable") {
+      reason = "drive copy unreadable";
+    } else if (!seen.value.isFile) {
+      reason = "the drive copy is not a file — nothing was deleted";
     }
+    if (reason === null) eligible.push(candidate);
+    else refused.push({ srcPath: candidate.srcPath, reason });
   }
   return {
     eligible,
@@ -885,10 +927,11 @@ const handlerTable = {
           verifyHash: args.verifyHash,
           dryRun: true,
           apply: false,
+          root: destRoot,
         },
       );
 
-      const fresh = await withFreshDriveCopies(plan);
+      const fresh = await withFreshDriveCopies(plan, destRoot);
       plan.eligible = fresh.eligible;
       plan.refused = fresh.refused;
       plan.bytesReclaimed = fresh.bytesReclaimed;
@@ -984,6 +1027,7 @@ const handlerTable = {
           verifyHash: false,
           dryRun: false,
           apply: true,
+          root: entry.destRoot,
         },
       );
       ctx.frames.notice(
@@ -1034,7 +1078,8 @@ const handlerTable = {
       totalBytes: status.totalBytes,
     });
 
-    const space = await diskSpaceAsync(realSpawn, destRoot);
+    const read = await readFreeSpace(ctx, destRoot);
+    const space = read.ok ? read.space : null;
     return {
       trashId: entry.id,
       root: status.root,
@@ -1130,9 +1175,19 @@ const handlerTable = {
       };
     }
 
-    const before = await diskSpaceAsync(realSpawn, entry.destRoot);
+    // Refuse before deleting anything: a drive that cannot report its space is
+    // not one to delete from.
+    const before = await readFreeSpace(ctx, entry.destRoot);
+    if (!before.ok) {
+      throw preconditionError(
+        "the destination could not be read; nothing was changed",
+        "check the archive drive, then run trash.status again",
+      );
+    }
     const result = await emptyTrash(entry.destRoot, targets, io);
-    const after = await diskSpaceAsync(realSpawn, entry.destRoot);
+    // Already deleted: an unanswered read here is reported as unknown.
+    const afterRead = await readFreeSpace(ctx, entry.destRoot);
+    const after = afterRead.ok ? afterRead.space : null;
 
     ctx.frames.notice(
       result.refused.length > 0 ? "warn" : "info",
@@ -1149,7 +1204,7 @@ const handlerTable = {
       removedFiles: result.removedFiles,
       bytesFreed: result.bytesFreed,
       refused: result.refused,
-      freeBytesBefore: before?.free ?? null,
+      freeBytesBefore: before.space?.free ?? null,
       freeBytesAfter: after?.free ?? null,
     };
   },

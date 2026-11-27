@@ -306,50 +306,50 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: add `formatDeadline(ms)` to `src/util/probe.ts`. It returns the seconds with up to two decimals and the unit " s", so 3000 gives "3 s", 50 gives "0.05 s", and 30000 gives "30 s". At line 244, `statDrive` replaces `isDirectory` in the walk's readiness check. An unreadable destination skips the walk and prints "the destination could not be read". At line 457, `syncFileOnly(tmp, size)` replaces `Bun.spawnSync(["sync", "-f", tmp])`, under `flushDeadlineMs(size)`. Add `doctorFlushMessage(outcome)`, a pure function. A timeout gives "check failed: no answer within <s> s", with `<s>` from `formatDeadline`. The message is never "healthy".
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "deadline checks"` passes its Doctor-flush example, and `grep -n 'sync", "-f"' src/serve/doctor.ts` prints nothing.
 
-  - [~] 2.18 Make the rsync version check async (row P14)
+  - [x] 2.18 Make the rsync version check async (row P14)
     - Requirements: R2.2, R2.3, R2.8. Design: Appendix A row P14; Components (`Transport.available`, `TransportVerdict`); RK-17.
     - Files: `src/xfer/transport.ts` (the `available` signature and `TransportVerdict`), `src/xfer/adb.ts` (`RsyncTransport.available`, line 215), and the caller that awaits `available`.
     - Build: `available(deviceId)` returns `Promise<TransportVerdict>`. It runs `rsync --version` through `realSpawn` under `probe(null, ...)`, with a 3-second deadline, and the `RsyncTransport` constructor takes optional `spawn` and `timeoutMs` for the test. A timeout gives `failed` with the reason "check failed: no answer within 3 s", using `formatDeadline`. A missing binary gives `absent`. A version that answers gives `available`.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "deadline checks"` passes its rsync example, and `bun run typecheck` reports no error in `src/xfer/adb.ts`.
 
-  - [~] 2.19 Make the purge check in dispatch use the probe and the root
+  - [x] 2.19 Make the purge check in dispatch use the probe and the root
     - Requirements: R2.10. Design: Components (`withFreshDriveCopies`, dispatch line 264, and its call at line 876); EH-2 (purge row); Notes N24.
     - Files: `src/serve/dispatch.ts` (lines 264 to 275 and the call at line 876).
     - Build: `withFreshDriveCopies(plan, root)` calls `statDrive(root, path)`. `missing` keeps "the drive copy is gone — nothing was deleted". `unreadable` refuses with "drive copy unreadable" (R2.10). A directory refuses with "the drive copy is not a file — nothing was deleted". The call at line 876 passes the destination root.
     - Done when: `bun test --preload ./scripts/preload.ts test/serve.test.ts -t "dispatch purge refuses an unreadable drive copy"` passes.
 
-  - [~] 2.20 Make the survivor check use the probe
+  - [x] 2.20 Make the survivor check use the probe
     - Requirements: R2.9. Design: Components (`src/dedupe/index.ts`, the survivor check at line 429); EH-2 (survivor row); EH-13; Notes N15.
     - Files: `src/dedupe/index.ts` (line 429).
     - Build: replace `statSafe` with `statDrive(opts.destRoot, other.path)`. Only `ok` counts as a survivor. A `missing` or `unreadable` result does not count, and the deletion is refused. An unreadable survivor is refused with the EH-13 text "the destination could not be read; nothing was changed".
     - Done when: `bun test --preload ./scripts/preload.ts test/dedupe.test.ts -t "survivor check"` passes.
 
-  - [~] 2.21 Apply the probe to the applied purge
+  - [x] 2.21 Apply the probe to the applied purge
     - Requirements: R2.10. Design: Appendix A (row P12 covers only dispatch); DV-11; Notes N7.
     - Files: `src/xfer/purge.ts` (the existence check at line 151 in `applyPurge`, and the options type).
     - Build: add `root` to the purge options. Replace `Bun.file(...).exists()` with `statDrive`. `missing` keeps "drive copy no longer exists". `unreadable` refuses with "drive copy unreadable" (R2.10). A directory refuses with "the drive copy is not a file — nothing was deleted". The verify read at line 82 is task 2.33.
     - Done when: `bun run typecheck` reports errors only at the call site that task 2.22 fixes.
 
-  - [~] 2.22 Pass the root to the applied purge
+  - [x] 2.22 Pass the root to the applied purge
     - Requirements: R2.10. Design: Notes N24.
     - Files: `src/serve/dispatch.ts` (the `applyPurge` call site).
     - Build: the call passes the destination root that task 2.21 added to the options.
     - Done when: `bun run typecheck` passes.
 
-  - [~] 2.23 Make the trash listing report an unreadable root
+  - [x] 2.23 Make the trash listing report an unreadable root
     - Requirements: R2.11. Design: Components (`src/dedupe/trash.ts`, `TrashStatus.unreadable`); EH-2 (trash row).
     - Files: `src/dedupe/trash.ts` (`TrashStatus` at line 25, and the `stat` call at line 83).
     - Build: `readTrash` calls `statDrive(destRoot, root)`. `missing` keeps `exists: false`. `unreadable` sets `unreadable` to "the trash could not be read" and keeps `exists: false`. It never reports "no trash" for an unreadable root. `emptyTrash` keeps its `lstat` and containment checks.
     - Done when: `bun test --preload ./scripts/preload.ts test/trash.test.ts -t "unreadable trash"` passes.
 
-  - [~] 2.24 Wrap the trash free-space reads with the probe (row P4)
+  - [x] 2.24 Wrap the trash free-space reads with the probe (row P4)
     - Requirements: R2.2, R2.3. Design: Appendix A row P4; Components (`diskSpaceAsync`, 3-second deadline).
     - Files: `test/serve.test.ts` (new test, first), `src/serve/dispatch.ts` (the two reads near lines 1118 and 1120).
     - Tests first: "trash emptying refuses when free space cannot be read". A free-space read that never resolves, at a 50 ms deadline, makes trash emptying refuse with the EH-13 text "the destination could not be read; nothing was changed", and it deletes nothing.
     - Build: wrap each `diskSpaceAsync` read with `probe(destRoot, ...)` at 3 seconds. A timed-out read refuses before any deletion.
     - Done when: `bun test --preload ./scripts/preload.ts test/serve.test.ts -t "trash emptying refuses"` passes.
 
-  - [~] 2.25 Delete `diskSpace` and `statSyncSafe`
+  - [x] 2.25 Delete `diskSpace` and `statSyncSafe`
     - Requirements: R2 (Migration step 5). Design: Migration step 5.
     - Files: `src/util/fs.ts`.
     - Build: check with grep that no caller of either function remains. Then delete `diskSpace` (lines 44 to 62) and `statSyncSafe` (lines 147 to 159). Keep `statSafe` and `isDirectory`.

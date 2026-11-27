@@ -34,10 +34,16 @@ export type CopyOutcome =
   /** Failed. `fatal: false` means "retry the whole file is reasonable". */
   | { status: "failed"; reason: string; code: number; fatal: boolean };
 
+/** Why a transport can or cannot serve a device. `failed` means the check itself broke. */
+export type TransportVerdict =
+  | { kind: "available" }
+  | { kind: "absent" }
+  | { kind: "failed"; reason: string };
+
 export interface Transport {
   readonly name: "adb" | "rsync";
   /** Can this transport actually serve this device right now? */
-  available(deviceId: string): Promise<boolean>;
+  available(deviceId: string): Promise<TransportVerdict>;
   copy(req: CopyRequest): Promise<CopyOutcome>;
   /**
    * Delete the phone copy.

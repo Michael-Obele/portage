@@ -1539,11 +1539,14 @@ describe("a purge plan is checked against the drive before it is offered", () =>
     try {
       const present = join(drive.root, "here.mkv");
       await Bun.write(present, "bytes");
-      const plan = await withFreshDriveCopies({
-        eligible: [candidate(present, 5)],
-        refused: [],
-        bytesReclaimed: 5,
-      });
+      const plan = await withFreshDriveCopies(
+        {
+          eligible: [candidate(present, 5)],
+          refused: [],
+          bytesReclaimed: 5,
+        },
+        drive.root,
+      );
       expect(plan.eligible).toHaveLength(1);
       expect(plan.refused).toHaveLength(0);
       expect(plan.bytesReclaimed).toBe(5);
@@ -1562,7 +1565,7 @@ describe("a purge plan is checked against the drive before it is offered", () =>
         eligible: [candidate(present, 5), candidate(missing, 700)],
         refused: [{ srcPath: "/sdcard/Download/other.mkv", reason: "no stored hash" }],
         bytesReclaimed: 705,
-      });
+      }, drive.root);
 
       expect(plan.eligible.map((entry) => entry.destPath)).toEqual([present]);
       // Refused rather than dropped: silently removing it would make the counts
@@ -1588,7 +1591,7 @@ describe("a purge plan is checked against the drive before it is offered", () =>
         eligible: [candidate(join(drive.root, "a.mkv"), 100)],
         refused: [],
         bytesReclaimed: 100,
-      });
+      }, drive.root);
       expect(plan.eligible).toHaveLength(0);
       expect(plan.bytesReclaimed).toBe(0);
       expect(plan.refused).toHaveLength(1);
@@ -1759,6 +1762,43 @@ describe("unreadable reads", () => {
     }
   });
 
+  test("trash emptying refuses when free space cannot be read", async () => {
+    const drive = await makeTempDrive("portage-unreadable-df-");
+    try {
+      const day = join(drive.root, ".portage", "trash", "2026-11-08");
+      await mkdir(day, { recursive: true });
+      const file = join(day, "a.mkv");
+      await Bun.write(file, new Uint8Array(64).fill(0x41));
+
+      const c = collector();
+      const ctx = createContext({
+        frames: connect(c.sink),
+        logger: silentLogger,
+        resolveConfig: async () => resolvedFor(drive.root),
+        adb: async () => null,
+        pending: fixtureRegister(),
+        spawn: NEVER,
+        probeTimeoutMs: DEADLINE_MS,
+      });
+      // The reading comes from the real walker; only df is stalled.
+      await dispatch(cmd("t0", "trash.status", {}), ctx);
+      await dispatch(cmd("t1", "trash.empty", { trashId: "scan-fixed" }), ctx);
+      await dispatch(
+        cmd("t2", "trash.empty", { trashId: "scan-fixed", confirm: "scan-fixed" }),
+        ctx,
+      );
+
+      const refused = answerFor(c.frames(), "t2");
+      expect(refused.ok).toBe(false);
+      expect(refused.error?.message).toBe(
+        "the destination could not be read; nothing was changed",
+      );
+      expect(await Bun.file(file).exists()).toBe(true);
+    } finally {
+      await drive.cleanup();
+    }
+  });
+
   test("a status request is answered while a purge probe never resolves", async () => {
     const drive = await makeTempDrive("portage-unreadable-status-");
     try {
@@ -1775,7 +1815,7 @@ describe("unreadable reads", () => {
       const purge = withFreshDriveCopies(planOf(dest), drive.root, {
         statDrive: stalledStat,
       });
-      await dispatch(cmd("s1", "status", {}), ctx);
+      await dispatch(cmd("s1", "status.get", {}), ctx);
       const elapsed = performance.now() - started;
 
       expect(answerFor(c.frames(), "s1").ok).toBe(true);

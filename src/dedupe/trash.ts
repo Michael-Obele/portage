@@ -6,10 +6,11 @@
  * never follows a symlink, and reports what it could not remove.
  */
 /// <reference types="bun" />
-import { lstat, rm, stat } from "node:fs/promises";
+import { lstat, rm } from "node:fs/promises";
 
 import { STATE_DIR } from "#lib/config/schema.ts";
 import { resolveInside } from "#lib/util/paths.ts";
+import { statDrive } from "#lib/util/probe.ts";
 
 import type { ScanIo } from "#lib/dedupe/scan-io.ts";
 
@@ -43,6 +44,8 @@ export interface TrashStatus {
   loose: string[];
   totalFiles: number;
   totalBytes: number;
+  /** Set when the trash root could not be read. Never means "no trash". */
+  unreadable?: string;
 }
 
 /** Where moves land for one drive. The same string `dupes.scan` computes. */
@@ -77,10 +80,14 @@ export async function readTrash(destRoot: string, io: ScanIo): Promise<TrashStat
   const root = trashRootFor(destRoot);
   const status = emptyTrashStatus(root);
 
-  // `stat`, not `Bun.file(...).exists()`: the latter answers about FILES, and a
+  // A stat, not `Bun.file(...).exists()`: the latter answers about FILES, and a
   // directory is not one — it reported "no trash" for a trash full of files.
-  const info = await stat(root).catch(() => null);
-  if (info === null || !info.isDirectory()) return status;
+  const info = await statDrive(destRoot, root);
+  if (info.kind === "unreadable") {
+    status.unreadable = "the trash could not be read";
+    return status;
+  }
+  if (info.kind === "missing" || !info.value.isDir) return status;
 
   const walked = await io.walk([root], { minSize: 0 });
   status.exists = true;

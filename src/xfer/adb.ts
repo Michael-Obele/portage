@@ -23,11 +23,18 @@ import { finished } from "node:stream/promises";
 
 import type { Adb } from "#lib/device/adb.ts";
 import { dirname } from "#lib/util/paths.ts";
-import { statDrive } from "#lib/util/probe.ts";
+import { realSpawn, type SpawnFn } from "#lib/util/spawn.ts";
+import {
+  formatDeadline,
+  PROBE_TIMEOUT_MS,
+  probe,
+  statDrive,
+} from "#lib/util/probe.ts";
 import type {
   CopyOutcome,
   CopyRequest,
   Transport,
+  TransportVerdict,
 } from "#lib/xfer/transport.ts";
 
 export class AdbTransport implements Transport {
@@ -39,8 +46,8 @@ export class AdbTransport implements Transport {
     private readonly onRestart?: (path: string) => void,
   ) {}
 
-  async available(): Promise<boolean> {
-    return this.adb !== null;
+  async available(_deviceId: string): Promise<TransportVerdict> {
+    return this.adb !== null ? { kind: "available" } : { kind: "absent" };
   }
 
   /**
@@ -211,14 +218,39 @@ export class RsyncTransport implements Transport {
       port: number;
       user: string;
       partialDir: string;
+      spawn?: SpawnFn;
+      timeoutMs?: number;
     },
   ) {}
 
-  async available(): Promise<boolean> {
-    const res = Bun.spawnSync([this.opts.bin, "--version"], {
-      stderr: "ignore",
-    });
-    return res.exitCode === 0;
+  async available(_deviceId: string): Promise<TransportVerdict> {
+    const spawn = this.opts.spawn ?? realSpawn;
+    const timeoutMs = this.opts.timeoutMs ?? PROBE_TIMEOUT_MS;
+    // Null root: this reads nothing on the archive, so it counts toward no breaker.
+    const res = await probe(
+      null,
+      "rsync --version",
+      () => spawn([this.opts.bin, "--version"], { timeoutMs }),
+      timeoutMs,
+    );
+    if (res.kind === "ok") {
+      if (res.value.code === 0) return { kind: "available" };
+      if (res.value.code === 127) return { kind: "absent" };
+      return {
+        kind: "failed",
+        reason: `rsync --version exited ${res.value.code}`,
+      };
+    }
+    if (res.kind === "missing") return { kind: "absent" };
+    if (res.reason === "timeout") {
+      return {
+        kind: "failed",
+        reason: `check failed: no answer within ${formatDeadline(timeoutMs)}`,
+      };
+    }
+    // Spawning a binary that does not exist throws ENOENT.
+    if (res.code === "ENOENT") return { kind: "absent" };
+    return { kind: "failed", reason: res.message };
   }
 
   async copy(req: CopyRequest): Promise<CopyOutcome> {

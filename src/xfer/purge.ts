@@ -16,6 +16,7 @@
 import type { Adb, DeviceInfo } from "#lib/device/adb.ts";
 import type { Journal } from "#lib/index/journal.ts";
 import { sha256File } from "#lib/util/hash.ts";
+import { statDrive } from "#lib/util/probe.ts";
 import type { Transport } from "#lib/xfer/transport.ts";
 
 export interface PurgeCandidate {
@@ -45,6 +46,10 @@ export interface PurgeOptions {
   dryRun: boolean;
   /** Actually delete. Without this the function plans and changes nothing. */
   apply: boolean;
+  /** Destination root. The probes and the breaker for this drive use it. */
+  root: string;
+  /** Test seam: the drive stat. */
+  statDrive?: typeof statDrive;
 }
 
 /**
@@ -148,10 +153,22 @@ export async function applyPurge(
   let failed = 0;
 
   for (const candidate of plan.eligible) {
-    if (!(await Bun.file(candidate.destPath).exists())) {
+    const seen = await (opts.statDrive ?? statDrive)(
+      opts.root,
+      candidate.destPath,
+    );
+    const refusal =
+      seen.kind === "missing"
+        ? "drive copy no longer exists"
+        : seen.kind === "unreadable"
+          ? "drive copy unreadable"
+          : seen.value.isFile
+            ? null
+            : "the drive copy is not a file — nothing was deleted";
+    if (refusal !== null) {
       opts.journal.event(
         "error",
-        `purge refused: ${candidate.srcPath} — drive copy no longer exists`,
+        `purge refused: ${candidate.srcPath} — ${refusal}`,
         undefined,
         { destPath: candidate.destPath },
       );
