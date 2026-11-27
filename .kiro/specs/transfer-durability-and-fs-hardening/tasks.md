@@ -427,19 +427,19 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: a pattern with a slash excludes a directory only when its segments equal the last segments of `trail` followed by `name`. Compare by index, without cloning the trail, and keep the signature. A pattern without a slash matches the directory name exactly.
     - Done when: `cd crates/portage-scan && cargo test exclusion` passes, and `cargo clippy --all-targets -- -D warnings` passes.
 
-  - [~] 3.3 Write the TypeScript exclusion tests (Property 4, red)
+  - [x] 3.3 Write the TypeScript exclusion tests (Property 4, red)
     - Requirements: R3.2, R3.3, R3.4. Design: Correctness Property 4; Testing strategy, Layer 1; DV-27.
     - Files: `test/scan-io.test.ts` (the `isExcludedRelative` block near line 80).
     - Tests first: the named pair, `Videos/Android/data/...` and `Videos/MyAndroid/data/...`. A seeded property test over random paths compares `isExcludedRelative` with the same reference matcher that task 3.1 uses.
     - Done when: `bun test --preload ./scripts/preload.ts test/scan-io.test.ts -t "isExcludedRelative"` fails on the `MyAndroid` pair.
 
-  - [~] 3.4 Fix the TypeScript matcher
+  - [x] 3.4 Fix the TypeScript matcher
     - Requirements: R3.2, R3.4. Design: Components (`src/dedupe/scan-io.ts`, `isExcludedRelative`, same signature).
     - Files: `src/dedupe/scan-io.ts` (lines 83 to 105).
     - Build: a pattern with a slash matches an ancestor only when the ancestor equals the pattern, or ends with `/` followed by the pattern. A pattern without a slash still matches a directory name exactly.
     - Done when: `bun test --preload ./scripts/preload.ts test/scan-io.test.ts -t "isExcludedRelative"` passes.
 
-  - [~] 3.5 Update the parity fixture, the DV-27 assertion, and the Helper guard
+  - [x] 3.5 Update the parity fixture, the DV-27 assertion, and the Helper guard
     - Requirements: R3.6, R6.6, R6.7. Design: Testing strategy, Layer 4 (parity suites); DV-27.
     - Files: `test/scan-io.test.ts` (the fixture at lines 33 to 60, the parity assertions at lines 119 to 121, and a new guard test).
     - Build: add `MyAndroid/data/com.app/keep.mkv` to the fixture. The check on `entry.includes("Android/data")` becomes a check on consecutive whole segments, and the expected count rises from 6 to 7. Add a guard test that fails when `PORTAGE_REQUIRE_SCANNER` is `1` and no Helper is found, so that a missing Helper fails the job instead of skipping the parity tests. The built-in default test keeps its skip.

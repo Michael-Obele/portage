@@ -29,6 +29,21 @@ import { sampleHash, sha256File } from "../src/util/hash.ts";
 
 const scanner = resolveScanner();
 
+// CI sets PORTAGE_REQUIRE_SCANNER=1: a missing Helper must fail the parity
+// tests, not skip them. Without the flag they skip, as before.
+const requireScanner = Bun.env.PORTAGE_REQUIRE_SCANNER === "1";
+const parity = (name: string, body: () => Promise<void>, timeout?: number): void => {
+  if (!requireScanner) return void test.skipIf(scanner === null)(name, body, timeout);
+  test(
+    name,
+    async () => {
+      if (scanner === null) throw new Error("PORTAGE_REQUIRE_SCANNER=1 but no Helper was found");
+      await body();
+    },
+    timeout,
+  );
+};
+
 async function tree(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "portage-scan-io-"));
   const write = async (relative: string, bytes: number): Promise<void> => {
@@ -46,6 +61,9 @@ async function tree(): Promise<string> {
   // walkers offered different files.
   await write("Android/data/com.app/cache.mkv", 1024);
   await write("Android/media/com.app/keep.mkv", 1024);
+  // A different size, so it forms no duplicate pair. Shares `data` but not `Android`: a string suffix match
+  // would wrongly exclude it.
+  await write("MyAndroid/data/com.app/keep.mkv", 2048);
   // Empty: never a Portage candidate.
   await write("Backup/empty.txt", 0);
   // Hidden: skipped by both walkers.
@@ -94,14 +112,55 @@ describe("isExcludedRelative", () => {
     expect(isExcludedRelative("Android/datax/a.mkv", patterns)).toBe(false);
   });
 
+  test("a multi-segment pattern matches whole segments only", () => {
+    expect(isExcludedRelative("Videos/Android/data/com.app/cache.bin", patterns)).toBe(true);
+    expect(isExcludedRelative("Videos/MyAndroid/data/com.app/keep.mkv", patterns)).toBe(false);
+    expect(isExcludedRelative("MyAndroid/data/keep.mkv", patterns)).toBe(false);
+  });
+
+  // Same definition as the Rust reference in walk.rs (Property 4).
+  test("agrees with the reference matcher on random paths", () => {
+    const seed = 0x5eed0004;
+    let state = seed;
+    const next = (bound: number): number => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return (state >>> 8) % bound;
+    };
+    const words = ["Android", "data", "MyAndroid", "x", "cache"];
+    const pick = (count: number): string[] => Array.from({ length: count }, () => words[next(words.length)] as string);
+    const reference = (pattern: string, dirs: string[]): boolean => {
+      const path = dirs.join("/");
+      if (!pattern.includes("/")) return dirs.includes(pattern);
+      return path === pattern || path.endsWith(`/${pattern}`);
+    };
+    const matches = (pattern: string, dirs: string[]): boolean =>
+      pattern.includes("/")
+        ? dirs.some((_, depth) => reference(pattern, dirs.slice(0, depth + 1)))
+        : reference(pattern, dirs);
+    for (let i = 0; i < 500; i += 1) {
+      const dirs = pick(1 + next(5));
+      const pattern = pick(1 + next(3)).join("/");
+      const relative = [...dirs, "file.mkv"].join("/");
+      expect(isExcludedRelative(relative, [pattern]), `seed ${seed} i ${i} ${pattern} ${relative}`).toBe(
+        matches(pattern, dirs),
+      );
+    }
+  });
+
   test("a file's own name never excludes it", () => {
     expect(isExcludedRelative(".portage", patterns)).toBe(false);
     expect(isExcludedRelative("Videos/Android/data.mkv", patterns)).toBe(false);
   });
 });
 
+describe("the Helper requirement", () => {
+  test("PORTAGE_REQUIRE_SCANNER=1 means a Helper must be found", () => {
+    if (requireScanner) expect(scanner).not.toBeNull();
+  });
+});
+
 describe("the walkers", () => {
-  test.skipIf(scanner === null)("agree on every file the scan would consider", async () => {
+  parity("agree on every file the scan would consider", async () => {
     const root = await tree();
     try {
       const fromScanner = await scannerIo().walk([root]);
@@ -116,9 +175,14 @@ describe("the walkers", () => {
       expect(fromScanner.bytes).toBe(fromGlob.bytes);
       // And the exclusions actually excluded something, so the test is not
       // passing on two empty lists.
-      expect(scannerSet.some((entry) => entry.includes("Android/data"))).toBe(false);
+      const hasPair = (entry: string): boolean => {
+        const segments = entry.split("|")[0]!.split("/");
+        return segments.some((segment, i) => segment === "Android" && segments[i + 1] === "data");
+      };
+      expect(scannerSet.some(hasPair)).toBe(false);
+      expect(scannerSet.some((entry) => entry.startsWith("MyAndroid/data/"))).toBe(true);
       expect(scannerSet.some((entry) => entry.includes("Android/media"))).toBe(true);
-      expect(scannerSet).toHaveLength(6);
+      expect(scannerSet).toHaveLength(7);
       expect(scannerSet.some((entry) => entry.includes(".cache"))).toBe(false);
       expect(scannerSet.some((entry) => entry.includes(".portage"))).toBe(false);
       expect(scannerSet.some((entry) => entry.includes("System Volume Information"))).toBe(false);
@@ -127,7 +191,7 @@ describe("the walkers", () => {
     }
   });
 
-  test.skipIf(scanner === null)("report the deepest path, which is what makes a walk slow", async () => {
+  parity("report the deepest path, which is what makes a walk slow", async () => {
     const root = await tree();
     try {
       const walked = await scannerIo().walk([root]);
@@ -144,7 +208,7 @@ describe("the walkers", () => {
 });
 
 describe("the digesters", () => {
-  test.skipIf(scanner === null)(
+  parity(
     "the full digest is the same sha256 the engine computes",
     async () => {
       const root = await tree();
@@ -162,7 +226,7 @@ describe("the digesters", () => {
     20_000
   );
 
-  test.skipIf(scanner === null)(
+  parity(
     "the sample digest is the same one the engine computes, byte for byte",
     async () => {
       const root = await tree();
@@ -180,7 +244,7 @@ describe("the digesters", () => {
     20_000
   );
 
-  test.skipIf(scanner === null)("a file larger than one read window hashes identically", async () => {
+  parity("a file larger than one read window hashes identically", async () => {
     const root = await mkdtemp(join(tmpdir(), "portage-scan-big-"));
     try {
       // 3 MiB: more than the 1 MiB read buffer and far more than the 64 KiB

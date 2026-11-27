@@ -89,8 +89,9 @@ const FALLBACK_CONCURRENCY = 8;
  * depends on which walker ran is a bug you cannot see: the fast path would never
  * offer `Android/data/x.mkv` and the fallback would.
  *
- * A pattern containing `/` is a path SUFFIX for a directory; anything else is a
- * single directory name.
+ * A pattern containing `/` matches a run of whole trailing segments of a
+ * directory (`Android/data`, not `MyAndroid/data`); anything else is a single
+ * directory name.
  */
 export function isExcludedRelative(relative: string, patterns: readonly string[]): boolean {
   if (patterns.length === 0) return false;
@@ -102,7 +103,7 @@ export function isExcludedRelative(relative: string, patterns: readonly string[]
     const name = dirs[depth - 1] as string;
     for (const pattern of patterns) {
       if (pattern.includes("/")) {
-        if (ancestor.endsWith(pattern)) return true;
+        if (ancestor === pattern || ancestor.endsWith(`/${pattern}`)) return true;
       } else if (name === pattern) {
         return true;
       }
