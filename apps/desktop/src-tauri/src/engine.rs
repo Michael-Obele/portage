@@ -504,4 +504,63 @@ mod tests {
             }
         }
     }
+
+    /// Resident peak, in kB, from the kernel's own counter.
+    fn vm_hwm_kb() -> u64 {
+        std::fs::read_to_string("/proc/self/status")
+            .unwrap()
+            .lines()
+            .find_map(|line| line.strip_prefix("VmHWM:"))
+            .and_then(|value| value.trim().trim_end_matches("kB").trim().parse().ok())
+            .unwrap_or(0)
+    }
+
+    /// One dupes-shaped frame of `files` entries, from a fixed seed.
+    fn bench_frame(files: usize) -> String {
+        let mut rng = Rng(0x5EED_E5);
+        let mut out = String::from(r#"{"type":"dupes","files":["#);
+        for i in 0..files {
+            if i > 0 {
+                out.push(',');
+            }
+            let size = 1_000_000 + rng.below(1_000_000_000);
+            let hash = rng.next();
+            out.push_str(&format!(
+                r#"{{"path":"/media/node/2TB/Videos/clip-{i:05}.mp4","size":{size},"hash":"{hash:016x}"}}"#
+            ));
+        }
+        out.push_str("]}");
+        out
+    }
+
+    /// E5 (bench): cost of `remember_frame` against the legacy `Value` path, in
+    /// one process, alternating five times. Run by scripts/bench/e5-frames.ts.
+    #[test]
+    #[ignore = "bench: run through scripts/bench/e5-frames.ts"]
+    fn remember_frame_bench() {
+        let frame = bench_frame(33_000);
+        let lines = vec![frame.clone()];
+        println!("E5 frame_bytes={}", frame.len());
+        for run in 1..=5 {
+            let before = vm_hwm_kb();
+            let start = std::time::Instant::now();
+            let mut last = HashMap::new();
+            remember_frame(&mut last, &frame);
+            let ms = start.elapsed().as_secs_f64() * 1000.0;
+            println!(
+                "E5 run={run} impl=remember_frame ms={ms:.3} hwm_before_kb={before} hwm_after_kb={} kept={}",
+                vm_hwm_kb(),
+                last.len()
+            );
+
+            let before = vm_hwm_kb();
+            let start = std::time::Instant::now();
+            let kept = legacy_last(&lines).len();
+            let ms = start.elapsed().as_secs_f64() * 1000.0;
+            println!(
+                "E5 run={run} impl=legacy_value ms={ms:.3} hwm_before_kb={before} hwm_after_kb={} kept={kept}",
+                vm_hwm_kb()
+            );
+        }
+    }
 }

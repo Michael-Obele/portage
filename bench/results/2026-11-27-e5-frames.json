@@ -1,0 +1,106 @@
+{
+  "experiment": "e5-frames",
+  "startedAt": "2026-11-27T08:35:43.469Z",
+  "finishedAt": "2026-11-27T08:35:46.042Z",
+  "commit": {
+    "sha": "1cd104c17a975b433afe0715a619cb0555af5a3e",
+    "dirty": true
+  },
+  "host": {
+    "hostname": "node",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+    "memoryBytes": 33007919104
+  },
+  "kernel": "7.0.0-43-generic",
+  "bun": {
+    "version": "1.4.5",
+    "ciPin": "1.4.4"
+  },
+  "verdict": {
+    "result": "pass",
+    "decides": "nothing"
+  },
+  "raw": {
+    "scope": "remember path only, not the whole app",
+    "frameBytes": 3032439,
+    "frame": "33,000 dupes entries from a fixed seed (0x5EED_E5)",
+    "shell": "apps/desktop/src-tauri, cargo test -- --ignored remember_frame_bench",
+    "medianMs": {
+      "remember_frame": 121.494,
+      "legacy_value": 196.058
+    },
+    "samples": [
+      {
+        "run": 1,
+        "impl": "remember_frame",
+        "ms": 121.494,
+        "hwmBeforeKb": 9316,
+        "hwmAfterKb": 12384
+      },
+      {
+        "run": 1,
+        "impl": "legacy_value",
+        "ms": 220.745,
+        "hwmBeforeKb": 12384,
+        "hwmAfterKb": 39280
+      },
+      {
+        "run": 2,
+        "impl": "remember_frame",
+        "ms": 137.641,
+        "hwmBeforeKb": 39280,
+        "hwmAfterKb": 39280
+      },
+      {
+        "run": 2,
+        "impl": "legacy_value",
+        "ms": 171.887,
+        "hwmBeforeKb": 39280,
+        "hwmAfterKb": 40452
+      },
+      {
+        "run": 3,
+        "impl": "remember_frame",
+        "ms": 119.528,
+        "hwmBeforeKb": 40452,
+        "hwmAfterKb": 40452
+      },
+      {
+        "run": 3,
+        "impl": "legacy_value",
+        "ms": 196.058,
+        "hwmBeforeKb": 40452,
+        "hwmAfterKb": 40464
+      },
+      {
+        "run": 4,
+        "impl": "remember_frame",
+        "ms": 147.57,
+        "hwmBeforeKb": 40464,
+        "hwmAfterKb": 40464
+      },
+      {
+        "run": 4,
+        "impl": "legacy_value",
+        "ms": 181.788,
+        "hwmBeforeKb": 40464,
+        "hwmAfterKb": 40472
+      },
+      {
+        "run": 5,
+        "impl": "remember_frame",
+        "ms": 117.032,
+        "hwmBeforeKb": 40472,
+        "hwmAfterKb": 40472
+      },
+      {
+        "run": 5,
+        "impl": "legacy_value",
+        "ms": 208.933,
+        "hwmBeforeKb": 40472,
+        "hwmAfterKb": 40480
+      }
+    ],
+    "note": "VmHWM is a process peak that never falls. The remember run goes first in each pair, so later legacy readings start from its peak."
+  }
+}
