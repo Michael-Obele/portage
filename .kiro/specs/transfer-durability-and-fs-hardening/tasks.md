@@ -757,7 +757,7 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: the script pulls one small file over adb through the changed copy path, with `delete_source` set to `never`. It reads the journal rows for that file and checks that the row moved through `copying`, `written`, and `verified`, and that the flush and the hash check ran. It deletes nothing on the phone. Deleting from the phone is a one-way door under AGENTS.md rule 6, so the script does not do it.
     - Done when: the record's `verdict.result` is `pass`, the journal rows are in the record, and `git log -1 --format=%s` prints `test(bench): record the phone copy run`.
 
-  - [~] 7.7 Review the change and fix each finding
+  - [x] 7.7 Review the change and fix each finding
     - Requirements: R7 (AGENTS.md, design and review process). Use `forge-review-gates` to choose the review agents, and run them on the branch's diff from the branch point.
     - Files: the files that each finding names. A finding that is a behaviour gets a regression test first, in the file that fits it.
     - Build: for each finding, write a test that fails on the defect, then fix the code. A finding that is not a defect is answered in `bench/results/<date>-review.md` (new), with its reason, and that file is committed with the fix it belongs to.

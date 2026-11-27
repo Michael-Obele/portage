@@ -756,7 +756,9 @@ describe("trash.empty — the one permanent delete", () => {
       const data = done.data as Record<string, unknown>;
       expect(data.bytesFreed).toBe(2059);
       expect((data.refused as unknown[]).length).toBe(0);
-      expect(await Bun.file(join(day, "a.mkv")).exists()).toBe(false);
+      // R4.10: the result names the path that ran.
+      expect(data.path).toBe("typescript");
+      expect(typeof data.reason).toBe("string");
       expect(await Bun.file(join(trashOf(drive.root), "loose.mkv")).exists()).toBe(false);
     } finally {
       await rm(drive.root, { recursive: true, force: true });

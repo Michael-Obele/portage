@@ -142,7 +142,7 @@ export interface EmptyResult {
 }
 
 const NO_HELPER =
-  "the Helper delete is not built: its E2 gate has not passed";
+  "the Helper delete is not built: its gated task is optional and not enabled";
 
 /**
  * Permanently delete trash contents.
@@ -165,8 +165,8 @@ export async function emptyTrash(
     removedFiles: 0,
     bytesFreed: 0,
     refused: [],
-    path: 'typescript',
-    reason: NO_HELPER
+    path: "typescript",
+    reason: NO_HELPER,
   };
 
   for (const target of targets) {

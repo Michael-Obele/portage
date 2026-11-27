@@ -1212,6 +1212,9 @@ const handlerTable = {
       refused: result.refused,
       freeBytesBefore: before.space?.free ?? null,
       freeBytesAfter: after?.free ?? null,
+      // R4.10: the path that ran, and why the Helper did not run.
+      path: result.path,
+      reason: result.reason ?? null,
     };
   },
 
