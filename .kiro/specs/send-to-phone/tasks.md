@@ -179,12 +179,12 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `src/send/record.ts` (new).
     - Build: `sendRecordPath`, and class `SendRecord` with `open`, `insertJob`, `insertFile`, `updateFile`, `finishJob`, `listJobs`, `reconcileInterrupted`, and `close`. It uses `bun:sqlite` in WAL mode, as `src/index/journal.ts` does. It never opens `.portage/portage.db`.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "send record"` passes.
-  - [~] 3.4 Write the Property 4 test (red)
+  - [x] 3.4 Write the Property 4 test (red)
     - Requirements: R5.7, R11.9. Design: §2.6, §3.9, EH-15. D21. Property 4.
     - Files: `test/units.test.ts` (describe `send transfer lock`).
     - Test: `Feature: send-to-phone, Property 4: one transfer at a time across pull and send`. Seeded sequences of acquire and release by pull and send. At most one lease is held at a time. A refused acquire names the holder.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "Property 4:"` fails, because `src/serve/transfer-lock.ts` does not exist yet.
-  - [~] 3.5 Build the transfer lock
+  - [x] 3.5 Build the transfer lock
     - Requirements: R5.7, R11.9. Design: §3.9. D21.
     - Files: `src/serve/transfer-lock.ts` (new).
     - Build: class `TransferLock` with `holder()` and `acquire(kind)`. `acquire` returns a lease or a refusal that names the holder. A lease releases exactly once.

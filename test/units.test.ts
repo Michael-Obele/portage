@@ -2143,3 +2143,42 @@ describe("send record", () => {
     }
   });
 });
+
+describe("send transfer lock", () => {
+  test("Feature: send-to-phone, Property 4: one transfer at a time across pull and send", async () => {
+    const { TransferLock } = await import("../src/serve/transfer-lock.ts");
+    for (let seed = 1; seed <= 100; seed++) {
+      let s = seed;
+      const rand = () => {
+        s = (s * 1103515245 + 12345) & 0x7fffffff;
+        return s / 0x80000000;
+      };
+      const lock = new TransferLock();
+      const held: Array<{ kind: string; release(): void }> = [];
+      const stale: Array<{ kind: string; release(): void }> = [];
+      for (let step = 0; step < 200; step++) {
+        if (rand() < 0.5) {
+          const kind = rand() < 0.5 ? "pull" : "send";
+          const got = lock.acquire(kind);
+          if ("refused" in got) {
+            expect(held.length, `seed ${seed}`).toBe(1);
+            expect(got.holder, `seed ${seed}`).toBe(held[0]!.kind as never);
+          } else {
+            expect(held.length, `seed ${seed}`).toBe(0);
+            held.push(got);
+          }
+        } else if (held.length > 0) {
+          const lease = held.pop()!;
+          lease.release();
+          lease.release();
+          stale.push(lease);
+        }
+        // A stale lease must not free a lease taken after it was released.
+        if (stale.length > 0 && rand() < 0.3) stale[0]!.release();
+        expect(lock.holder(), `seed ${seed}`).toBe(
+          (held[0]?.kind ?? null) as never,
+        );
+      }
+    }
+  });
+});
