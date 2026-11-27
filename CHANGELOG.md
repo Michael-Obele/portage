@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.21](https://github.com/Michael-Obele/portage/compare/v0.1.20...v0.1.21) (2026-11-27)
+
+
+### Bug Fixes
+
+* **ci:** give ui-sweep Chrome 30s and keep its stderr ([931ec54](https://github.com/Michael-Obele/portage/commit/931ec54cf22193760183ca6291843a932717b198))
+* **ci:** give ui-sweep Chrome 30s and keep its stderr ([35473de](https://github.com/Michael-Obele/portage/commit/35473de827bfd2e675777e6aac77640f47175093))
+
 ## [0.1.20](https://github.com/Michael-Obele/portage/compare/v0.1.19...v0.1.20) (2026-11-27)
 
 
