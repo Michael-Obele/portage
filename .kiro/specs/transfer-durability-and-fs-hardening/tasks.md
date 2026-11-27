@@ -631,31 +631,31 @@ This plan builds the feature in the order that requirements.md and design.md app
 
 - [ ] 5. Phase 5: type-only frame peek in the Desktop shell (R5)
      This phase has no gate. Its cargo runs need the sidecar placeholders that CI creates, and the WebKitGTK 4.1 development package (Notes N20, N21).
-  - [~] 5.1 Write the frame-memory example tests (red)
+  - [x] 5.1 Write the frame-memory example tests (red)
     - Requirements: R5.2, R5.3, R5.4, R5.5. Design: Testing strategy, Layer 3 (frame memory); EH-12.
     - Files: `apps/desktop/src-tauri/src/engine.rs` (the `#[cfg(test)]` module).
     - Tests first: five examples. (1) A known type is remembered. (2) The last line of a type wins. (3) An unknown type is ignored. (4) A line that is not a JSON object is ignored. (5) `engine_status` returns the stored JSON unchanged.
     - Done when: `cd apps/desktop/src-tauri && cargo test frame_memory` fails, because `remember_frame` does not exist yet.
 
-  - [~] 5.2 Write the frame-memory property test (Property 5, red)
+  - [x] 5.2 Write the frame-memory property test (Property 5, red)
     - Requirements: R5.1, R5.4, R5.5. Design: Correctness Property 5.
     - Files: `apps/desktop/src-tauri/src/engine.rs` (the same test module, after task 5.1).
     - Tests first: Property 5 as a seeded generator of stdout lines: known-type objects with random extra fields, objects with an unknown or non-string `type`, non-object JSON values, and malformed text. Each line is forwarded unchanged. The remembered line for each of the 18 types is the last matching line, or none. The `engine_status` value equals the value that the legacy `Value`-based implementation gives for the same sequence. The legacy implementation stays in the test module as the reference for R5.5. The generator runs at least 100 iterations, and the seed is printed on failure.
     - Done when: `cd apps/desktop/src-tauri && cargo test frame_memory_property` fails.
 
-  - [~] 5.3 Enable serde_json's `raw_value` feature
+  - [x] 5.3 Enable serde_json's `raw_value` feature
     - Requirements: R5.5. Design: Constraints (the feature flag is allowed; no new crate).
     - Files: `apps/desktop/src-tauri/Cargo.toml` (line 21: `serde_json = { version = "1", features = ["raw_value"] }`). `Cargo.lock` changes only through the feature.
     - Build: enable `raw_value` in the existing `serde_json` dependency.
     - Done when: `cd apps/desktop/src-tauri && cargo build` succeeds, and `git diff -- apps/desktop/src-tauri/Cargo.lock` adds no new package.
 
-  - [~] 5.4 Build the type peek and `remember_frame`
+  - [x] 5.4 Build the type peek and `remember_frame`
     - Requirements: R5.1, R5.2, R5.3, R5.4. Design: Components (`TypePeek`, `known_type`, `remember_frame`); EH-12.
     - Files: `apps/desktop/src-tauri/src/engine.rs` (new functions beside `on_stdout`, near line 314).
     - Build: `TypePeek` is a serde visitor that reads only the top-level `type` and skips every other value with `IgnoredAny`. `known_type` maps the 18 known names to `&'static str`. `remember_frame(last, line)` stores the line as the last frame of its type. For any other input, it leaves `last` unchanged.
     - Done when: `cd apps/desktop/src-tauri && cargo test frame_memory` passes its five examples.
 
-  - [~] 5.5 Store raw frames and forward each line unchanged
+  - [x] 5.5 Store raw frames and forward each line unchanged
     - Requirements: R5.1, R5.5. Design: Components (`EngineState`, `EngineStatus`, `on_stdout`); DV-17.
     - Files: `apps/desktop/src-tauri/src/engine.rs` (lines 108 to 126, 251 to 258, and 314 to 330).
     - Build: `EngineState.last` becomes `Mutex<HashMap<&'static str, Box<RawValue>>>`. `EngineStatus.last` becomes `HashMap<String, Box<RawValue>>`, and the `String` key appears only at serialization (DV-17). `on_stdout` forwards the line unchanged (R5.1), then calls `remember_frame`. It builds no `Value`.

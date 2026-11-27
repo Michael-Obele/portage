@@ -9,6 +9,7 @@
 //! verbatim, a stderr line becomes `engine://stderr`, the exit becomes
 //! `engine://exit`. `engine_send` writes exactly one line to the child's stdin.
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
@@ -16,8 +17,9 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
-use serde::Serialize;
-use serde_json::Value;
+use serde::de::{Deserializer, IgnoredAny, MapAccess, Visitor};
+use serde::{Deserialize, Serialize};
+use serde_json::value::RawValue;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::{Command, CommandChild, CommandEvent};
@@ -103,13 +105,67 @@ const FRAME_TYPES: [&str; 18] = [
     "bye",
 ];
 
+/// Remembers `line` as the last frame of its type when that type is one of the 18 known types (R5.3, R5.4).
+/// Leaves `last` unchanged for any other input. Reads only the top-level `type` (R5.2).
+fn remember_frame(last: &mut HashMap<&'static str, Box<RawValue>>, line: &str) {
+    let Ok(raw) = serde_json::from_str::<Box<RawValue>>(line) else {
+        return;
+    };
+    let Ok(peek) = serde_json::from_str::<TypePeek>(raw.get()) else {
+        return;
+    };
+    let Some(Ok(name)) = peek.0.map(|kind| serde_json::from_str::<String>(kind.get())) else {
+        return;
+    };
+    if let Some(kind) = known_type(&name) {
+        last.insert(kind, raw);
+    }
+}
+
+/// The known type that `kind` names.
+fn known_type(kind: &str) -> Option<&'static str> {
+    FRAME_TYPES.iter().copied().find(|known| *known == kind)
+}
+
+/// The top-level `type` as raw JSON. Every other field is skipped unread, so the
+/// peek does not build a tree for a frame it only needs to label.
+struct TypePeek(Option<Box<RawValue>>);
+
+impl<'de> Deserialize<'de> for TypePeek {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Peek;
+
+        impl<'de> Visitor<'de> for Peek {
+            type Value = TypePeek;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a JSON object")
+            }
+
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<TypePeek, A::Error> {
+                let mut kind = None;
+                while let Some(key) = map.next_key::<Cow<'de, str>>()? {
+                    if key == "type" {
+                        kind = Some(map.next_value::<Box<RawValue>>()?);
+                    } else {
+                        map.next_value::<IgnoredAny>()?;
+                    }
+                }
+                Ok(TypePeek(kind))
+            }
+        }
+
+        deserializer.deserialize_map(Peek)
+    }
+}
+
 /// The whole of Rust's state about the engine.
 #[derive(Default)]
 pub struct EngineState {
     child: Mutex<Option<CommandChild>>,
     /// The last frame of each type, so a webview that mounted late still sees
     /// `ready` and the last `state` without a replay protocol (D37).
-    last: Mutex<HashMap<&'static str, Value>>,
+    last: Mutex<HashMap<&'static str, Box<RawValue>>>,
     /// Set once the app is going away: no restart may follow.
     shutdown: AtomicBool,
     /// Automatic restarts used since the last successful start.
@@ -123,7 +179,14 @@ pub struct EngineState {
 pub struct EngineStatus {
     running: bool,
     /// The last frame per type, keyed by the frame's own `type` string.
-    last: HashMap<String, Value>,
+    last: HashMap<String, Box<RawValue>>,
+}
+
+/// The status keys carry the type name only at this edge (DV-17).
+fn status_last(last: &HashMap<&'static str, Box<RawValue>>) -> HashMap<String, Box<RawValue>> {
+    last.iter()
+        .map(|(kind, frame)| ((*kind).to_string(), frame.clone()))
+        .collect()
 }
 
 /// The repo root when `PORTAGE_DEV_ENGINE` names one, else `None` so the
@@ -251,10 +314,7 @@ pub fn engine_send(app: AppHandle, line: String) -> Result<(), String> {
 pub fn engine_status(app: AppHandle) -> EngineStatus {
     let state = app.state::<EngineState>();
     let running = !state.shutdown.load(Ordering::SeqCst) && lock(&state.child).is_some();
-    let last = lock(&state.last)
-        .iter()
-        .map(|(kind, frame)| ((*kind).to_string(), frame.clone()))
-        .collect();
+    let last = status_last(&lock(&state.last));
     EngineStatus { running, last }
 }
 
@@ -313,24 +373,56 @@ fn restart_later(app: AppHandle) {
 /// Forward one stdout line verbatim, and remember it when it is a whole frame.
 fn on_stdout(app: &AppHandle, bytes: &[u8]) {
     let line = String::from_utf8_lossy(bytes).into_owned();
-
-    // Parse before forwarding so the line need not be cloned (`emit` takes
-    // ownership). The only field Rust ever reads is the type. Everything else in
-    // the frame is opaque to it, which is the point: the payload's meaning lives
-    // in the engine, in one codebase, next to the tests that pin it.
-    if let Ok(value) = serde_json::from_str::<Value>(&line)
-        && let Some(kind) = value.get("type").and_then(Value::as_str)
-        && let Some(kind) = FRAME_TYPES.iter().copied().find(|known| *known == kind)
-    {
-        lock(&app.state::<EngineState>().last).insert(kind, value);
-    }
-
+    remember_frame(&mut lock(&app.state::<EngineState>().last), &line);
     emit(app, EVENT_FRAME, line);
 }
 
 #[cfg(test)]
 mod tests {
     use super::one_line;
+    use super::{remember_frame, status_last};
+    use serde_json::value::RawValue;
+    use serde_json::Value;
+    use std::collections::HashMap;
+
+    fn remembered(lines: &[&str]) -> HashMap<&'static str, Box<RawValue>> {
+        let mut last = HashMap::new();
+        for line in lines {
+            remember_frame(&mut last, line);
+        }
+        last
+    }
+
+    #[test]
+    fn frame_memory_remembers_a_known_type() {
+        let last = remembered(&[r#"{"type":"plan","n":1}"#]);
+        assert_eq!(last["plan"].get(), r#"{"type":"plan","n":1}"#);
+    }
+
+    #[test]
+    fn frame_memory_last_line_of_a_type_wins() {
+        let last = remembered(&[r#"{"type":"plan","n":1}"#, r#"{"type":"plan","n":2}"#]);
+        assert_eq!(last["plan"].get(), r#"{"type":"plan","n":2}"#);
+    }
+
+    #[test]
+    fn frame_memory_ignores_an_unknown_type() {
+        assert!(remembered(&[r#"{"type":"nope"}"#]).is_empty());
+    }
+
+    #[test]
+    fn frame_memory_ignores_a_line_that_is_not_an_object() {
+        for line in ["[1,2]", "\"plan\"", "plan", "{\"type\":", ""] {
+            assert!(remembered(&[line]).is_empty(), "remembered {line:?}");
+        }
+    }
+
+    #[test]
+    fn frame_memory_status_is_the_stored_json() {
+        let last = remembered(&[r#"{"type":"scan", "x": [1, 2]}"#]);
+        let json = serde_json::to_string(&status_last(&last)).unwrap();
+        assert_eq!(json, r#"{"scan":{"type":"scan", "x": [1, 2]}}"#);
+    }
 
     #[test]
     fn one_line_leaves_exactly_one_terminating_newline() {
@@ -338,5 +430,78 @@ mod tests {
         assert_eq!(one_line("x\n"), b"x\n");
         assert_eq!(one_line("x\r\n\r\n"), b"x\n");
         assert_eq!(one_line(""), b"\n");
+    }
+
+    /// Reference: the `Value`-based implementation this change replaces (R5.5).
+    fn legacy_last(lines: &[String]) -> HashMap<String, Value> {
+        let mut last = HashMap::new();
+        for line in lines {
+            if let Ok(value) = serde_json::from_str::<Value>(line)
+                && let Some(kind) = value.get("type").and_then(Value::as_str)
+                && let Some(kind) = super::FRAME_TYPES.iter().copied().find(|k| *k == kind)
+            {
+                last.insert(kind.to_string(), value);
+            }
+        }
+        last
+    }
+
+    struct Rng(u64);
+
+    impl Rng {
+        fn next(&mut self) -> u64 {
+            self.0 ^= self.0 << 13;
+            self.0 ^= self.0 >> 7;
+            self.0 ^= self.0 << 17;
+            self.0
+        }
+
+        fn below(&mut self, n: usize) -> usize {
+            (self.next() % n as u64) as usize
+        }
+    }
+
+    fn random_line(rng: &mut Rng) -> String {
+        let kind = super::FRAME_TYPES[rng.below(super::FRAME_TYPES.len())];
+        match rng.below(5) {
+            0 => format!(r#"{{"type":"{kind}","n":{}}}"#, rng.below(1000)),
+            1 => format!(
+                r#"{{ "type" : "{kind}", "items": [{{"a": {}}}], "s": "x\"y" }}"#,
+                rng.below(9)
+            ),
+            2 => {
+                let other = ["\"other\"", "7", "null", "true", "[\"plan\"]", "{}"];
+                format!(r#"{{"type":{},"n":1}}"#, other[rng.below(other.len())])
+            }
+            3 => ["[1,2]", "42", "null", "\"plan\"", "true"][rng.below(5)].to_string(),
+            _ => ["{\"type\":\"plan\"", "{", "", "not json", "{\"type\":\"plan\"} x"]
+                [rng.below(5)]
+            .to_string(),
+        }
+    }
+
+    /// Property 5: the remembered frames and the status JSON match the `Value`-based reference.
+    #[test]
+    fn frame_memory_property() {
+        for seed in 1..=120u64 {
+            let mut rng = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1);
+            let lines: Vec<String> = (0..60).map(|_| random_line(&mut rng)).collect();
+
+            let mut last = HashMap::new();
+            for line in &lines {
+                remember_frame(&mut last, line);
+            }
+
+            let reference = legacy_last(&lines);
+            let status: HashMap<String, Value> = serde_json::from_str(
+                &serde_json::to_string(&status_last(&last)).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(status, reference, "seed {seed}");
+            for kind in super::FRAME_TYPES {
+                let got = last.get(kind).map(|raw| serde_json::from_str::<Value>(raw.get()).unwrap());
+                assert_eq!(got.as_ref(), reference.get(kind), "seed {seed} type {kind}");
+            }
+        }
     }
 }
