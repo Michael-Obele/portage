@@ -1984,3 +1984,94 @@ describe("path name", () => {
     }
   });
 });
+
+const SPEC_DIR = join(import.meta.dir, "..", ".kiro", "specs", "transfer-durability-and-fs-hardening");
+
+describe("appendix A rows", () => {
+  const requirements = readFileSync(join(SPEC_DIR, "requirements.md"), "utf8");
+  const row = (id: string) =>
+    requirements.split("\n").find((line) => line.startsWith(`| ${id} |`)) ?? "";
+
+  const expected: Array<[string, string[], string]> = [
+    ["P17", ["src/plan/plan.ts 168"], "R2.2 (3 seconds)"],
+    ["P18", ["src/serve/doctor.ts 162 and 244"], "R2.2 (3 seconds)"],
+    ["P19", ["src/serve/doctor.ts 390 to 410"], "R2.2 (3 seconds)"],
+    ["P20", ["src/xfer/engine.ts 374", "src/xfer/purge.ts (line 82"], "R2.2 (flush rule for the file's size)"],
+  ];
+
+  for (const [id, sites, deadline] of expected) {
+    test(`${id} names its call site and deadline`, () => {
+      const text = row(id);
+      expect(text).not.toBe("");
+      for (const site of sites) expect(text).toContain(site);
+      expect(text).toContain(deadline);
+    });
+  }
+
+  test("the Appendix A files no longer call the blocking reads (R2.6, R2.15)", () => {
+    const files = [
+      "src/index/recovery.ts",
+      "src/plan/plan.ts",
+      "src/serve/doctor.ts",
+      "src/xfer/adb.ts",
+      "src/xfer/engine.ts",
+      "src/xfer/purge.ts",
+      "src/dedupe/index.ts",
+      "src/dedupe/trash.ts",
+      "src/serve/dispatch.ts",
+      "src/util/fs.ts",
+    ];
+    const blocking = /spawnSync|statSync|statSyncSafe|diskSpace\(/;
+    for (const file of files) {
+      const source = readFileSync(join(import.meta.dir, "..", file), "utf8");
+      const code = source
+        .split("\n")
+        .filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line))
+        .join("\n");
+      expect(code.match(blocking)?.[0] ?? null, file).toBeNull();
+    }
+  });
+});
+
+describe("exact messages", () => {
+  const messages: Array<[string, string[]]> = [
+    ["flush failed: the drive did not confirm the file was written", ["src/util/durable.ts"]],
+    ["flush timed out after ", ["src/util/durable.ts"]],
+    ["flush failed: the drive did not confirm the folder entry: ", ["src/util/durable.ts"]],
+    [
+      "flush skipped: an earlier flush of this folder failed; restart the Engine to retry: ",
+      ["src/util/durable.ts"],
+    ],
+    ["the destination could not be read; nothing was changed", [
+      "src/index/recovery.ts",
+      "src/dedupe/index.ts",
+      "src/xfer/adb.ts",
+    ]],
+    ["the archive drive stopped answering; restart the Engine after checking the drive", [
+      // One constant, imported by engine.ts and doctor.ts.
+      "src/util/probe.ts",
+    ]],
+    ["check failed: no answer within ", ["src/serve/doctor.ts", "src/xfer/adb.ts"]],
+    ["the archive drive is not mounted", ["src/index/recovery.ts"]],
+    ["drive copy unreadable", ["src/xfer/purge.ts", "src/serve/dispatch.ts"]],
+    ["the mount check could not be read", ["src/serve/doctor.ts"]],
+    ["the drive copy could not be read", ["src/xfer/engine.ts"]],
+    ["the path could not be read; not transferred over", ["src/plan/plan.ts"]],
+    ["the trash could not be read", ["src/dedupe/trash.ts"]],
+  ];
+
+  for (const [text, files] of messages) {
+    test(`"${text}" appears in its source`, () => {
+      const found = files.some((file) =>
+        readFileSync(join(import.meta.dir, "..", file), "utf8").includes(text),
+      );
+      expect(found, `${text} in ${files.join(", ")}`).toBe(true);
+    });
+  }
+
+  test("no unreadable-result text says missing, zero, or healthy", () => {
+    for (const [text] of messages) {
+      expect(text).not.toMatch(/missing|zero|healthy/);
+    }
+  });
+});
