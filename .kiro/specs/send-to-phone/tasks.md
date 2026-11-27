@@ -107,7 +107,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `test/units.test.ts` (describe `send S2 verdict`).
     - Test: `s2Verdict(record)` passes when criteria 1, 2, and 4 are answered. A negative answer on flushing is a valid pass. An undetermined answer is not a pass, and the verdict names the owner decision (OI-4).
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "send S2 verdict"` fails, because `scripts/bench/send-s2.ts` does not exist yet.
-  - [~] 2.7 Build the S2 script
+  - [x] 2.7 Build the S2 script
     - Requirements: R2.1 to R2.3, R2.7. Design: §8.3 steps 1 to 6.
     - Files: `scripts/bench/send-s2.ts` (new).
     - Build: check `command -v sync` and its status. Write 300,000,000 bytes with `push -Z`. Read `/proc/meminfo` Dirty and Writeback before and after `sync`, and time `sync`. Repeat five times and delete the file after each run. If Dirty or Writeback is missing, record that and name the measure used. Exports `s2Verdict`.

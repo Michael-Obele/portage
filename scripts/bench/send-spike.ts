@@ -41,3 +41,27 @@ export function writeSpikeRecord(
 ): string {
   return writeRecord(`send-${experiment}`, verdict, raw, { noMount: true });
 }
+
+const STEP_TIMEOUT_MS = 600_000;
+
+export type Out = { code: number | null; out: Buffer; err: string; ms: number };
+
+export async function run(
+  cmd: string[],
+  io: { stdin?: Bun.BunFile; stdout?: Bun.BunFile } = {},
+): Promise<Out> {
+  const t0 = performance.now();
+  const p = Bun.spawn(cmd, {
+    stdin: io.stdin ?? "ignore",
+    stdout: io.stdout ?? "pipe",
+    stderr: "pipe",
+  });
+  const timer = setTimeout(() => p.kill(), STEP_TIMEOUT_MS);
+  const [out, err, code] = await Promise.all([
+    io.stdout ? Promise.resolve(Buffer.alloc(0)) : new Response(p.stdout as ReadableStream).arrayBuffer().then(Buffer.from),
+    new Response(p.stderr as ReadableStream).text(),
+    p.exited,
+  ]);
+  clearTimeout(timer);
+  return { code, out, err, ms: Math.round(performance.now() - t0) };
+}

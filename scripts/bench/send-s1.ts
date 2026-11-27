@@ -6,12 +6,11 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { cleanupManifest, guardFolder, writeSpikeRecord } from "./send-spike.ts";
+import { cleanupManifest, guardFolder, run, writeSpikeRecord } from "./send-spike.ts";
 
 export const SIZE_BYTES = 400_000_000;
 const FOLDER = "/sdcard/Download/portage-spike-S1";
 const EXPERIMENT = "s1-binary-stream";
-const STEP_TIMEOUT_MS = 600_000;
 
 export type HashPair = { sourceHash: string | null; receivedHash: string | null };
 export type S1Runs = {
@@ -41,28 +40,6 @@ export function s1Verdict(runs: S1Runs) {
     }));
   const pass = failedDirections.length === 0;
   return { result: pass ? ("pass" as const) : ("fail" as const), pass, failedDirections };
-}
-
-type Out = { code: number | null; out: Buffer; err: string; ms: number };
-
-async function run(
-  cmd: string[],
-  io: { stdin?: Bun.BunFile; stdout?: Bun.BunFile } = {},
-): Promise<Out> {
-  const t0 = performance.now();
-  const p = Bun.spawn(cmd, {
-    stdin: io.stdin ?? "ignore",
-    stdout: io.stdout ?? "pipe",
-    stderr: "pipe",
-  });
-  const timer = setTimeout(() => p.kill(), STEP_TIMEOUT_MS);
-  const [out, err, code] = await Promise.all([
-    io.stdout ? Promise.resolve(Buffer.alloc(0)) : new Response(p.stdout as ReadableStream).arrayBuffer().then(Buffer.from),
-    new Response(p.stderr as ReadableStream).text(),
-    p.exited,
-  ]);
-  clearTimeout(timer);
-  return { code, out, err, ms: Math.round(performance.now() - t0) };
 }
 
 async function main(serial: string) {
