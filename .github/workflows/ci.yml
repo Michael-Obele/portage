@@ -44,14 +44,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ -n "$BASE_SHA" ]; then
-            range_start="$BASE_SHA"
-          elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
-            range_start="$BEFORE"
-          else
-            # A brand-new branch: compare against the default branch instead.
-            range_start="$(git merge-base HEAD origin/master || git rev-list --max-parents=0 HEAD | tail -1)"
-          fi
+          range_start="$(./scripts/range-start.sh)"
           ./scripts/check-commits.sh "$range_start" HEAD
 
   engine:
@@ -63,6 +56,10 @@ jobs:
     if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     name: engine (tests, types, frozen files)
     runs-on: ubuntu-latest
+    env:
+      # The parity suites need the Helper, and a missing one must fail them.
+      PORTAGE_SCAN: ${{ github.workspace }}/dist/portage-scan
+      PORTAGE_REQUIRE_SCANNER: "1"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -79,20 +76,35 @@ jobs:
       - name: Type check
         run: bun run typecheck
 
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: crates/portage-scan -> target
+
+      - name: Build the Helper
+        run: bun run build:scanner
+
       - name: Test
         run: bun run test
 
       - name: Build the engine binary
         run: bun run build
 
-      - name: The frozen engine files are untouched
+      - name: src/scan is untouched
+        env:
+          BEFORE: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ -n "$(git status --porcelain src/xfer src/index src/plan src/scan)" ]; then
-            echo "::error::The acceptance gate says these files never change. Revert the staged changes."
-            git status --porcelain src/xfer src/index src/plan src/scan
+          range_start="$(./scripts/range-start.sh)"
+          base="$(git merge-base "$range_start" HEAD)"
+          changed="$(git diff --name-only "$base" HEAD -- src/scan)"
+          if [ -n "$changed" ]; then
+            echo "::error::src/scan is frozen by the acceptance gate. Revert these committed changes:"
+            echo "$changed"
             exit 1
           fi
-          echo "Frozen files untouched."
+          echo "src/scan untouched."
 
   desktop:
     # Skip the generated release PR: it only changes version

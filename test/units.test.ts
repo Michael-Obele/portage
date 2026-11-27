@@ -1790,3 +1790,108 @@ describe("deadline checks", () => {
     resetDriveState();
   });
 });
+
+describe("ci frozen check", () => {
+  // The shell of design.md "CI changes"; ci.yml carries the same lines.
+  const FROZEN = `
+set -eu
+range_start="$(./scripts/range-start.sh)"
+base="$(git merge-base "$range_start" HEAD)"
+changed="$(git diff --name-only "$base" HEAD -- src/scan)"
+if [ -n "$changed" ]; then
+  echo "::error::src/scan is frozen by the acceptance gate. Revert these committed changes:"
+  echo "$changed"
+  exit 1
+fi
+`;
+  const ZEROS = "0".repeat(40);
+
+  const git = (cwd: string, ...args: string[]): string => {
+    const run = Bun.spawnSync(
+      ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", ...args],
+      { cwd },
+    );
+    if (run.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${run.stderr.toString()}`);
+    return run.stdout.toString().trim();
+  };
+
+  const commit = async (cwd: string, file: string, text: string): Promise<string> => {
+    await mkdir(dirname(join(cwd, file)), { recursive: true });
+    await writeFile(join(cwd, file), text);
+    git(cwd, "add", "-A");
+    git(cwd, "commit", "-qm", `change ${file}`);
+    return git(cwd, "rev-parse", "HEAD");
+  };
+
+  // A repository with the script committed and origin/master at the first commit.
+  const repo = async (): Promise<{ dir: string; first: string }> => {
+    const dir = await mkdtemp(join(tmpdir(), "portage-frozen-"));
+    git(dir, "init", "-q", "-b", "master");
+    await commit(dir, "scripts/range-start.sh", readFileSync("scripts/range-start.sh", "utf8"));
+    chmodSync(join(dir, "scripts/range-start.sh"), 0o755);
+    await commit(dir, "src/scan/a.ts", "a");
+    const first = await commit(dir, "src/xfer/b.ts", "b");
+    git(dir, "update-ref", "refs/remotes/origin/master", first);
+    git(dir, "checkout", "-q", "-b", "feature");
+    return { dir, first };
+  };
+
+  const sh = (dir: string, script: string, env: Record<string, string> = {}) => {
+    const run = Bun.spawnSync(["bash", "-c", script], {
+      cwd: dir,
+      env: { PATH: Bun.env.PATH ?? "", HOME: Bun.env.HOME ?? "", ...env },
+    });
+    return { code: run.exitCode, out: run.stdout.toString().trim(), err: run.stderr.toString() };
+  };
+
+  test("a committed change to src/scan fails", async () => {
+    const { dir } = await repo();
+    try {
+      await commit(dir, "src/scan/a.ts", "changed");
+      const result = sh(dir, FROZEN);
+      expect(result.code).toBe(1);
+      expect(result.out).toContain("src/scan/a.ts");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a committed change to src/xfer passes", async () => {
+    const { dir } = await repo();
+    try {
+      await commit(dir, "src/xfer/b.ts", "changed");
+      expect(sh(dir, FROZEN).code).toBe(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a base that moved on is not blamed on the branch", async () => {
+    const { dir } = await repo();
+    try {
+      await commit(dir, "src/xfer/b.ts", "branch work");
+      git(dir, "checkout", "-q", "master");
+      const tip = await commit(dir, "src/scan/a.ts", "master moved");
+      git(dir, "checkout", "-q", "feature");
+      expect(sh(dir, FROZEN, { BASE_SHA: tip }).code).toBe(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("range-start.sh prints BASE_SHA first, then BEFORE, then the merge-base, then the root", async () => {
+    const { dir, first } = await repo();
+    try {
+      const head = await commit(dir, "src/xfer/b.ts", "more");
+      const start = (env: Record<string, string>) => sh(dir, "./scripts/range-start.sh", env).out;
+      expect(start({ BASE_SHA: "aaa", BEFORE: "bbb" })).toBe("aaa");
+      expect(start({ BEFORE: head })).toBe(head);
+      expect(start({ BEFORE: ZEROS })).toBe(first);
+      expect(start({})).toBe(first);
+      git(dir, "update-ref", "-d", "refs/remotes/origin/master");
+      expect(start({})).toBe(git(dir, "rev-list", "--max-parents=0", "HEAD"));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});

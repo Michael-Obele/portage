@@ -445,19 +445,19 @@ This plan builds the feature in the order that requirements.md and design.md app
     - Build: add `MyAndroid/data/com.app/keep.mkv` to the fixture. The check on `entry.includes("Android/data")` becomes a check on consecutive whole segments, and the expected count rises from 6 to 7. Add a guard test that fails when `PORTAGE_REQUIRE_SCANNER` is `1` and no Helper is found, so that a missing Helper fails the job instead of skipping the parity tests. The built-in default test keeps its skip.
     - Done when: with a built Helper (`bun run build:scanner`), `bun test --preload ./scripts/preload.ts test/scan-io.test.ts` passes. With `PORTAGE_REQUIRE_SCANNER=1` and no Helper, every parity test fails, and none skips.
 
-  - [~] 3.6 Write the frozen-check and range-start tests (red)
+  - [x] 3.6 Write the frozen-check and range-start tests (red)
     - Requirements: R6.1, R6.2, R6.4. Design: CI changes (frozen check, `range-start.sh`); Testing strategy, Layer 4; O-15; Notes N17.
     - Files: `test/units.test.ts` (new `ci frozen check` describe block, which creates temporary git repositories with `mkdtemp`).
     - Tests first: (1) a committed change to `src/scan` makes the check fail. (2) A committed change to `src/xfer` passes. (3) When the base moves on after the branch point, the check judges only the branch's own changes (R6.4). (4) `range-start.sh` prints `BASE_SHA` when that is set, prints `BEFORE` when it is set and not all zeros, and otherwise prints the merge-base with `origin/master`, or the root commit when that fails.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "ci frozen check"` fails, because `scripts/range-start.sh` does not exist yet.
 
-  - [~] 3.7 Add `scripts/range-start.sh`
+  - [x] 3.7 Add `scripts/range-start.sh`
     - Requirements: R6.1, R6.4. Design: CI changes; O-15.
     - Files: `scripts/range-start.sh` (new, executable).
     - Build: print the value that the commits job computes inline today, by the same rule and in the same order: `BASE_SHA`, then `BEFORE` when it is not all zeros, then the merge-base with `origin/master`, then the root commit.
     - Done when: `bash scripts/range-start.sh` prints a commit id in this repository, and `bun test --preload ./scripts/preload.ts test/units.test.ts -t "ci frozen check"` passes.
 
-  - [~] 3.8 Change the CI workflow
+  - [x] 3.8 Change the CI workflow
     - Requirements: R6.1 to R6.7. Design: CI changes (commits job, engine job, frozen check; rust and scanner jobs unchanged).
     - Files: `.github/workflows/ci.yml` (the `commits` job, and the Test and frozen-files steps of the `engine` job).
     - Build: (a) The `commits` job calls `./scripts/range-start.sh` in place of its inline logic. (b) The `engine` job gets the job-level environment `PORTAGE_SCAN: ${{ github.workspace }}/dist/portage-scan` and `PORTAGE_REQUIRE_SCANNER: "1"`, a `dtolnay/rust-toolchain@stable` step, a `swatinem/rust-cache@v2` step with `workspaces: crates/portage-scan -> target`, and a `bun run build:scanner` step before the Test step. (c) The frozen step follows the shell in design.md's CI changes: `range_start` from the script, `base` from `git merge-base`, then `git diff --name-only "$base" HEAD -- src/scan`, with the error text that design.md gives. The `git status --porcelain` step is removed.
