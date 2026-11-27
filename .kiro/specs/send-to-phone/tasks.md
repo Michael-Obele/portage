@@ -219,7 +219,7 @@ The flush functions (1.9 and 1.10) are not needed, because sends write only to p
     - Files: `src/device/adb.ts`.
     - Build: `execOutStream(serial, path, signal?)` uses `Bun.spawn` with stdin ignored and stdout as a binary `ReadableStream`. It does not use `realSpawn`.
     - Done when: `bun test --preload ./scripts/preload.ts test/units.test.ts -t "send exec-out stream"` passes, and `git log -1 --format=%s` prints `feat(send): add send types, record, lock, and phone operations` after this task's group commit for tasks 3.2 to 3.11.
-  - [~] 3.12 Checkpoint: engine core
+  - [x] 3.12 Checkpoint: engine core
     - Requirements: R16.11. Design: §3.
     - Files: none.
     - Done when: `bun run test` and `bun run typecheck` exit 0.
